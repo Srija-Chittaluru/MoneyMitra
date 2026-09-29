@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/* next-themes toggles a `dark` class on <html>; this tells Tailwind v4 to key
+   its `dark:` variant off that class instead of `prefers-color-scheme`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-poppins);
+  --font-mono: var(--font-geist-mono);
+
+  /* Semantic colors, exposed as bg-, text- and border- utilities */
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-border: var(--border);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+
+  --color-accent: var(--accent-solid);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
+
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+
+  --color-focus-ring: var(--focus-ring);
+
+  /* Radius scale, per style guide (overrides Tailwind defaults) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  /* Typography scale, per style guide */
+  --text-display: 56px;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 600;
+
+  --text-h1: 32px;
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 600;
+
+  --text-h2: 22px;
+  --text-h2--line-height: 1.25;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h2--font-weight: 600;
+
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-body--font-weight: 400;
+
+  --text-caption: 13px;
+  --text-caption--line-height: 1.4;
+  --text-caption--font-weight: 500;
+
+  --text-amount-lg: 40px;
+  --text-amount-lg--line-height: 1.1;
+  --text-amount-lg--font-weight: 500;
+
+  --text-amount-sm: 15px;
+  --text-amount-sm--line-height: 1.3;
+  --text-amount-sm--font-weight: 500;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+* {
+  border-color: var(--color-border);
+}

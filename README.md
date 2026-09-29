@@ -2,14 +2,158 @@
 
 AI-powered personal tax and finance assistant for Indian salaried users.
 
-Status: architecture/planning phase — implementation has not started yet.
+Status: **Phase 2 — real authentication.** The website is a clickable
+prototype (mock data) with one real feature underneath: sign up, log in,
+sessions, and protected routes. Tax calculation, document extraction,
+recommendations, and finance management are still UI-only with mock data.
 
-## Planned stack
+## Stack
 
-- **Frontend (web):** Next.js + TypeScript + Tailwind CSS
-- **Backend:** FastAPI (Python), modular monolith
-- **Database:** PostgreSQL + SQLAlchemy/Alembic
-- **Design system:** see project style guide (Poppins, navy/blue/lime palette)
+- **Frontend (`apps/web`):** Next.js 16 (App Router) + TypeScript + Tailwind CSS + TanStack Query
+- **Backend (`apps/backend`):** FastAPI (Python 3.12), modular monolith, versioned REST API under `/api/v1`
+- **Database:** PostgreSQL, via SQLAlchemy + Alembic migrations
 
-The backend is built as a standalone API so a future mobile app can reuse
-authentication, document, tax, and recommendation logic without duplication.
+The backend is a standalone, versioned API. The frontend is purely an API
+consumer — no business logic lives in frontend code — so a future mobile app
+can reuse the same backend without duplicating logic.
+
+## Project structure
+
+```
+apps/
+  web/                  # Next.js frontend
+    src/app/            # routes (App Router)
+    src/components/     # reusable UI components (design system + shell)
+    src/lib/            # API client, env config, mock data, auth
+      lib/mock/         # centralized mock data (dashboard, documents, etc.)
+      lib/auth/         # auth context, token store, API calls
+    src/proxy.ts         # protects authenticated routes (redirect if no session)
+  backend/
+    app/
+      core/config.py    # environment-driven settings
+      db/               # SQLAlchemy engine/session/base
+      modules/
+        users/          # User model + schema
+        auth/           # RefreshToken model, JWT/password security, auth service
+      api/v1/           # versioned routes (thin — logic lives in modules/)
+      main.py           # FastAPI app entrypoint
+    alembic/            # migration environment + versions
+    tests/              # pytest suite (own test database)
+```
+
+## Prerequisites
+
+- Node.js 20+ and npm
+- Python 3.12+
+- A running PostgreSQL server (locally installed, Postgres.app, or Docker)
+
+## Backend setup
+
+```bash
+cd apps/backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt   # includes runtime deps + pytest/ruff
+
+cp .env.example .env                  # then edit DATABASE_URL / CORS_ORIGINS if needed
+```
+
+Generate a real `JWT_SECRET` for `.env` (never commit a real one):
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+### Configuring PostgreSQL
+
+Option A — use an existing local Postgres server: create a database and role
+matching `DATABASE_URL` in `.env` (defaults to `moneymitra`/`moneymitra`):
+
+```bash
+psql -d postgres -c "CREATE ROLE moneymitra LOGIN PASSWORD 'moneymitra';"
+psql -d postgres -c "CREATE DATABASE moneymitra OWNER moneymitra;"
+```
+
+Option B — use the provided Docker Compose file (only if port 5432 is free
+on your machine):
+
+```bash
+docker compose -f apps/backend/docker-compose.yml up -d
+```
+
+Also create a separate test database (used only by `pytest`, kept isolated
+from your dev data):
+
+```bash
+psql -d postgres -c "CREATE DATABASE moneymitra_test OWNER moneymitra;"
+```
+
+### Running migrations
+
+```bash
+cd apps/backend
+source .venv/bin/activate
+alembic upgrade head
+```
+
+Migrations currently create `users` and `refresh_tokens`. Future phases add
+models under their own `app/modules/<name>/models.py` (imported into
+`app/db/all_models.py` so Alembic picks them up) and generate a migration
+with `alembic revision --autogenerate -m "..."`.
+
+### Running the backend
+
+```bash
+cd apps/backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --port 8000
+```
+
+- Health check: `GET http://localhost:8000/api/v1/health` → `{"status": "ok", "database": "ok"}`
+- Interactive API docs: `http://localhost:8000/docs`
+
+> **Note:** if port 8000 (or 3000, below) is already used by another project
+> on your machine, pass a different `--port` and update
+> `apps/web/.env.local`'s `NEXT_PUBLIC_API_URL` and the backend's
+> `CORS_ORIGINS` to match.
+
+### Backend tests & lint
+
+```bash
+cd apps/backend
+source .venv/bin/activate
+pytest
+ruff check app tests
+```
+
+## Frontend setup
+
+```bash
+cd apps/web
+npm install
+cp .env.example .env.local            # adjust NEXT_PUBLIC_API_URL if the backend runs on a different port
+npm run dev -- --port 3000
+```
+
+Open `http://localhost:3000` — the MoneyMitra landing page. Sign up for an
+account, then click through Dashboard / Documents / Tax Comparison /
+Recommendations / Finance / Profile (all mock data except your identity,
+which is real). Protected pages redirect to `/login` if you're not
+signed in.
+
+### Frontend checks
+
+```bash
+cd apps/web
+npx tsc --noEmit     # type-check
+npm run lint         # eslint
+npm run build        # production build
+```
+
+## What's intentionally not here yet
+
+Tax regime comparison, document extraction/OCR, LLM integration,
+recommendations, and finance management all still run on mock data in the
+frontend (see `apps/web/src/lib/mock/`) — no backend logic exists for them
+yet, and none of it is called via fake API endpoints. Only authentication
+(sign up, log in, sessions, protected routes) is real end-to-end.

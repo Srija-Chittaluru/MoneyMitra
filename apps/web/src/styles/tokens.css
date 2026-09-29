@@ -1,0 +1,88 @@
+/* MoneyMitra design tokens — values taken directly from the FINAL style guide. */
+
+:root {
+  /* Raw palette */
+  --palette-ink-navy: #0b0f14;
+  --palette-cloud: #f7f8fa;
+  --palette-signal-blue: #4772ff;
+
+  --palette-neutral-50: #f7f8fa;
+  --palette-neutral-100: #f2f4f7;
+  --palette-neutral-300: #d0d5dd;
+  --palette-neutral-500: #667085;
+  --palette-neutral-700: #344054;
+  --palette-neutral-800: #1d2939;
+  --palette-neutral-900: #101828;
+
+  --palette-lime-100: #eefcc2;
+  --palette-lime-300: #d4fa66;
+  --palette-lime-500: #65f2a4;
+  --palette-lime-700: #6b8a00;
+  --palette-lime-900: #3d5000;
+
+  --palette-success: #067647;
+  --palette-success-bg: #ecfdf3;
+  --palette-warning: #dc6803;
+  --palette-warning-bg: #fffaeb;
+  --palette-error: #d92d20;
+  --palette-error-bg: #fef3f2;
+}
+
+/* Semantic theme tokens — light (default) */
+:root {
+  --bg: var(--palette-neutral-50);
+  --surface: #ffffff;
+  --surface-muted: var(--palette-neutral-100);
+  --text-primary: var(--palette-ink-navy);
+  --text-muted: var(--palette-neutral-500);
+  --border: var(--palette-neutral-300);
+
+  --primary: var(--palette-ink-navy);
+  --primary-foreground: var(--palette-cloud);
+  --link: var(--palette-signal-blue);
+
+  /* Lime is rare, and never used for text/icons on light surfaces (1.2:1 contrast) — use lime-700 instead. */
+  --accent-solid: var(--palette-lime-500);
+  --accent-foreground: var(--palette-ink-navy);
+  --accent-text: var(--palette-lime-700);
+
+  --success: var(--palette-success);
+  --success-bg: var(--palette-success-bg);
+  --warning: var(--palette-warning);
+  --warning-bg: var(--palette-warning-bg);
+  --error: var(--palette-error);
+  --error-bg: var(--palette-error-bg);
+
+  --focus-ring: color-mix(in srgb, var(--palette-signal-blue) 35%, transparent);
+}
+
+/* Semantic theme tokens — dark.
+   Plain `.dark` (not `:root.dark`) so this can scope either the whole
+   document (next-themes puts the class on <html>) or a local subtree, e.g.
+   an always-dark card shown inside an otherwise light page. */
+.dark {
+  --bg: var(--palette-ink-navy);
+  --surface: var(--palette-neutral-800);
+  --surface-muted: color-mix(in srgb, var(--palette-neutral-800) 70%, var(--palette-ink-navy));
+  --text-primary: var(--palette-cloud);
+  --text-muted: #8b93a7;
+  --border: var(--palette-neutral-700);
+
+  /* Lime lives on navy: it becomes the primary CTA fill in dark surfaces. */
+  --primary: var(--palette-lime-500);
+  --primary-foreground: var(--palette-ink-navy);
+  --link: var(--palette-lime-500);
+
+  --accent-solid: var(--palette-lime-500);
+  --accent-foreground: var(--palette-ink-navy);
+  --accent-text: var(--palette-lime-500);
+
+  --success: #4ade80;
+  --success-bg: color-mix(in srgb, var(--palette-success) 25%, transparent);
+  --warning: #fb923c;
+  --warning-bg: color-mix(in srgb, var(--palette-warning) 25%, transparent);
+  --error: #f87171;
+  --error-bg: color-mix(in srgb, var(--palette-error) 25%, transparent);
+
+  --focus-ring: color-mix(in srgb, var(--palette-lime-500) 40%, transparent);
+}
