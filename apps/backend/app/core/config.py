@@ -22,7 +22,13 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
 
     refresh_cookie_name: str = "refresh_token"
-    refresh_cookie_path: str = "/api/v1/auth"
+    # Must be "/", not an auth-only prefix: the frontend and backend are
+    # separate origins that only share the "localhost" host in dev, and the
+    # frontend's proxy (src/proxy.ts) needs to see this cookie on its own
+    # routes (e.g. /dashboard), which share nothing with the backend's own
+    # URL structure. A path scoped to /api/v1/auth is only ever sent back
+    # to the backend itself, so the frontend's presence-check never fires.
+    refresh_cookie_path: str = "/"
 
     @property
     def refresh_cookie_secure(self) -> bool:

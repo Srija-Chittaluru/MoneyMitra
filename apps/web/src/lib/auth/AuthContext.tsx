@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applySessionRef = useRef<(session: TokenResponse) => void>(() => {});
+  const bootRefreshStarted = useRef(false);
 
   const clearSession = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
@@ -65,9 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession]);
 
   useEffect(() => {
-    refreshRequest()
-      .then(applySession)
-      .catch(() => clearSession());
+    // Guards against React Strict Mode's dev-only double-invoke of effects,
+    // which would otherwise fire two concurrent /auth/refresh calls on boot.
+    if (!bootRefreshStarted.current) {
+      bootRefreshStarted.current = true;
+      refreshRequest()
+        .then(applySession)
+        .catch(() => clearSession());
+    }
 
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);

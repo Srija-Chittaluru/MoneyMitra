@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/Button";
 export function PublicHeader() {
   return (
     <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-4 md:px-8">
-      <Link href="/">
-        <Logo height={32} />
+      <Link href="/" className="flex items-center">
+        <Logo height={40} />
       </Link>
       <div className="flex items-center gap-3">
         <ThemeToggle />

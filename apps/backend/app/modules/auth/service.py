@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models import RefreshToken
@@ -79,10 +79,9 @@ def login(db: Session, email: str, password: str) -> tuple[User, str, int, str]:
 
 def refresh_session(db: Session, raw_refresh_token: str) -> tuple[User, str, int, str]:
     token_hash = hash_refresh_token(raw_refresh_token)
-    stored = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
-
     invalid_session_error = HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired, please log in again")
 
+    stored = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
     if stored is None or stored.revoked_at is not None:
         raise invalid_session_error
 
@@ -92,14 +91,24 @@ def refresh_session(db: Session, raw_refresh_token: str) -> tuple[User, str, int
     if expires_at < datetime.now(timezone.utc):
         raise invalid_session_error
 
+    # Atomic compare-and-swap: only proceed if THIS call is the one that
+    # actually revokes the token. Under a race (e.g. two concurrent refresh
+    # calls with the same token — this can genuinely happen, e.g. a dev-mode
+    # double-effect firing two requests at once), only one caller "wins" and
+    # the other is correctly rejected instead of both silently succeeding
+    # and leaving two valid sessions behind.
+    result = db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id == stored.id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+    db.commit()
+    if result.rowcount == 0:
+        raise invalid_session_error
+
     user = get_user_by_id(db, stored.user_id)
     if user is None:
         raise invalid_session_error
-
-    # Rotate: revoke the used token, then issue a fresh pair.
-    stored.revoked_at = datetime.now(timezone.utc)
-    db.add(stored)
-    db.commit()
 
     access_token, expires_in, new_raw_refresh_token = _issue_session(db, user)
     return user, access_token, expires_in, new_raw_refresh_token

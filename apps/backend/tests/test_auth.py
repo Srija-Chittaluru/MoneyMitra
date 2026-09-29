@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -181,6 +182,43 @@ def test_me_with_expired_access_token_rejected(client):
     response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
 
     assert response.status_code == 401
+
+
+def test_concurrent_refresh_never_leaves_two_valid_tokens(client):
+    """Regression test: two /auth/refresh calls racing on the same token used
+    to both succeed (a read-then-write race in the old implementation),
+    leaving two simultaneously-valid refresh tokens for one session. The
+    rotation is now an atomic compare-and-swap, so exactly one call wins."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.modules.auth.models import RefreshToken
+
+    signup_response = client.post("/api/v1/auth/signup", json=SIGNUP_PAYLOAD)
+    user_id = uuid.UUID(signup_response.json()["user"]["id"])
+    refresh_cookie = client.cookies.get("refresh_token")
+
+    def call_refresh():
+        from fastapi.testclient import TestClient
+        from app.main import app
+
+        racer = TestClient(app)
+        racer.cookies.set("refresh_token", refresh_cookie)
+        return racer.post("/api/v1/auth/refresh")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: call_refresh(), range(2)))
+
+    statuses = sorted(r.status_code for r in results)
+    assert statuses == [200, 401]
+
+    db = TestSessionLocal()
+    valid_tokens = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        .count()
+    )
+    db.close()
+    assert valid_tokens == 1
 
 
 def test_logout_revokes_refresh_token(client):

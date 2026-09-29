@@ -11,7 +11,7 @@ export function Sidebar() {
   return (
     <nav className="flex h-full w-64 shrink-0 flex-col gap-6 border-r border-border bg-surface p-4">
       <div className="px-2 pt-2">
-        <Logo height={32} />
+        <Logo height={40} />
       </div>
       <div className="flex flex-1 flex-col gap-1">
         {NAV_ITEMS.map((item) => (
