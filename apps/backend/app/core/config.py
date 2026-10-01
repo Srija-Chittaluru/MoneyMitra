@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     document_storage_dir: str = "storage/documents"
     max_document_bytes: int = 10 * 1024 * 1024
 
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4.1-mini"
+
     refresh_cookie_name: str = "refresh_token"
     # Must be "/", not an auth-only prefix: the frontend and backend are
     # separate origins that only share the "localhost" host in dev, and the
