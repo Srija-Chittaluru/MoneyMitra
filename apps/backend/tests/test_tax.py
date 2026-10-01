@@ -141,7 +141,7 @@ def test_list_supported_tax_years(client):
     headers = _auth_headers(client)
     response = client.get("/api/v1/tax/years", headers=headers)
     assert response.status_code == 200
-    assert response.json() == ["2025-26"]
+    assert response.json() == ["2025-26", "2026-27"]
 
 
 def test_unsupported_tax_year_rejected(client):
@@ -273,3 +273,67 @@ def test_deduction_capping(client):
     body = response.json()
     # standard_deduction(50000) + capped 80C(150000) + capped 80D(25000)
     assert body["old_regime"]["total_deductions"] == 225000
+
+
+def test_home_loan_interest_and_nps_capped(client):
+    headers = _auth_headers(client)
+    response = client.post(
+        "/api/v1/tax/comparison",
+        json={
+            "tax_year": "2025-26",
+            "gross_total_income": 1500000,
+            "home_loan_interest": 300000,  # far above the 200000 cap
+            "nps_contribution": 80000,  # far above the 50000 cap
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    # standard_deduction(50000) + capped 24(b)(200000) + capped 80CCD(1B)(50000)
+    assert body["old_regime"]["total_deductions"] == 300000
+
+
+def test_deduction_checklist_values(client):
+    headers = _auth_headers(client)
+    response = client.post(
+        "/api/v1/tax/comparison",
+        json={
+            "tax_year": "2025-26",
+            "gross_total_income": 1500000,
+            "section_80c": 95000,
+            "section_80d": 10000,
+            "hra_exemption": 40000,
+            "home_loan_interest": 250000,
+            "nps_contribution": 20000,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    checklist = {item["section"]: item for item in response.json()["deduction_checklist"]}
+
+    assert checklist["80C"]["limit"] == 150000
+    assert checklist["80C"]["declared_amount"] == 95000
+    assert checklist["80C"]["headroom"] == 55000
+    assert "ELSS mutual funds" in checklist["80C"]["qualifying_instruments"]
+
+    assert checklist["HRA"]["limit"] is None
+    assert checklist["HRA"]["headroom"] is None
+    assert checklist["HRA"]["declared_amount"] == 40000
+
+    assert checklist["24B"]["limit"] == 200000
+    assert checklist["24B"]["declared_amount"] == 250000
+    assert checklist["24B"]["headroom"] == 0
+    assert "exceeds" in checklist["24B"]["note"]
+
+    assert checklist["80CCD(1B)"]["limit"] == 50000
+    assert checklist["80CCD(1B)"]["headroom"] == 30000
+
+
+def test_negative_home_loan_interest_rejected(client):
+    headers = _auth_headers(client)
+    response = client.post(
+        "/api/v1/tax/comparison",
+        json={"tax_year": "2025-26", "gross_total_income": 1000000, "home_loan_interest": -1},
+        headers=headers,
+    )
+    assert response.status_code == 422

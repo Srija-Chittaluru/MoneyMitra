@@ -1,9 +1,16 @@
 from fastapi import APIRouter, Depends
 
 from app.modules.auth.dependencies import get_current_user
-from app.modules.tax import service
+from app.modules.tax import chat, explain, service
 from app.modules.tax.rules.registry import get_supported_tax_years
-from app.modules.tax.schemas import TaxComparisonInput, TaxComparisonResult
+from app.modules.tax.schemas import (
+    ChatRequest,
+    ChatResponse,
+    ExplanationRequest,
+    ExplanationResult,
+    TaxComparisonInput,
+    TaxComparisonResult,
+)
 from app.modules.users.models import User
 
 router = APIRouter(prefix="/tax", tags=["tax"])
@@ -20,3 +27,19 @@ def compare_tax_regimes(
     current_user: User = Depends(get_current_user),
 ) -> TaxComparisonResult:
     return service.calculate_comparison(payload)
+
+
+@router.post("/explain", response_model=ExplanationResult)
+def explain_tax_comparison(
+    payload: ExplanationRequest,
+    current_user: User = Depends(get_current_user),
+) -> ExplanationResult:
+    return explain.generate_explanation(payload.comparison)
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat_about_tax(
+    payload: ChatRequest,
+    current_user: User = Depends(get_current_user),
+) -> ChatResponse:
+    return chat.generate_reply(payload)
