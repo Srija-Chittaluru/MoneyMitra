@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
+    # ITR JSON "CreationInfo". The e-filing portal expects a software ID
+    # (SW + 8 digits) issued by the Income Tax Department to registered
+    # return-preparation utilities. Replace this placeholder with the ID
+    # issued to MoneyMitra before real users upload exported returns.
+    itr_software_id: str = "SW00000000"
+    itr_software_version: str = "1.0"
+
+    # Uploaded documents are stored on disk under this directory (a Docker
+    # volume in docker-compose.yml); metadata lives in the documents table.
+    document_storage_dir: str = "storage/documents"
+    max_document_bytes: int = 10 * 1024 * 1024
+
     refresh_cookie_name: str = "refresh_token"
     # Must be "/", not an auth-only prefix: the frontend and backend are
     # separate origins that only share the "localhost" host in dev, and the

@@ -16,7 +16,9 @@ COPY alembic ./alembic
 COPY app ./app
 
 # Don't run the server as root inside the container.
-RUN useradd --create-home --uid 1000 appuser
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/storage \
+    && chown appuser /app/storage
 USER appuser
 
 EXPOSE 8000

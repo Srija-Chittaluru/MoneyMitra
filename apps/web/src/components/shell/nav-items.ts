@@ -1,4 +1,5 @@
 import {
+  FileCheck2,
   FileStack,
   LayoutDashboard,
   Scale,
@@ -11,6 +12,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: FileStack },
   { href: "/tax-comparison", label: "Tax Comparison", icon: Scale },
+  { href: "/itr-filing", label: "ITR Filing", icon: FileCheck2 },
   { href: "/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/finance", label: "Finance Management", icon: Wallet },
 ] as const;
