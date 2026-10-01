@@ -4,13 +4,23 @@ from fastapi import HTTPException, status
 
 from app.modules.tax import calculator
 from app.modules.tax.age import resolve_age_category
+from app.modules.tax.instruments import QUALIFYING_INSTRUMENTS, SECTION_LABELS, DeductionSection
 from app.modules.tax.rules.registry import get_supported_tax_years, get_tax_rules
 from app.modules.tax.rules.types import AgeCategory
-from app.modules.tax.schemas import RegimeResult, TaxComparisonInput, TaxComparisonResult
+from app.modules.tax.schemas import (
+    DeductionSectionBreakdown,
+    RegimeResult,
+    TaxComparisonInput,
+    TaxComparisonResult,
+)
+
+ZERO = Decimal("0")
 
 _SECTION_80C_CAP = Decimal("150000")
 _SECTION_80D_CAP_GENERAL = Decimal("25000")
 _SECTION_80D_CAP_SENIOR = Decimal("50000")
+_SECTION_24B_CAP = Decimal("200000")
+_SECTION_80CCD_1B_CAP = Decimal("50000")
 
 
 def _regime_result(calc: calculator.RegimeCalculation) -> RegimeResult:
@@ -26,6 +36,61 @@ def _regime_result(calc: calculator.RegimeCalculation) -> RegimeResult:
         cess=int(calc.cess),
         total_tax_payable=int(calc.total_tax_payable),
     )
+
+
+def _section_breakdown(
+    section: DeductionSection, declared: Decimal, limit: Decimal | None
+) -> DeductionSectionBreakdown:
+    label = SECTION_LABELS[section]
+    instruments = QUALIFYING_INSTRUMENTS[section]
+
+    if limit is None:
+        return DeductionSectionBreakdown(
+            section=section.value,
+            label=label,
+            limit=None,
+            declared_amount=int(declared),
+            headroom=None,
+            qualifying_instruments=instruments,
+            note=(
+                "No flat cap — the real exemption depends on salary structure, rent paid, "
+                "and city, and isn't independently verified here."
+            ),
+        )
+
+    headroom = max(ZERO, limit - min(declared, limit))
+    note = None
+    if declared > limit:
+        note = f"Declared amount exceeds the ₹{int(limit):,} limit; only ₹{int(limit):,} is deductible."
+
+    return DeductionSectionBreakdown(
+        section=section.value,
+        label=label,
+        limit=int(limit),
+        declared_amount=int(declared),
+        headroom=int(headroom),
+        qualifying_instruments=instruments,
+        note=note,
+    )
+
+
+def build_deduction_checklist(
+    payload: TaxComparisonInput, age_category: AgeCategory
+) -> list[DeductionSectionBreakdown]:
+    section_80d_cap = (
+        _SECTION_80D_CAP_GENERAL if age_category == AgeCategory.GENERAL else _SECTION_80D_CAP_SENIOR
+    )
+    return [
+        _section_breakdown(DeductionSection.SECTION_80C, Decimal(payload.section_80c), _SECTION_80C_CAP),
+        _section_breakdown(DeductionSection.SECTION_80D, Decimal(payload.section_80d), section_80d_cap),
+        _section_breakdown(DeductionSection.HRA, Decimal(payload.hra_exemption), None),
+        _section_breakdown(
+            DeductionSection.SECTION_24B, Decimal(payload.home_loan_interest), _SECTION_24B_CAP
+        ),
+        _section_breakdown(
+            DeductionSection.SECTION_80CCD_1B, Decimal(payload.nps_contribution), _SECTION_80CCD_1B_CAP
+        ),
+    ]
 
 
 def calculate_comparison(payload: TaxComparisonInput) -> TaxComparisonResult:
@@ -48,6 +113,8 @@ def calculate_comparison(payload: TaxComparisonInput) -> TaxComparisonResult:
         min(Decimal(payload.section_80c), _SECTION_80C_CAP)
         + min(Decimal(payload.section_80d), section_80d_cap)
         + Decimal(payload.hra_exemption)
+        + min(Decimal(payload.home_loan_interest), _SECTION_24B_CAP)
+        + min(Decimal(payload.nps_contribution), _SECTION_80CCD_1B_CAP)
         + Decimal(payload.other_deductions)
     )
 
@@ -62,4 +129,5 @@ def calculate_comparison(payload: TaxComparisonInput) -> TaxComparisonResult:
         new_regime=_regime_result(new),
         recommended_regime=recommended,
         difference=int(difference),
+        deduction_checklist=build_deduction_checklist(payload, age_category),
     )

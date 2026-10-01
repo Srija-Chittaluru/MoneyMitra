@@ -5,7 +5,19 @@ export interface TaxComparisonInput {
   section_80c?: number;
   section_80d?: number;
   hra_exemption?: number;
+  home_loan_interest?: number;
+  nps_contribution?: number;
   other_deductions?: number;
+}
+
+export interface DeductionSectionBreakdown {
+  section: string;
+  label: string;
+  limit: number | null;
+  declared_amount: number;
+  headroom: number | null;
+  qualifying_instruments: string[];
+  note: string | null;
 }
 
 export interface RegimeResult {
@@ -27,4 +39,25 @@ export interface TaxComparisonResult {
   new_regime: RegimeResult;
   recommended_regime: "old" | "new" | "either";
   difference: number;
+  deduction_checklist: DeductionSectionBreakdown[];
+}
+
+export interface ExplanationResult {
+  old_regime_note: string;
+  new_regime_note: string;
+  old_regime_disclaimer: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatRequest {
+  comparison?: TaxComparisonResult;
+  messages: ChatMessage[];
+}
+
+export interface ChatResponse {
+  reply: string;
 }
