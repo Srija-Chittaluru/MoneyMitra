@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ChevronRight, Download } from "lucide-react";
+import { ChevronRight, Download, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -11,14 +11,17 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@/lib/api-client";
 import { formatRupees } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { exportItr } from "@/lib/itr/api";
+import { exportItr, exportItrPdf } from "@/lib/itr/api";
 import type { Issue, ItrExport, ItrSummary } from "@/lib/itr/types";
 import { ComputationCard } from "./ComputationCard";
 import { Notice } from "./fields";
 import { STEPS, stepForField } from "./options";
 
 function downloadJson(fileName: string, data: object) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  downloadBlob(fileName, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+}
+
+function downloadBlob(fileName: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -163,6 +166,10 @@ export function ReviewStep({
     mutationFn: () => exportItr(ay),
     onSuccess: (result) => downloadJson(result.file_name, result.itr),
   });
+  const pdfMutation = useMutation<Blob, ApiError, void>({
+    mutationFn: () => exportItrPdf(ay),
+    onSuccess: (blob) => downloadBlob(`ITR1_AY${ay}_summary.pdf`, blob),
+  });
 
   if (isLoading || (saving && !summary)) {
     return (
@@ -280,17 +287,29 @@ export function ReviewStep({
           AIS and Form 26AS before uploading.
         </p>
         {exportMutation.isError && <p className="mb-3 text-sm text-error">{exportMutation.error.message}</p>}
-        <Button
-          variant="primary"
-          disabled={!summary.can_export || saving || exportMutation.isPending}
-          onClick={() => exportMutation.mutate()}
-        >
-          <Download className="h-4 w-4" />
-          {exportMutation.isPending ? "Preparing…" : "Download ITR-1 JSON"}
-        </Button>
-        {!summary.can_export && (
-          <p className="mt-2 text-sm text-muted">Fix the issues above to enable the download.</p>
-        )}
+        {pdfMutation.isError && <p className="mb-3 text-sm text-error">{pdfMutation.error.message}</p>}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="primary"
+            disabled={!summary.can_export || saving || exportMutation.isPending}
+            onClick={() => exportMutation.mutate()}
+          >
+            <Download className="h-4 w-4" />
+            {exportMutation.isPending ? "Preparing…" : "Download ITR-1 JSON"}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={saving || pdfMutation.isPending}
+            onClick={() => pdfMutation.mutate()}
+          >
+            <FileText className="h-4 w-4" />
+            {pdfMutation.isPending ? "Preparing…" : "Download summary (PDF)"}
+          </Button>
+        </div>
+        <p className="mt-2 text-sm text-muted">
+          The JSON is the file you upload on the Income Tax portal. The PDF is a readable copy to review or share
+          {summary.can_export ? "" : " — it's marked DRAFT until the issues above are fixed"}.
+        </p>
 
         {exportMutation.isSuccess && (
           <div className="mt-6">

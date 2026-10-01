@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, apiFetchBlob } from "@/lib/api-client";
 import type {
   AssessmentYearInfo,
   ItrDraftData,
@@ -32,4 +32,8 @@ export function exportItr(ay: string) {
 
 export function rereadDocuments(ay: string) {
   return apiFetch<ItrFilingOut>(`/api/v1/itr/filings/${ay}/reread-documents`, { method: "POST" });
+}
+
+export function exportItrPdf(ay: string) {
+  return apiFetchBlob(`/api/v1/itr/filings/${ay}/export/pdf`);
 }

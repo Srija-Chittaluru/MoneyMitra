@@ -350,3 +350,20 @@ def test_negative_amount_rejected_on_save(client):
     draft = _complete_draft()
     draft["salary"]["salary_17_1"] = -1
     assert client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers).status_code == 422
+
+
+def test_pdf_summary_download(client, as_of_belated):
+    headers = _auth_headers(client)
+    client.put(f"/api/v1/itr/filings/{AY}", json=_complete_draft(), headers=headers)
+    response = client.get(f"/api/v1/itr/filings/{AY}/export/pdf", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF-")
+    assert "ITR1_AY2026-27_ABCDE1234F.pdf" in response.headers["content-disposition"]
+
+
+def test_pdf_available_for_incomplete_draft(client, as_of_belated):
+    headers = _auth_headers(client)
+    response = client.get(f"/api/v1/itr/filings/{AY}/export/pdf", headers=headers)
+    assert response.status_code == 200
+    assert "ITR1_AY2026-27_DRAFT.pdf" in response.headers["content-disposition"]

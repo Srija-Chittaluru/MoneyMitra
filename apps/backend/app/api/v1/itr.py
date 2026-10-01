@@ -1,12 +1,12 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.documents import service as documents_service
-from app.modules.itr import service
+from app.modules.itr import pdf, service
 from app.modules.itr.rules import get_itr_rules, get_supported_assessment_years
 from app.modules.itr.schemas import AssessmentYearInfo, ItrDraftData, ItrExport, ItrFilingOut, ItrSummary
 from app.modules.users.models import User
@@ -92,3 +92,23 @@ def reread_documents(
     """Re-reads all uploaded documents and fills the draft again (keeps values the user edited)."""
     rules = service.get_rules_or_404(assessment_year)
     return service.to_out(documents_service.reread_documents(db, current_user, rules))
+
+
+@router.get("/filings/{assessment_year}/export/pdf")
+def export_pdf(
+    assessment_year: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    as_of: date = Depends(filing_date),
+) -> Response:
+    """Readable PDF of the return. Available even when incomplete (marked DRAFT)."""
+    rules = service.get_rules_or_404(assessment_year)
+    filing = service.get_or_create_filing(db, current_user, rules)
+    draft = ItrDraftData.model_validate(filing.data)
+    summary = service.build_summary(draft, rules, as_of)
+    pan = (draft.personal.pan or "DRAFT").strip().upper()
+    return Response(
+        pdf.build_itr_pdf(draft, summary, rules),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="ITR1_AY{rules.assessment_year}_{pan}.pdf"'},
+    )
