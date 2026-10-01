@@ -1,0 +1,18 @@
+# Secrets and local state must never be baked into an image.
+.env
+.env.*
+!.env.example
+
+# Local tooling / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Not needed at runtime
+tests/
+docker-compose.yml
+Dockerfile
+.dockerignore

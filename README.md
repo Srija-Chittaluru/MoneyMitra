@@ -47,6 +47,51 @@ apps/
 - Python 3.12+
 - A running PostgreSQL server (locally installed, Postgres.app, or Docker)
 
+## Run everything with Docker (easiest)
+
+Docker runs the database, API, and website for you in containers — no need to
+install Python, Node, or PostgreSQL. You only need
+[Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and
+running.
+
+```bash
+cp .env.example .env
+# open .env and set JWT_SECRET (the file explains how to generate one)
+
+docker compose up --build
+```
+
+The first build takes a few minutes; later starts are fast. When it settles:
+
+- Website: http://localhost:3000
+- API docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/api/v1/health
+
+Database migrations are applied automatically when the API starts, and your
+data lives in a Docker volume, so it survives restarts.
+
+Everyday commands (run from the project root):
+
+```bash
+docker compose up -d          # start in the background
+docker compose logs -f        # watch the logs (Ctrl+C to stop watching)
+docker compose logs -f backend  # logs for just one service: db, backend, web
+docker compose down           # stop everything (data is kept)
+docker compose down -v        # stop AND delete the database data
+docker compose up --build     # rebuild after you change code
+```
+
+Notes:
+
+- **Port already in use?** Set `WEB_PORT`, `BACKEND_PORT` (or `DB_PORT`) in
+  `.env` to free ports, then `docker compose up --build` again. The website
+  and API addresses follow those values automatically.
+- **Changing `BACKEND_PORT`** requires `--build`: the API address is baked
+  into the website's code when it is built.
+- **Code changes need a rebuild.** This setup runs the production build. For
+  day-to-day development with hot reload, use the manual setup below (it can
+  still use Docker for just the database).
+
 ## Backend setup
 
 ```bash

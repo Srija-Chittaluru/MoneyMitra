@@ -1,0 +1,71 @@
+# Runs the whole MoneyMitra stack: database + API + website.
+#
+#   cp .env.example .env     # then set JWT_SECRET
+#   docker compose up --build
+#
+# Settings come from the .env file next to this one (see .env.example).
+name: moneymitra
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: moneymitra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moneymitra}
+      POSTGRES_DB: moneymitra
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Published only on this machine, so you can inspect the DB with psql/a GUI.
+    # The backend does not use this; it reaches the database at db:5432.
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneymitra -d moneymitra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./apps/backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+psycopg://moneymitra:${POSTGRES_PASSWORD:-moneymitra}@db:5432/moneymitra
+      # Origin(s) the browser loads the website from.
+      CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}"]'
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Baked into the website's JavaScript at build time. This is the address
+        # your *browser* uses to reach the API, so it is localhost, not "backend".
+        NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

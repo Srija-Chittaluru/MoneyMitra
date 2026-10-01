@@ -1,0 +1,16 @@
+# Rebuilt inside the image; copying them would be slow and could clash.
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets and local state must never be baked into an image.
+.env
+.env.*
+
+.git
+.DS_Store
+npm-debug.log*
+Dockerfile
+.dockerignore
