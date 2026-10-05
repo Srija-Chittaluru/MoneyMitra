@@ -32,3 +32,6 @@ venv/
 
 # Logs
 *.log
+
+# Uploaded documents (local runs)
+apps/backend/storage/

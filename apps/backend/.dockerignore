@@ -16,3 +16,4 @@ tests/
 docker-compose.yml
 Dockerfile
 .dockerignore
+storage/

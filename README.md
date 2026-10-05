@@ -141,7 +141,7 @@ source .venv/bin/activate
 alembic upgrade head
 ```
 
-Migrations currently create `users` and `refresh_tokens`. Future phases add
+Migrations currently create `users`, `refresh_tokens` and `itr_filings`. Future phases add
 models under their own `app/modules/<name>/models.py` (imported into
 `app/db/all_models.py` so Alembic picks them up) and generate a migration
 with `alembic revision --autogenerate -m "..."`.
@@ -194,6 +194,34 @@ npx tsc --noEmit     # type-check
 npm run lint         # eslint
 npm run build        # production build
 ```
+
+## ITR Filing (ITR-1, AY 2026-27)
+
+The **ITR Filing** page (`/itr-filing`) prepares an ITR-1 (Sahaj) return and
+exports it as the official e-filing JSON. MoneyMitra does **not** submit the
+return: the user uploads the file at incometax.gov.in (e-File → Income Tax
+Returns → File Income Tax Return → AY 2026-27 → offline / upload JSON) and
+e-verifies it. Direct submission requires ERI registration with the Income
+Tax Department.
+
+- Backend module: `apps/backend/app/modules/itr/` — per-year rules
+  (`rules.py`), computation (`computation.py`, reusing the tax module's
+  slabs/rebate), interest 234A/B/C and fee 234F (`interest.py`), eligibility
+  and field checks (`validation.py`), JSON export (`export.py`).
+- The export is validated against the official schema in
+  `app/modules/itr/official/` (ITR-1 schema v1.1 from incometax.gov.in).
+- Rules follow the CBDT "ITR 1 – Validation Rules for AY 2026-27". Notably,
+  after the due date (31 Jul 2026) only the new regime is allowed (belated
+  return u/s 139(4), filed until 31 Dec 2026).
+- Tax law updates: add a new `ItrYearRules` entry and schema file per
+  assessment year (and a new `TaxYearRules` for slab changes). There is no
+  official live tax-rules API, so rules are versioned in code.
+- Before real users upload: set `ITR_SOFTWARE_ID` in `.env` to the software
+  ID issued by the department (the default `SW00000000` is a placeholder),
+  and encrypt `itr_filings.data` at rest (it holds PAN, Aadhaar, bank details).
+- Not supported in ITR-1 here: capital gains (incl. LTCG u/s 112A), 80E/80G/
+  80GG/80DD/80U and other less common deductions, relief u/s 89, co-owned
+  properties. Users with these should use the official utility.
 
 ## What's intentionally not here yet
 

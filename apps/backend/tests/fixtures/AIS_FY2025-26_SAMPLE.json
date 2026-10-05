@@ -1,0 +1,49 @@
+{
+  "_notice": "SAMPLE - NOT A REAL DOCUMENT - fictional data for software testing",
+  "AIS": {
+    "FinancialYear": "2025-26",
+    "AssessmentYear": "2026-27",
+    "PartA": {
+      "PAN": "ABCDE1234F",
+      "Name": "ASHA VERMA",
+      "DOB": "1990-05-10",
+      "Email": "asha.sample@example.com",
+      "Address": "12B, Indiranagar, Bengaluru, Karnataka - 560038"
+    },
+    "PartB1_TDS_TCS": [
+      {
+        "InformationCode": "SFT-016/TDS-192",
+        "Description": "Salary",
+        "Source": "Acme Technologies Pvt Ltd (SAMPLE)",
+        "TAN": "BLRA12345B",
+        "AmountPaidCredited": 1500000,
+        "TaxDeducted": 100000
+      },
+      {
+        "InformationCode": "SFT-016(SB)",
+        "Description": "Interest from savings bank",
+        "Source": "HDFC Bank (SAMPLE)",
+        "TAN": "MUMH12345C",
+        "AmountPaidCredited": 12000,
+        "TaxDeducted": 0
+      },
+      {
+        "InformationCode": "TDS-194A",
+        "Description": "Interest from deposit",
+        "Source": "HDFC Bank (SAMPLE)",
+        "TAN": "MUMH12345C",
+        "AmountPaidCredited": 30000,
+        "TaxDeducted": 3000
+      }
+    ],
+    "PartB2_SFT": [
+      {
+        "InformationCode": "SFT-016(SB)",
+        "Description": "Savings bank interest",
+        "Source": "HDFC Bank (SAMPLE)",
+        "Amount": 12000
+      }
+    ],
+    "PartB3_TaxPayments": []
+  }
+}
