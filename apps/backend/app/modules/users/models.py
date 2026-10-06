@@ -5,6 +5,10 @@ from sqlalchemy import BigInteger, Date, DateTime, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.modules.users.pii import decrypt_pan, mask_pan
+
+TAX_ONBOARDING_COMPLETED = "completed"
+TAX_ONBOARDING_SKIPPED = "skipped"
 
 
 class User(Base):
@@ -27,3 +31,10 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def pan_masked(self) -> str | None:
+        if not self.pan_encrypted:
+            return None
+        pan = decrypt_pan(self.pan_encrypted)
+        return mask_pan(pan) if pan else None

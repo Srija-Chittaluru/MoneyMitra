@@ -56,7 +56,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-md border border-border p-4">
               <p className="text-sm text-muted">Old regime</p>
-              <p className="mt-1 font-mono text-amount-lg">
+              <p className="mt-1 text-amount-lg">
                 {formatINR(mockTaxComparison.oldRegime.totalTax)}
               </p>
             </div>
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                   <Badge variant="accent">Recommended</Badge>
                 )}
               </div>
-              <p className="mt-1 font-mono text-amount-lg">
+              <p className="mt-1 text-amount-lg">
                 {formatINR(mockTaxComparison.newRegime.totalTax)}
               </p>
             </div>
@@ -83,13 +83,13 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted">Payslips</span>
-              <span className="font-mono">
+              <span>
                 {documentStatus.payslipsUploaded}/{documentStatus.payslipsExpected}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted">Tax proofs pending</span>
-              <span className="font-mono">{documentStatus.taxProofsPending}</span>
+              <span>{documentStatus.taxProofsPending}</span>
             </div>
           </div>
           <Link href="/documents">

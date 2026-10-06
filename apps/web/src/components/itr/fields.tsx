@@ -16,15 +16,19 @@ export const GRID = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3";
 const FieldSourcesContext = createContext<Record<string, string>>({});
 export const FieldSourcesProvider = FieldSourcesContext.Provider;
 
-/** Label/hint/error for a field: `*` when required, "Required" while empty,
- *  and a "From Form 16" tag when the value was auto-filled from a document. */
-function useFieldMeta(label: string, path: string | undefined, required: boolean | undefined, empty: boolean, hint?: string) {
+/** Red `*` shown next to the label of a required field. */
+function RequiredMark() {
+  return <span className="text-error">*</span>;
+}
+
+/** Label/hint for a field: a red `*` when required, and an "Auto-filled from
+ *  Form 16" tag when the value was auto-filled from a document. */
+function useFieldMeta(label: string, path: string | undefined, required: boolean | undefined, hint?: string) {
   const sources = useContext(FieldSourcesContext);
   const source = path ? sources[path] : undefined;
   return {
-    label: required ? `${label} *` : label,
+    label: required ? <>{label} <RequiredMark /></> : label,
     hint: source ? `Auto-filled from ${source}${hint ? ` · ${hint}` : ""}` : hint,
-    error: required && empty ? "Required" : undefined,
   };
 }
 
@@ -54,7 +58,7 @@ export function AmountInput({
   required?: boolean;
 }) {
   const id = useId();
-  const meta = useFieldMeta(label, path, required && !disabled, !value, hint);
+  const meta = useFieldMeta(label, path, required && !disabled, hint);
   return (
     <Input
       id={id}
@@ -63,7 +67,6 @@ export function AmountInput({
       inputMode="numeric"
       label={meta.label}
       hint={meta.hint}
-      error={meta.error}
       placeholder="0"
       disabled={disabled}
       value={value ? String(value) : ""}
@@ -101,14 +104,13 @@ export function TextInput({
   required?: boolean;
 }) {
   const id = useId();
-  const meta = useFieldMeta(label, path, required, !value?.trim(), hint);
+  const meta = useFieldMeta(label, path, required, hint);
   return (
     <Input
       id={id}
       type={type}
       label={meta.label}
       hint={meta.hint}
-      error={meta.error}
       placeholder={placeholder}
       maxLength={maxLength}
       inputMode={inputMode}
@@ -140,13 +142,12 @@ export function SelectField<T extends string>({
   required?: boolean;
 }) {
   const id = useId();
-  const meta = useFieldMeta(label, path, required, !value);
+  const meta = useFieldMeta(label, path, required);
   return (
     <Select
       id={id}
       label={meta.label}
       hint={meta.hint}
-      error={meta.error}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? null : (e.target.value as T))}
     >
@@ -186,14 +187,19 @@ export function YesNo({
   label,
   value,
   onChange,
+  required,
 }: {
   label: string;
   value: boolean | null;
   onChange: (value: boolean) => void;
+  required?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <span className="text-sm text-foreground">{label}</span>
+      <span className="text-sm text-foreground">
+        {label}
+        {required && <> <RequiredMark /></>}
+      </span>
       <div className="inline-flex shrink-0 rounded-full bg-surface-muted p-1" role="radiogroup" aria-label={label}>
         {([true, false] as const).map((option) => (
           <button

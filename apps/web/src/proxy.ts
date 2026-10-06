@@ -5,10 +5,12 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/documents",
   "/tax-comparison",
+  "/tax-planning",
   "/itr-filing",
   "/recommendations",
   "/finance",
   "/profile",
+  "/onboarding",
 ];
 
 /**
@@ -41,9 +43,11 @@ export const config = {
     "/dashboard/:path*",
     "/documents/:path*",
     "/tax-comparison/:path*",
+    "/tax-planning/:path*",
     "/itr-filing/:path*",
     "/recommendations/:path*",
     "/finance/:path*",
     "/profile/:path*",
+    "/onboarding/:path*",
   ],
 };

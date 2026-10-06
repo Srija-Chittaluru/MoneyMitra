@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { TaxDetailsForm } from "@/components/onboarding/TaxDetailsForm";
 import { useHasMounted } from "@/lib/use-has-mounted";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -19,6 +21,7 @@ export default function ProfilePage() {
   const mounted = useHasMounted();
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [editingTax, setEditingTax] = useState(false);
 
   const current: ThemeOption =
     !mounted || theme === "system" ? "System" : theme === "dark" ? "Dark" : "Light";
@@ -61,6 +64,34 @@ export default function ProfilePage() {
           </p>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <h3 className="text-h2 mb-4">Tax details</h3>
+        {user.tax_onboarding_status === "completed" && !editingTax ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              <p className="text-muted">PAN</p>
+              <p className="font-medium text-foreground">{user.pan_masked ?? "Saved"}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setEditingTax(true)}>
+              Update details
+            </Button>
+          </div>
+        ) : (
+          <div className="max-w-md">
+            <p className="mb-4 text-sm text-muted">
+              {user.tax_onboarding_status === "completed"
+                ? "Enter your PAN and date of birth to update them."
+                : "Add your PAN and date of birth to personalize your tax and finance experience."}
+            </p>
+            <TaxDetailsForm
+              submitLabel="Save"
+              onSaved={() => setEditingTax(false)}
+              onCancel={user.tax_onboarding_status === "completed" ? () => setEditingTax(false) : undefined}
+            />
+          </div>
+        )}
+      </Card>
 
       <Card className="mt-6">
         <h3 className="text-h2 mb-4">Appearance</h3>

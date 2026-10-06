@@ -25,6 +25,14 @@ from app.modules.tax.schemas import TaxComparisonInput
 from app.modules.users.models import User
 
 
+def _health_80d_amount(bucket: Health80DDraft) -> int:
+    """Best-effort rupee estimate, not filing-precision: premiums + preventive
+    checkup, uncapped here (the planning module applies the real cap).
+    Mirrors but doesn't call the private `_health()` in itr/computation.py,
+    which is tightly coupled to the full computation pipeline."""
+    return sum(policy.premium for policy in bucket.policies) + bucket.preventive_checkup
+
+
 @dataclass(frozen=True)
 class RegimeOutcome:
     """Estimated tax under each regime, from the user's own numbers."""

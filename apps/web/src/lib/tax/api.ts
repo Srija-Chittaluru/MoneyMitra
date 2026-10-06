@@ -3,6 +3,7 @@ import type {
   ChatRequest,
   ChatResponse,
   ExplanationResult,
+  SlabTable,
   TaxComparisonInput,
   TaxComparisonResult,
 } from "./types";
@@ -30,4 +31,9 @@ export function sendChatMessage(request: ChatRequest) {
     method: "POST",
     body: JSON.stringify(request),
   });
+}
+
+export function getSlabTable(taxYear: string, ageCategory: string = "general") {
+  const params = new URLSearchParams({ tax_year: taxYear, age_category: ageCategory });
+  return apiFetch<SlabTable>(`/api/v1/tax/slabs?${params}`);
 }

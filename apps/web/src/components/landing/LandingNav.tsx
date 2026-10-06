@@ -29,6 +29,7 @@ export function LandingNav() {
             <a
               key={href}
               href={href}
+              data-nav-link
               className="rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
             >
               {label}

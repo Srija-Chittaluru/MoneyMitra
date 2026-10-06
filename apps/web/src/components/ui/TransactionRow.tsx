@@ -27,7 +27,7 @@ export function TransactionRow({
       </div>
       <p
         className={cn(
-          "font-mono text-amount-sm",
+          "text-amount-sm",
           isCredit ? "text-success" : "text-foreground",
         )}
       >

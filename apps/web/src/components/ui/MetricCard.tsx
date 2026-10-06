@@ -26,7 +26,7 @@ export function MetricCard({ label, amount, changeLabel, bars, className }: Metr
           </span>
         )}
       </div>
-      <p className="mt-2 font-mono text-amount-lg">{formatINR(amount)}</p>
+      <p className="mt-2 text-amount-lg">{formatINR(amount)}</p>
       {bars && bars.length > 0 && (
         <div className="mt-6 flex items-end gap-1.5">
           {bars.map((height, index) => {

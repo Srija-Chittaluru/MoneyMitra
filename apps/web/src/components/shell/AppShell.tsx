@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { cn } from "@/lib/cn";
@@ -16,16 +16,24 @@ interface AppShellProps {
 
 export function AppShell({ title, children }: AppShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { status } = useAuth();
+  const { user, status } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // First-time users (onboarding neither completed nor skipped) see the tax
+  // onboarding step once, then continue to where they were headed.
+  const needsOnboarding = status === "authenticated" && user?.tax_onboarding_status === null;
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
+    } else if (needsOnboarding) {
+      const next = pathname === "/dashboard" ? "" : `?next=${encodeURIComponent(pathname)}`;
+      router.replace(`/onboarding${next}`);
     }
-  }, [status, router]);
+  }, [status, needsOnboarding, pathname, router]);
 
-  if (status !== "authenticated") {
+  if (status !== "authenticated" || needsOnboarding) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-6">
         <div className="flex w-full max-w-sm flex-col gap-3">

@@ -67,8 +67,8 @@ export default function DesignSystemPage() {
             <p className="text-h2">Recent transactions</p>
             <p className="text-body">Transfers arrive within one business day.</p>
             <p className="text-caption text-muted">Updated 2 minutes ago</p>
-            <p className="font-mono text-amount-lg">₹24,806.52</p>
-            <p className="font-mono text-amount-sm">−₹42.10 · +₹1,200.00</p>
+            <p className="text-amount-lg">₹24,806.52</p>
+            <p className="text-amount-sm">−₹42.10 · +₹1,200.00</p>
           </Card>
         </section>
 
