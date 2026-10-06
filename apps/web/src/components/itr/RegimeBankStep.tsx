@@ -73,9 +73,9 @@ export function RegimeSection({
                 </span>
               </div>
               {result ? (
-                <p className="font-mono text-xl font-semibold text-foreground">
+                <p className="text-xl font-semibold text-foreground">
                   {formatRupees(result.total_tax_and_interest)}
-                  <span className="ml-2 font-sans text-sm font-normal text-muted">tax + interest</span>
+                  <span className="ml-2 text-sm font-normal text-muted">tax + interest</span>
                 </p>
               ) : (
                 disabled && <p className="text-sm text-muted">Not available after the due date</p>

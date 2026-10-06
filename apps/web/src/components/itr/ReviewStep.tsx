@@ -137,7 +137,7 @@ function SummaryTile({
       )}
     >
       <p className="text-sm text-muted">{label}</p>
-      <p className="break-all font-mono text-2xl font-semibold leading-tight text-foreground sm:text-[1.75rem]">
+      <p className="break-all text-2xl font-semibold leading-tight text-foreground sm:text-[1.75rem]">
         {formatRupees(amount)}
       </p>
       {helpText && <p className="text-sm text-muted">{helpText}</p>}
@@ -230,7 +230,7 @@ export function ReviewStep({
       {alternative && (
         <p className="text-sm text-muted">
           Under the {alternative.regime === "new" ? "new" : "old"} regime your tax + interest would be{" "}
-          <span className="font-mono text-foreground">{formatRupees(alternative.total_tax_and_interest)}</span>{" "}
+          <span className="text-foreground">{formatRupees(alternative.total_tax_and_interest)}</span>{" "}
           ({alternative.balance_payable > 0
             ? `${formatRupees(alternative.balance_payable)} payable`
             : `${formatRupees(alternative.refund_due)} refund`}

@@ -347,7 +347,8 @@ export function PersonalStep({
       >
         <div className="divide-y divide-border">
           <YesNo
-            label="Were you a resident of India for FY 2025-26? *"
+            label="Were you a resident of India for FY 2025-26?"
+            required
             value={eligibility.is_resident}
             onChange={(value) => setEligibility({ is_resident: value })}
           />

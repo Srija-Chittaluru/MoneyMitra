@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1-mini"
 
+    # Fernet key used to encrypt PAN at rest (generate with
+    # `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+    # In development, if unset, a key is derived from JWT_SECRET instead; production must set it.
+    pii_encryption_key: str | None = None
+
     refresh_cookie_name: str = "refresh_token"
     # Must be "/", not an auth-only prefix: the frontend and backend are
     # separate origins that only share the "localhost" host in dev, and the

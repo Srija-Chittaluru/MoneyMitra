@@ -49,10 +49,24 @@ apps/
 
 ## Run everything with Docker (easiest)
 
-Docker runs the database, API, and website for you in containers — no need to
-install Python, Node, or PostgreSQL. You only need
-[Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and
-running.
+Docker runs the API and website for you in containers — no need to install
+Python or Node. You need [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+installed and running, plus **PostgreSQL running on your machine at port 5432**
+(see "Configuring PostgreSQL" below). The containers connect to that one
+database, so your users and data are the same however you start the app.
+On macOS with Postgres.app, the first connection from Docker shows a permission
+dialog — click **Allow**.
+
+```bash
+./run_all.sh
+```
+
+That one script checks Docker is running, creates `.env` (with a generated
+`JWT_SECRET`) if you don't have one, starts everything, waits until it is
+healthy, and prints the links. Also: `./run_all.sh stop`, `./run_all.sh logs`,
+`./run_all.sh status`.
+
+Prefer to do it by hand? This is what the script runs:
 
 ```bash
 cp .env.example .env
@@ -67,27 +81,29 @@ The first build takes a few minutes; later starts are fast. When it settles:
 - API docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/api/v1/health
 
-Database migrations are applied automatically when the API starts, and your
-data lives in a Docker volume, so it survives restarts.
+Database migrations are applied automatically when the API starts. Your data
+lives in your local PostgreSQL, so it survives restarts and rebuilds.
 
 Everyday commands (run from the project root):
 
 ```bash
 docker compose up -d          # start in the background
 docker compose logs -f        # watch the logs (Ctrl+C to stop watching)
-docker compose logs -f backend  # logs for just one service: db, backend, web
-docker compose down           # stop everything (data is kept)
-docker compose down -v        # stop AND delete the database data
+docker compose logs -f backend  # logs for just one service: backend or web
+docker compose down           # stop everything (your database is untouched)
 docker compose up --build     # rebuild after you change code
 ```
 
 Notes:
 
-- **Port already in use?** Set `WEB_PORT`, `BACKEND_PORT` (or `DB_PORT`) in
+- **Port already in use?** Set `WEB_PORT` or `BACKEND_PORT` in
   `.env` to free ports, then `docker compose up --build` again. The website
   and API addresses follow those values automatically.
 - **Changing `BACKEND_PORT`** requires `--build`: the API address is baked
   into the website's code when it is built.
+- **Different database?** Set `DATABASE_URL` in `.env` (see `.env.example`).
+  Inside a container `localhost` means the container itself, so use
+  `host.docker.internal` to mean "this machine".
 - **Code changes need a rebuild.** This setup runs the production build. For
   day-to-day development with hot reload, use the manual setup below (it can
   still use Docker for just the database).

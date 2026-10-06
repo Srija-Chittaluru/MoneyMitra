@@ -1,8 +1,8 @@
 import { cn } from "@/lib/cn";
-import type { SelectHTMLAttributes } from "react";
+import type { SelectHTMLAttributes, ReactNode } from "react";
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
+  label?: ReactNode;
   hint?: string;
   error?: string;
 }

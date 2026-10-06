@@ -1,0 +1,120 @@
+/*
+ * Landing page motion.
+ *
+ * Purely additive: every rule targets a data-* attribute and only animates
+ * opacity / transform / box-shadow / colour transitions. Nothing here changes
+ * layout, sizing, colour or type, and every rule sits inside
+ * `prefers-reduced-motion: no-preference`, so with reduced motion (or without
+ * JS) the page is exactly its static design.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --mm-rise: 16px;
+    --mm-hero-rise: 18px;
+    --mm-ms: 700ms;
+    --mm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Lighter on phones: smaller travel, shorter duration */
+  @media (max-width: 767px) {
+    :root {
+      --mm-rise: 10px;
+      --mm-hero-rise: 12px;
+      --mm-ms: 520ms;
+    }
+  }
+
+  /* ---------- Hero: CSS load-in (no JS needed, so no flash); replays on re-entry ---------- */
+  @keyframes mm-rise {
+    from {
+      opacity: 0;
+      transform: translateY(var(--mm-hero-rise));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  [data-hero-item] {
+    animation: mm-rise 800ms var(--mm-ease) backwards;
+  }
+  /* Set while the hero is scrolled out of view, so the same animation restarts on re-entry. */
+  [data-hero-item][data-hero-paused] {
+    animation: none;
+  }
+  [data-hero-item="1"] { animation-delay: 80ms; }
+  [data-hero-item="2"] { animation-delay: 160ms; }
+  [data-hero-item="3"] { animation-delay: 240ms; }
+  [data-hero-item="4"] { animation-delay: 320ms; }
+
+  /* ---------- Scroll reveal: plays each time the element enters the viewport ---------- */
+  /* `.mm-motion` is added on <html> by the inline script / LandingMotion. */
+  .mm-motion [data-reveal] {
+    opacity: 0;
+    transform: translateY(var(--mm-rise));
+    transition:
+      opacity var(--mm-ms) ease,
+      transform var(--mm-ms) var(--mm-ease),
+      translate 280ms var(--mm-ease),
+      box-shadow 280ms ease;
+  }
+  .mm-motion [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ---------- Floating callouts in the hero mockup ---------- */
+  @keyframes mm-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+  [data-float] {
+    animation: mm-float 6s ease-in-out infinite;
+  }
+  [data-float="b"] {
+    animation-duration: 7s;
+    animation-delay: -2.5s;
+  }
+
+  /* ---------- Hover transitions ---------- */
+  [data-btn] {
+    transition:
+      background-color 200ms ease,
+      color 200ms ease,
+      opacity 200ms ease,
+      box-shadow 250ms ease,
+      transform 250ms var(--mm-ease);
+  }
+  [data-nav-link] {
+    transition: color 250ms ease;
+  }
+  /* Hover lift uses `translate` (not `transform`) so it composes with the reveal transform. */
+  [data-lift] {
+    transition:
+      translate 280ms var(--mm-ease),
+      box-shadow 280ms ease;
+  }
+}
+
+/* Hover-only effects: never applied on touch devices */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-btn]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -10px rgba(11, 15, 20, 0.45);
+  }
+  [data-btn]:active {
+    transform: none;
+    box-shadow: none;
+  }
+  [data-lift]:hover {
+    translate: 0 -3px;
+    box-shadow: 0 14px 30px -18px rgba(11, 15, 20, 0.32);
+  }
+}

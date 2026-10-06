@@ -1,18 +1,23 @@
 from decimal import Decimal
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.modules.tax import calculator
 from app.modules.tax.age import resolve_age_category
 from app.modules.tax.instruments import QUALIFYING_INSTRUMENTS, SECTION_LABELS, DeductionSection
+from app.modules.tax.models import TaxComparisonSnapshot
 from app.modules.tax.rules.registry import get_supported_tax_years, get_tax_rules
 from app.modules.tax.rules.types import AgeCategory
 from app.modules.tax.schemas import (
     DeductionSectionBreakdown,
     RegimeResult,
+    SlabContributionOut,
     TaxComparisonInput,
     TaxComparisonResult,
 )
+from app.modules.users.models import User
 
 ZERO = Decimal("0")
 
@@ -35,6 +40,16 @@ def _regime_result(calc: calculator.RegimeCalculation) -> RegimeResult:
         surcharge=int(calc.surcharge),
         cess=int(calc.cess),
         total_tax_payable=int(calc.total_tax_payable),
+        slab_breakdown=[
+            SlabContributionOut(
+                lower=int(c.lower),
+                upper=int(c.upper) if c.upper is not None else None,
+                rate=float(c.rate),
+                amount_in_band=int(c.amount_in_band),
+                tax=int(c.tax),
+            )
+            for c in calc.slab_breakdown
+        ],
     )
 
 
@@ -131,3 +146,21 @@ def calculate_comparison(payload: TaxComparisonInput) -> TaxComparisonResult:
         difference=int(difference),
         deduction_checklist=build_deduction_checklist(payload, age_category),
     )
+
+
+def save_comparison_snapshot(db: Session, user: User, payload: TaxComparisonInput) -> None:
+    """Remember the user's latest comparison inputs (see TaxComparisonSnapshot)."""
+    snapshot = db.scalar(select(TaxComparisonSnapshot).where(TaxComparisonSnapshot.user_id == user.id))
+    if snapshot is None:
+        snapshot = TaxComparisonSnapshot(user_id=user.id)
+        db.add(snapshot)
+
+    snapshot.tax_year = payload.tax_year
+    snapshot.gross_total_income = payload.gross_total_income
+    snapshot.section_80c = payload.section_80c
+    snapshot.section_80d = payload.section_80d
+    snapshot.hra_exemption = payload.hra_exemption
+    snapshot.home_loan_interest = payload.home_loan_interest
+    snapshot.nps_contribution = payload.nps_contribution
+    snapshot.other_deductions = payload.other_deductions
+    db.commit()

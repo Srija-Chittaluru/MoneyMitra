@@ -1,6 +1,7 @@
 /**
  * MOCK DATA — illustrative demo content only. Not personalized advice.
- * Real recommendation logic ships in Phase 5.
+ * Only the Dashboard's "Recommendations for you" card still uses this; the
+ * Recommendations page itself is backed by the real engine.
  */
 export interface MockTaxSavingRecommendation {
   id: string;
@@ -8,15 +9,6 @@ export interface MockTaxSavingRecommendation {
   description: string;
   reason: string;
   category: string;
-  actionLabel: string;
-}
-
-export interface MockLifeStageRecommendation {
-  id: string;
-  title: string;
-  description: string;
-  reason: string;
-  stage: "Career Start" | "Mid-Career" | "Pre-Retirement";
   actionLabel: string;
 }
 
@@ -44,32 +36,5 @@ export const mockTaxSavingRecommendations: MockTaxSavingRecommendation[] = [
     reason: "Your total eligible deductions are lower than the new regime's break-even point.",
     category: "Regime choice",
     actionLabel: "View full comparison",
-  },
-];
-
-export const mockLifeStageRecommendations: MockLifeStageRecommendation[] = [
-  {
-    id: "ls1",
-    title: "Build a 6-month emergency fund",
-    description: "Keep 6 months of expenses in a liquid fund or savings account.",
-    reason: "You're early in your career — a safety net matters more than optimizing returns right now.",
-    stage: "Career Start",
-    actionLabel: "Learn more",
-  },
-  {
-    id: "ls2",
-    title: "Review your health insurance cover",
-    description: "Consider increasing cover as income and responsibilities grow.",
-    reason: "Your income has grown, but your insurance profile hasn't been updated in a while.",
-    stage: "Mid-Career",
-    actionLabel: "Review coverage",
-  },
-  {
-    id: "ls3",
-    title: "Shift toward capital preservation",
-    description: "Gradually rebalance from equity-heavy investments to safer instruments.",
-    reason: "As retirement approaches, protecting accumulated savings matters more than growth.",
-    stage: "Pre-Retirement",
-    actionLabel: "Review portfolio mix",
   },
 ];

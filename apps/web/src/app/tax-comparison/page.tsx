@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
+import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
@@ -16,12 +17,7 @@ import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ApiError } from "@/lib/api-client";
 import { compareTaxRegimes, explainTaxComparison, getSupportedTaxYears } from "@/lib/tax/api";
-import type {
-  DeductionSectionBreakdown,
-  ExplanationResult,
-  RegimeResult,
-  TaxComparisonResult,
-} from "@/lib/tax/types";
+import type { ExplanationResult, RegimeResult, TaxComparisonResult } from "@/lib/tax/types";
 
 function Row({ label, amount, isOutput }: { label: string; amount: number; isOutput?: boolean }) {
   return (
@@ -29,7 +25,7 @@ function Row({ label, amount, isOutput }: { label: string; amount: number; isOut
       <span className={cn("text-sm", isOutput ? "font-medium text-foreground" : "text-muted")}>
         {label}
       </span>
-      <span className={cn("font-mono text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
+      <span className={cn("text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
         {formatINR(amount)}
       </span>
     </div>
@@ -44,7 +40,6 @@ function RegimeCard({
   onSelect,
   note,
   isNoteLoading,
-  children,
 }: {
   name: string;
   data: RegimeResult;
@@ -53,11 +48,11 @@ function RegimeCard({
   onSelect: () => void;
   note?: string;
   isNoteLoading: boolean;
-  children?: ReactNode;
 }) {
-  // Both regime cards always render, side by side, regardless of which is
-  // recommended or selected — clicking a card only reveals its own detail
-  // (note, and for the Old Regime, the deduction checklist) inline.
+  // Both regime cards always render, side by side, at the same fixed size —
+  // clicking a card only toggles which one is highlighted as selected, it
+  // never reveals extra content that would grow one box past the other.
+  // Deeper exploration (investment options) lives on Tax Planning instead.
   return (
     <Card
       role="button"
@@ -95,7 +90,7 @@ function RegimeCard({
       </div>
       <div className="mt-4 flex items-center justify-between rounded-md bg-surface-muted px-3 py-3">
         <span className="font-semibold text-foreground">Estimated tax payable</span>
-        <span className="font-mono text-amount-lg text-foreground">
+        <span className="text-amount-lg text-foreground">
           {formatINR(data.total_tax_payable)}
         </span>
       </div>
@@ -103,12 +98,11 @@ function RegimeCard({
         <span className="font-medium text-foreground">Note: </span>
         {isNoteLoading ? "Generating…" : note}
       </p>
-      {isSelected && !isNoteLoading && children}
-      {!isSelected && (
-        <p className="mt-3 text-xs text-muted underline-offset-2">
-          Click to {name === "Old Regime" ? "see which investments count toward it" : "view this regime"}
-        </p>
-      )}
+      <Link href="/tax-planning" onClick={(event) => event.stopPropagation()}>
+        <Button variant="secondary" size="sm" className="mt-4 w-full">
+          Explore more options
+        </Button>
+      </Link>
     </Card>
   );
 }
@@ -119,36 +113,6 @@ function OldRegimeDisclaimer({ text }: { text: string }) {
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" strokeWidth={1.5} />
       <p className="text-sm text-foreground">{text}</p>
     </div>
-  );
-}
-
-function DeductionChecklistItem({ item }: { item: DeductionSectionBreakdown }) {
-  const hasLimit = item.limit !== null && item.headroom !== null;
-  const badgeVariant = !hasLimit ? "neutral" : item.headroom === 0 ? "success" : "warning";
-  const badgeLabel = !hasLimit
-    ? "Documentation"
-    : item.headroom === 0
-      ? "Fully used"
-      : `${formatINR(item.headroom as number)} headroom`;
-
-  return (
-    <Card className="flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-3">
-        <h4 className="text-body font-semibold text-foreground">{item.label}</h4>
-        <Badge variant={badgeVariant}>{badgeLabel}</Badge>
-      </div>
-      {hasLimit && (
-        <p className="text-sm text-muted">
-          Declared <span className="font-mono text-foreground">{formatINR(item.declared_amount)}</span> of
-          the <span className="font-mono text-foreground">{formatINR(item.limit as number)}</span> limit.
-        </p>
-      )}
-      {item.note && <p className="text-sm text-warning">{item.note}</p>}
-      <p className="text-xs text-muted">
-        <span className="font-medium text-foreground">Qualifies: </span>
-        {item.qualifying_instruments.join(", ")}
-      </p>
-    </Card>
   );
 }
 
@@ -342,13 +306,19 @@ export default function TaxComparisonPage() {
             <p className="text-body text-muted">Tax year {result.tax_year}</p>
             <Card className="px-4 py-2">
               <span className="text-sm text-muted">Difference: </span>
-              <span className="font-mono font-semibold text-foreground">
+              <span className="font-semibold text-foreground">
                 {formatINR(result.difference)}
               </span>
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          {explainMutation.data?.old_regime_disclaimer && (
+            <div className="mb-6">
+              <OldRegimeDisclaimer text={explainMutation.data.old_regime_disclaimer} />
+            </div>
+          )}
+
+          <div className="grid items-start gap-6 md:grid-cols-2">
             <RegimeCard
               name="Old Regime"
               data={result.old_regime}
@@ -357,21 +327,7 @@ export default function TaxComparisonPage() {
               onSelect={() => setSelectedRegime("old")}
               note={explainMutation.data?.old_regime_note}
               isNoteLoading={explainMutation.isPending}
-            >
-              <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
-                {explainMutation.data?.old_regime_disclaimer && (
-                  <OldRegimeDisclaimer text={explainMutation.data.old_regime_disclaimer} />
-                )}
-                <p className="text-xs uppercase tracking-wide text-muted">
-                  Which investments count toward it
-                </p>
-                <div className="grid gap-3">
-                  {result.deduction_checklist.map((item) => (
-                    <DeductionChecklistItem key={item.section} item={item} />
-                  ))}
-                </div>
-              </div>
-            </RegimeCard>
+            />
             <RegimeCard
               name="New Regime"
               data={result.new_regime}

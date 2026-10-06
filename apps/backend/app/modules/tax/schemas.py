@@ -19,6 +19,14 @@ class TaxComparisonInput(BaseModel):
     other_deductions: int = Field(default=0, ge=0)
 
 
+class SlabContributionOut(BaseModel):
+    lower: int
+    upper: int | None = Field(default=None, description="None for the unbounded top band")
+    rate: float
+    amount_in_band: int
+    tax: int
+
+
 class RegimeResult(BaseModel):
     regime: str
     gross_total_income: int
@@ -30,6 +38,20 @@ class RegimeResult(BaseModel):
     surcharge: int
     cess: int
     total_tax_payable: int
+    slab_breakdown: list[SlabContributionOut]
+
+
+class SlabRateOut(BaseModel):
+    lower: int
+    upper: int | None = Field(default=None, description="None for the unbounded top band")
+    rate: float
+
+
+class SlabTableOut(BaseModel):
+    tax_year: str
+    age_category: str
+    old_regime: list[SlabRateOut]
+    new_regime: list[SlabRateOut]
 
 
 class DeductionSectionBreakdown(BaseModel):

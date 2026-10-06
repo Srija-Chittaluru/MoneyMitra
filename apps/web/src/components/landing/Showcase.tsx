@@ -43,7 +43,7 @@ function ShowcaseRow({
 }) {
   return (
     <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
-      <div className={cn("flex flex-col gap-5", reverse && "lg:order-2")}>
+      <div data-reveal className={cn("flex flex-col gap-5", reverse && "lg:order-2")}>
         <Eyebrow>{eyebrow}</Eyebrow>
         <h3 className="text-h1 md:text-[40px]">{title}</h3>
         <p className="text-body text-muted md:text-lg">{description}</p>
@@ -58,7 +58,9 @@ function ShowcaseRow({
           ))}
         </ul>
       </div>
-      <div className={cn(reverse && "lg:order-1")}>{children}</div>
+      <div data-reveal className={cn(reverse && "lg:order-1")}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -358,7 +360,7 @@ export function Showcase() {
   return (
     <section id="product" className="scroll-mt-16 py-16 md:py-24">
       <Container className="flex flex-col gap-16 md:gap-24">
-        <div className="flex max-w-2xl flex-col gap-3">
+        <div data-reveal className="flex max-w-2xl flex-col gap-3">
           <Eyebrow>Product</Eyebrow>
           <h2 className="text-h1 md:text-[40px]">
             See your whole financial picture, not just a tax number.

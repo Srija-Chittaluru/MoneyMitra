@@ -23,6 +23,7 @@ function MiniStat({
 }) {
   return (
     <div
+      data-reveal
       className={cn(
         "min-w-0 rounded-md border border-border p-2.5 sm:p-3",
         highlight ? "bg-surface-muted" : "bg-surface",
@@ -39,7 +40,7 @@ function MiniStat({
 /** Hero visual: an at-a-glance dashboard. Static demo data only. */
 export function ProductMockup() {
   return (
-    <div className="relative pb-10 lg:pb-16 lg:pt-6">
+    <div data-reveal className="relative pb-10 lg:pb-16 lg:pt-6">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-8 top-8 -z-10 h-3/4 rounded-full bg-link/10 blur-3xl"
@@ -90,7 +91,7 @@ export function ProductMockup() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-5">
-              <div className="rounded-md border border-border p-3.5 md:col-span-3">
+              <div data-reveal className="rounded-md border border-border p-3.5 md:col-span-3">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-xs font-semibold text-foreground">
                     Old vs. new regime
@@ -100,7 +101,7 @@ export function ProductMockup() {
                 <RegimeBars />
               </div>
 
-              <div className="rounded-md border border-border p-3.5 md:col-span-2">
+              <div data-reveal className="rounded-md border border-border p-3.5 md:col-span-2">
                 <p className="mb-2.5 text-xs font-semibold text-foreground">
                   Documents
                 </p>
@@ -127,6 +128,7 @@ export function ProductMockup() {
       {/* Floating callouts — desktop only, so small screens never overflow */}
       <div
         aria-hidden
+        data-float="a"
         className="absolute -left-6 bottom-0 hidden w-72 items-start gap-3 rounded-lg border border-border bg-surface p-3.5 shadow-[0_18px_40px_-18px_rgba(11,15,20,0.35)] lg:flex"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-muted text-link">
@@ -144,6 +146,7 @@ export function ProductMockup() {
 
       <div
         aria-hidden
+        data-float="b"
         className="absolute right-6 top-0 hidden items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium text-foreground shadow-[0_12px_28px_-14px_rgba(11,15,20,0.35)] lg:flex"
       >
         <CheckCircle2 className="h-3.5 w-3.5 text-success" />
