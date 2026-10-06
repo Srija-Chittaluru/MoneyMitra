@@ -1,8 +1,9 @@
-import type { BankAccount, ItrDraftData, Regime } from "@/lib/itr/types";
+import { PenLine, Scale } from "lucide-react";
+import type { ItrDraftData, ItrSummary, Regime } from "@/lib/itr/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { GRID, ListSection, Notice, SectionCard, SelectField, SwitchField, TextInput } from "./fields";
-import { BANK_ACCOUNT_TYPES, emptyBankAccount } from "./options";
+import { formatRupees } from "@/lib/format";
+import { GRID, Notice, SectionCard, TextInput } from "./fields";
 
 const REGIMES: { value: Regime; title: string; description: string }[] = [
   {
@@ -17,129 +18,108 @@ const REGIMES: { value: Regime; title: string; description: string }[] = [
   },
 ];
 
-export function RegimeBankStep({
+/** Old vs new regime, with the tax each would cost so the user can pick. */
+export function RegimeSection({
   draft,
   onChange,
-  oldRegimeAllowed,
+  summary,
 }: {
   draft: ItrDraftData;
   onChange: (draft: ItrDraftData) => void;
-  oldRegimeAllowed: boolean;
+  summary: ItrSummary | undefined;
 }) {
-  const accounts = draft.bank_accounts;
-  const refundCount = accounts.filter((a) => a.use_for_refund).length;
-
-  function setAccounts(next: BankAccount[]) {
-    // A single account receives the refund, so a new or only account is selected by default.
-    if (next.length > 0 && !next.some((a) => a.use_for_refund)) {
-      next = next.map((a, i) => (i === 0 ? { ...a, use_for_refund: true } : a));
-    }
-    onChange({ ...draft, bank_accounts: next });
-  }
-
-  function selectRefundAccount(index: number) {
-    onChange({
-      ...draft,
-      bank_accounts: accounts.map((a, i) => ({ ...a, use_for_refund: i === index })),
-    });
-  }
+  const oldRegimeAllowed = summary?.old_regime_allowed ?? true;
+  const byRegime = Object.fromEntries(
+    [summary?.selected, summary?.alternative].filter((r) => r != null).map((r) => [r.regime, r]),
+  );
+  const cheaper =
+    byRegime.new && byRegime.old
+      ? byRegime.new.total_tax_and_interest <= byRegime.old.total_tax_and_interest
+        ? "new"
+        : "old"
+      : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <SectionCard title="Tax regime">
-        <div className="grid gap-4 md:grid-cols-2">
-          {REGIMES.map((regime) => {
-            const selected = draft.regime === regime.value;
-            const disabled = regime.value === "old" && !oldRegimeAllowed;
-            return (
-              <button
-                key={regime.value}
-                type="button"
-                disabled={disabled}
-                aria-pressed={selected}
-                onClick={() => onChange({ ...draft, regime: regime.value })}
-                className={cn(
-                  "rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
-                  selected && "ring-2 ring-accent",
-                )}
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="font-semibold text-foreground">{regime.title}</span>
+    <SectionCard
+      title="Choose your tax regime"
+      icon={Scale}
+      prefixes={["regime"]}
+      filled
+      description="We calculate your tax under both regimes. Pick the one that suits you."
+      defaultOpen
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        {REGIMES.map((regime) => {
+          const selected = draft.regime === regime.value;
+          const disabled = regime.value === "old" && !oldRegimeAllowed;
+          const result = byRegime[regime.value];
+          return (
+            <button
+              key={regime.value}
+              type="button"
+              disabled={disabled}
+              aria-pressed={selected}
+              onClick={() => onChange({ ...draft, regime: regime.value })}
+              className={cn(
+                "flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
+                selected && "ring-2 ring-accent",
+              )}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-foreground">{regime.title}</span>
+                <span className="flex gap-1">
+                  {cheaper === regime.value && <Badge variant="success">Lower tax</Badge>}
                   {selected && <Badge variant="accent">Selected</Badge>}
-                </div>
-                <p className="text-sm text-muted">{regime.description}</p>
-              </button>
-            );
-          })}
-        </div>
-        {!oldRegimeAllowed && (
-          <Notice variant={draft.regime === "old" ? "warning" : "info"}>
-            The due date (31 Jul 2026) has passed, so a belated return u/s 139(4) must use the new regime (CBDT
-            rule).{draft.regime === "old" && " Select the new regime to continue."}
-          </Notice>
-        )}
-      </SectionCard>
-
-      <SectionCard title="Bank accounts" description="List all savings and current accounts you held during the year.">
-        <ListSection
-          title="Accounts"
-          itemLabel="Account"
-          addLabel="Add account"
-          items={accounts}
-          onChange={setAccounts}
-          createItem={emptyBankAccount}
-          renderItem={(account, update, index) => (
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <TextInput
-                  label="IFSC"
-                  required
-                  uppercase
-                  maxLength={11}
-                  value={account.ifsc}
-                  onChange={(v) => update({ ifsc: v })}
-                />
-                <TextInput label="Bank name" required value={account.bank_name} onChange={(v) => update({ bank_name: v })} />
-                <TextInput
-                  label="Account no."
-                  required
-                  inputMode="numeric"
-                  value={account.account_no}
-                  onChange={(v) => update({ account_no: v })}
-                />
-                <SelectField
-                  label="Account type"
-                  value={account.account_type}
-                  options={BANK_ACCOUNT_TYPES}
-                  onChange={(v) => update({ account_type: v ?? "SB" })}
-                />
+                </span>
               </div>
-              <SwitchField
-                label="Use for refund"
-                checked={account.use_for_refund}
-                onChange={(checked) =>
-                  checked ? selectRefundAccount(index) : update({ use_for_refund: false })
-                }
-              />
-            </div>
-          )}
-        />
-        {accounts.length > 0 && refundCount !== 1 && (
-          <p className="text-sm text-error">Select exactly one account to receive your refund.</p>
-        )}
-      </SectionCard>
+              {result ? (
+                <p className="font-mono text-xl font-semibold text-foreground">
+                  {formatRupees(result.total_tax_and_interest)}
+                  <span className="ml-2 font-sans text-sm font-normal text-muted">tax + interest</span>
+                </p>
+              ) : (
+                disabled && <p className="text-sm text-muted">Not available after the due date</p>
+              )}
+              <p className="text-sm text-muted">{regime.description}</p>
+            </button>
+          );
+        })}
+      </div>
+      {!oldRegimeAllowed && (
+        <Notice variant={draft.regime === "old" ? "warning" : "info"}>
+          The due date (31 Jul 2026) has passed, so a belated return u/s 139(4) must use the new regime (CBDT
+          rule).{draft.regime === "old" && " Select the new regime to continue."}
+        </Notice>
+      )}
+    </SectionCard>
+  );
+}
 
-      <SectionCard title="Verification">
-        <div className={GRID}>
-          <TextInput
-            label="Place"
-            required
-            hint="City where you're signing the verification"
-            value={draft.verification_place}
-            onChange={(v) => onChange({ ...draft, verification_place: v })}
-          />
-        </div>
-      </SectionCard>
-    </div>
+export function VerificationSection({
+  draft,
+  onChange,
+}: {
+  draft: ItrDraftData;
+  onChange: (draft: ItrDraftData) => void;
+}) {
+  return (
+    <SectionCard
+      title="Verification"
+      icon={PenLine}
+      prefixes={["verification_place"]}
+      filled={!!draft.verification_place}
+      description="The place where you sign the declaration — usually your city."
+    >
+      <div className={GRID}>
+        <TextInput
+          label="Place"
+          path="verification_place"
+          required
+          placeholder={draft.personal.address.city ?? "e.g. Pune"}
+          value={draft.verification_place}
+          onChange={(v) => onChange({ ...draft, verification_place: v })}
+        />
+      </div>
+    </SectionCard>
   );
 }

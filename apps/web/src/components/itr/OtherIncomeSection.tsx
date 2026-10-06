@@ -1,3 +1,4 @@
+import { PiggyBank } from "lucide-react";
 import type { Dividends, OtherIncome } from "@/lib/itr/types";
 import { AmountInput, GRID, SectionCard, TextInput } from "./fields";
 
@@ -19,7 +20,16 @@ export function OtherIncomeSection({
   const set = (patch: Partial<OtherIncome>) => onChange({ ...income, ...patch });
 
   return (
-    <SectionCard title="Other sources" description="Interest, dividends and other income. Check your AIS for these.">
+    <SectionCard
+      title="Other Sources"
+      icon={PiggyBank}
+      prefixes={["other_income"]}
+      filled={
+        income.savings_interest + income.deposit_interest + income.refund_interest + income.family_pension + income.other_amount > 0 ||
+        Object.values(income.dividends).some((v) => v > 0)
+      }
+      description="Interest from savings and deposits, dividends, family pension and other income — check your AIS."
+    >
       <div className={GRID}>
         <AmountInput
           label="Savings account interest"

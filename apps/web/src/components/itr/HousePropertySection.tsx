@@ -1,3 +1,4 @@
+import { Home } from "lucide-react";
 import type { HomeLoan, HouseProperty, PropertyType } from "@/lib/itr/types";
 import { AmountInput, GRID, ListSection, SectionCard, SelectField, TextInput } from "./fields";
 import { STATES, emptyHouseProperty } from "./options";
@@ -132,7 +133,13 @@ export function HousePropertySection({
   onChange: (properties: HouseProperty[]) => void;
 }) {
   return (
-    <SectionCard title="House property" description="ITR-1 allows up to two house properties.">
+    <SectionCard
+      title="House Property"
+      icon={Home}
+      prefixes={["house_properties"]}
+      filled={properties.length > 0}
+      description="Rent received or home-loan interest on up to two properties."
+    >
       <ListSection
         title="Properties"
         itemLabel="Property"

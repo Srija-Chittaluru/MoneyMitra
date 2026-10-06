@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useId } from "react";
+import { createContext, useContext, useId, useState } from "react";
 import type { ReactNode } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, Plus, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -11,6 +12,19 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 export const GRID = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3";
+
+/** Issue fields from the latest summary, and whether to show only sections that need attention. */
+interface SectionMode {
+  issueFields: (string | null)[];
+  onlyIssues: boolean;
+}
+const SectionModeContext = createContext<SectionMode>({ issueFields: [], onlyIssues: false });
+export const SectionModeProvider = SectionModeContext.Provider;
+export const useSectionMode = () => useContext(SectionModeContext);
+
+function issueCount(fields: (string | null)[], prefixes: string[]): number {
+  return fields.filter((f) => f && prefixes.some((p) => f === p || f.startsWith(`${p}.`))).length;
+}
 
 /** Draft path -> document the value was auto-filled from (e.g. "Form 16"). */
 const FieldSourcesContext = createContext<Record<string, string>>({});
@@ -249,22 +263,77 @@ export function Notice({
   );
 }
 
+/**
+ * A collapsible section with a status badge: "Details added" when it has data
+ * and nothing missing, or "N to fix" when the summary reports issues under
+ * any of its draft-path `prefixes`. In "only issues" mode (the "A few details
+ * are missing" screen) sections without issues are hidden.
+ */
 export function SectionCard({
   title,
   description,
   children,
   className,
+  icon: Icon,
+  prefixes,
+  filled,
+  defaultOpen,
 }: {
   title: string;
   description?: ReactNode;
   children: ReactNode;
   className?: string;
+  icon?: LucideIcon;
+  prefixes?: string[];
+  filled?: boolean;
+  defaultOpen?: boolean;
 }) {
+  const { issueFields, onlyIssues } = useSectionMode();
+  const issues = prefixes ? issueCount(issueFields, prefixes) : 0;
+  const [open, setOpen] = useState(defaultOpen ?? (onlyIssues || issues > 0 || !prefixes));
+  const contentId = useId();
+
+  if (onlyIssues && issues === 0) return null;
+  const isOpen = onlyIssues || open;
+
   return (
-    <Card className={className}>
-      <h3 className="text-h2">{title}</h3>
-      {description && <p className="mt-1 text-sm text-muted">{description}</p>}
-      <div className="mt-4 flex flex-col gap-4">{children}</div>
+    <Card className={cn("p-0", className)}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={contentId}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start gap-3 rounded-lg p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:p-6"
+      >
+        {Icon && (
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-foreground">
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-h2">{title}</span>
+            {issues > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">
+                <AlertCircle className="h-3.5 w-3.5" /> {issues} to fix
+              </span>
+            ) : filled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Details added
+              </span>
+            ) : null}
+          </span>
+          {description && <span className="mt-1 block text-sm text-muted">{description}</span>}
+        </span>
+        <ChevronDown
+          className={cn("mt-1 h-5 w-5 shrink-0 text-muted transition-transform", isOpen && "rotate-180")}
+        />
+      </button>
+      {isOpen && (
+        <div id={contentId} className="flex flex-col gap-4 px-4 pb-4 sm:px-6 sm:pb-6">
+          {children}
+        </div>
+      )}
     </Card>
   );
 }
