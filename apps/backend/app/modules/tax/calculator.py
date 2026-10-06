@@ -19,10 +19,24 @@ class RegimeCalculation:
     surcharge: Decimal
     cess: Decimal
     total_tax_payable: Decimal
+    slab_breakdown: tuple["SlabContribution", ...]
 
 
-def calculate_slab_tax(taxable_income: Decimal, slabs: tuple) -> Decimal:
-    tax = ZERO
+@dataclass(frozen=True)
+class SlabContribution:
+    """One slab's contribution to the total, for a specific taxable income —
+    the bracket-by-bracket "why is my number this number" view. Only bands
+    the income actually reaches are included."""
+
+    lower: Decimal
+    upper: Decimal | None  # None means this was the unbounded top band
+    rate: Decimal
+    amount_in_band: Decimal
+    tax: Decimal
+
+
+def slab_breakdown(taxable_income: Decimal, slabs: tuple) -> list[SlabContribution]:
+    breakdown: list[SlabContribution] = []
     lower = ZERO
     for band in slabs:
         upper = band.upto if band.upto is not None else taxable_income
@@ -30,9 +44,21 @@ def calculate_slab_tax(taxable_income: Decimal, slabs: tuple) -> Decimal:
             break
         band_income = min(taxable_income, upper) - lower
         if band_income > 0:
-            tax += band_income * band.rate
+            breakdown.append(
+                SlabContribution(
+                    lower=lower,
+                    upper=band.upto,
+                    rate=band.rate,
+                    amount_in_band=band_income,
+                    tax=band_income * band.rate,
+                )
+            )
         lower = upper
-    return tax
+    return breakdown
+
+
+def calculate_slab_tax(taxable_income: Decimal, slabs: tuple) -> Decimal:
+    return sum((contribution.tax for contribution in slab_breakdown(taxable_income, slabs)), ZERO)
 
 
 def apply_rebate(taxable_income: Decimal, tax_before_rebate: Decimal, rules: RegimeRules) -> Decimal:
@@ -78,7 +104,8 @@ def _calculate_regime(
     taxable_income = round_to_nearest_10(max(ZERO, gross_total_income - total_deductions))
 
     slabs = regime_rules.slabs_by_age[age_category]
-    tax_before_rebate = calculate_slab_tax(taxable_income, slabs)
+    breakdown = slab_breakdown(taxable_income, slabs)
+    tax_before_rebate = sum((contribution.tax for contribution in breakdown), ZERO)
 
     rebate = apply_rebate(taxable_income, tax_before_rebate, regime_rules)
     tax_after_rebate = tax_before_rebate - rebate
@@ -100,6 +127,7 @@ def _calculate_regime(
         surcharge=surcharge,
         cess=cess,
         total_tax_payable=total_tax_payable,
+        slab_breakdown=tuple(breakdown),
     )
 
 

@@ -29,6 +29,7 @@ def _regime_result(regime: str, total_tax: int) -> RegimeResult:
         surcharge=0,
         cess=0,
         total_tax_payable=total_tax,
+        slab_breakdown=[],
     )
 
 

@@ -20,6 +20,14 @@ export interface DeductionSectionBreakdown {
   note: string | null;
 }
 
+export interface SlabContribution {
+  lower: number;
+  upper: number | null;
+  rate: number;
+  amount_in_band: number;
+  tax: number;
+}
+
 export interface RegimeResult {
   regime: "old" | "new";
   gross_total_income: number;
@@ -31,6 +39,20 @@ export interface RegimeResult {
   surcharge: number;
   cess: number;
   total_tax_payable: number;
+  slab_breakdown: SlabContribution[];
+}
+
+export interface SlabRate {
+  lower: number;
+  upper: number | null;
+  rate: number;
+}
+
+export interface SlabTable {
+  tax_year: string;
+  age_category: string;
+  old_regime: SlabRate[];
+  new_regime: SlabRate[];
 }
 
 export interface TaxComparisonResult {
