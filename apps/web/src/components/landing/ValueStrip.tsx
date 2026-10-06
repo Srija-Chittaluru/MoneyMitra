@@ -25,6 +25,7 @@ export function ValueStrip() {
           {AREAS.map(({ icon: Icon, label, caption }, i) => (
             <li
               key={label}
+              data-reveal
               className={cn(
                 "flex items-center gap-2.5 px-3 py-4 sm:gap-3 sm:px-6 sm:py-5",
                 BORDERS[i],

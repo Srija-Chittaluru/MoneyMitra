@@ -31,7 +31,7 @@ export function HowItWorks() {
       className="scroll-mt-16 border-y border-border bg-surface py-16 md:py-24"
     >
       <Container>
-        <div className="mb-12 flex max-w-2xl flex-col gap-3 md:mb-16">
+        <div data-reveal className="mb-12 flex max-w-2xl flex-col gap-3 md:mb-16">
           <Eyebrow>How it works</Eyebrow>
           <h2 className="text-h1 md:text-[40px]">
             From paperwork to clarity in four steps.
@@ -40,7 +40,7 @@ export function HowItWorks() {
 
         <ol className="grid grid-cols-1 gap-10 md:grid-cols-4 md:gap-6">
           {STEPS.map(({ icon: Icon, title, description }, i) => (
-            <li key={title} className="relative flex gap-4 md:flex-col md:gap-5">
+            <li key={title} data-reveal className="relative flex gap-4 md:flex-col md:gap-5">
               {/* connector: vertical on mobile, horizontal on desktop */}
               {i < STEPS.length - 1 && (
                 <>

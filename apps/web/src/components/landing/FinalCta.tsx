@@ -6,7 +6,7 @@ export function FinalCta() {
     <section className="pb-20 md:pb-28">
       <Container>
         {/* `dark` scopes the Ink Navy tokens to this panel only, matching CardDark's pattern */}
-        <div className="dark relative overflow-hidden rounded-lg bg-background px-6 py-16 text-center text-foreground md:py-24">
+        <div data-reveal className="dark relative overflow-hidden rounded-lg bg-background px-6 py-16 text-center text-foreground md:py-24">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-50"

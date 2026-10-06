@@ -28,6 +28,8 @@ function FeatureCard({
 }) {
   return (
     <article
+      data-reveal
+      data-lift
       className={cn(
         "flex flex-col gap-6 rounded-lg border border-border bg-surface p-6 md:p-8",
         className,
@@ -152,7 +154,7 @@ export function Features() {
       className="scroll-mt-20 pb-20 md:pb-28"
     >
       <Container>
-        <div className="mb-10 flex max-w-2xl flex-col gap-3 md:mb-14">
+        <div data-reveal className="mb-10 flex max-w-2xl flex-col gap-3 md:mb-14">
           <Eyebrow>Features</Eyebrow>
           <h2 className="text-h1 md:text-[40px]">
             Everything your salary touches, made clear.

@@ -59,6 +59,7 @@ export function LinkButton({
   return (
     <Link
       href={href}
+      data-btn
       className={cn(
         "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
         linkButtonVariants[variant],
@@ -149,7 +150,7 @@ export function Amount({
   className?: string;
 }) {
   return (
-    <span className={cn("font-medium tabular-nums", className)}>
+    <span data-countup className={cn("font-medium tabular-nums", className)}>
       {children}
     </span>
   );
