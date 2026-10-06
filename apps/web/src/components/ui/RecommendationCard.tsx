@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -8,6 +9,8 @@ interface RecommendationCardProps {
   reason: string;
   tag: string;
   actionLabel: string;
+  /** When set, the action button links to this in-app route. */
+  actionHref?: string;
 }
 
 export function RecommendationCard({
@@ -16,6 +19,7 @@ export function RecommendationCard({
   reason,
   tag,
   actionLabel,
+  actionHref,
 }: RecommendationCardProps) {
   return (
     <Card className="flex flex-col gap-3">
@@ -29,9 +33,17 @@ export function RecommendationCard({
         {reason}
       </p>
       <div>
-        <Button variant="secondary" size="sm">
-          {actionLabel}
-        </Button>
+        {actionHref ? (
+          <Link href={actionHref}>
+            <Button variant="secondary" size="sm">
+              {actionLabel}
+            </Button>
+          </Link>
+        ) : (
+          <Button variant="secondary" size="sm">
+            {actionLabel}
+          </Button>
+        )}
       </div>
     </Card>
   );
