@@ -19,16 +19,14 @@ from app.modules.planning.fy import months_remaining as _months_remaining
 from app.modules.planning.schemas import InstrumentOptionOut, PlanningSectionOut, RegimePosition, TaxPlanOut
 from app.modules.recommendations.context import FinancialContext, load_financial_context
 from app.modules.recommendations.stages import STAGE_LABELS, calculate_age, resolve_life_stage
+from app.modules.resources.content import DEDUCTION_LIMITS
 from app.modules.tax import service as tax_service
 from app.modules.tax.instruments import INSTRUMENT_OPTIONS, SECTION_LABELS, DeductionSection
 from app.modules.tax.schemas import TaxComparisonInput
 from app.modules.users.models import User
 
-_SECTION_80C_CAP = 150_000
-_SECTION_80D_CAP_GENERAL = 25_000
-_SECTION_80D_CAP_SENIOR = 50_000
-_SECTION_24B_CAP = 200_000
-_SECTION_80CCD_1B_CAP = 50_000
+# Single source of truth for the cap amounts: app.modules.resources.content.
+_LIMITS = {limit.section: limit for limit in DEDUCTION_LIMITS}
 
 _SENIOR_CITIZEN_AGE = 60
 
@@ -108,16 +106,32 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
             sections=[],
         )
 
+    section_80d_limit = _LIMITS[DeductionSection.SECTION_80D]
     section_80d_cap = (
-        _SECTION_80D_CAP_SENIOR if age is not None and age >= _SENIOR_CITIZEN_AGE else _SECTION_80D_CAP_GENERAL
+        section_80d_limit.limit_senior
+        if age is not None and age >= _SENIOR_CITIZEN_AGE
+        else section_80d_limit.limit_general
     )
 
     sections = [
-        _section_plan(DeductionSection.SECTION_80C, _SECTION_80C_CAP, context.section_80c_total, months),
-        _section_plan(DeductionSection.SECTION_80D, section_80d_cap, context.section_80d_total, months),
-        _section_plan(DeductionSection.SECTION_24B, _SECTION_24B_CAP, context.home_loan_interest, months),
         _section_plan(
-            DeductionSection.SECTION_80CCD_1B, _SECTION_80CCD_1B_CAP, context.section_80ccd_1b, months
+            DeductionSection.SECTION_80C,
+            _LIMITS[DeductionSection.SECTION_80C].limit_general,
+            context.section_80c_total,
+            months,
+        ),
+        _section_plan(DeductionSection.SECTION_80D, section_80d_cap, context.section_80d_total, months),
+        _section_plan(
+            DeductionSection.SECTION_24B,
+            _LIMITS[DeductionSection.SECTION_24B].limit_general,
+            context.home_loan_interest,
+            months,
+        ),
+        _section_plan(
+            DeductionSection.SECTION_80CCD_1B,
+            _LIMITS[DeductionSection.SECTION_80CCD_1B].limit_general,
+            context.section_80ccd_1b,
+            months,
         ),
     ]
 

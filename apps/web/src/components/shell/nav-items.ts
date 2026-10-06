@@ -3,6 +3,7 @@ import {
   FileCheck2,
   FileStack,
   LayoutDashboard,
+  Megaphone,
   Scale,
   Settings,
   Sparkles,
@@ -17,6 +18,7 @@ export const NAV_ITEMS = [
   { href: "/itr-filing", label: "ITR Filing", icon: FileCheck2 },
   { href: "/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/finance", label: "Finance Management", icon: Wallet },
+  { href: "/resources", label: "Resources & Alerts", icon: Megaphone },
 ] as const;
 
 export const SECONDARY_NAV_ITEMS = [
