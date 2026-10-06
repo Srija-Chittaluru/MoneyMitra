@@ -27,6 +27,13 @@ class User(Base):
     employee_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
     expected_annual_income: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
+    # PAN is stored Fernet-encrypted (see users/pii.py) and never returned by the API;
+    # only `pan_masked` is exposed.
+    pan_encrypted: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Post-signup tax onboarding: NULL (not yet shown), "completed" or "skipped".
+    tax_onboarding_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

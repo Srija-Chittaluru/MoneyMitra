@@ -93,7 +93,7 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
         age = calculate_age(user.date_of_birth, today)
         stage_label = STAGE_LABELS[resolve_life_stage(age)]
 
-    context = load_financial_context(db, user)
+    context = load_financial_context(db, user, today)
     if context is None:
         return TaxPlanOut(
             has_data=False,

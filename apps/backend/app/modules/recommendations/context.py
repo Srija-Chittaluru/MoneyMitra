@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.modules.itr import service as itr_service
 from app.modules.itr.models import ItrFiling
 from app.modules.itr.rules import get_itr_rules
-from app.modules.itr.schemas import ItrDraftData
+from app.modules.itr.schemas import Health80DDraft, ItrDraftData
 from app.modules.tax import service as tax_service
 from app.modules.tax.models import TaxComparisonSnapshot
 from app.modules.tax.schemas import TaxComparisonInput
@@ -52,6 +52,8 @@ class FinancialContext:
     claims_health_self: bool
     # None when the source doesn't say (the tax comparison has no parents' 80D).
     claims_health_parents: bool | None
+    section_80d_total: int = 0
+    home_loan_interest: int = 0
     regime: RegimeOutcome | None = None
 
 
@@ -94,6 +96,10 @@ def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, Fi
         section_80ccd_1b=draft.deductions.section_80ccd_1b,
         claims_health_self=draft.deductions.health_self.claiming,
         claims_health_parents=draft.deductions.health_parents.claiming,
+        section_80d_total=(
+            _health_80d_amount(draft.deductions.health_self) + _health_80d_amount(draft.deductions.health_parents)
+        ),
+        home_loan_interest=sum(prop.interest_on_loan for prop in draft.house_properties),
         regime=_itr_regime_outcome(filing, draft, today),
     )
 
@@ -133,6 +139,8 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
         section_80ccd_1b=snapshot.nps_contribution,
         claims_health_self=snapshot.section_80d > 0,
         claims_health_parents=None,
+        section_80d_total=snapshot.section_80d,
+        home_loan_interest=snapshot.home_loan_interest,
         regime=regime,
     )
 
