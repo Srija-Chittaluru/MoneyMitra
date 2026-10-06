@@ -7,27 +7,13 @@ recommended.
 """
 
 from app.modules.recommendations.context import FinancialContext
+from app.modules.recommendations.money import format_inr
 from app.modules.recommendations.schemas import LifeStageRecommendation
 from app.modules.recommendations.stages import LifeStage
 
 SECTION_80C_CAP = 150_000
 SECTION_80CCD_1B_CAP = 50_000
 SENIOR_CITIZEN_AGE = 60
-
-
-def _inr(amount: int) -> str:
-    """₹ with Indian digit grouping (12,34,567)."""
-    digits = str(abs(amount))
-    if len(digits) > 3:
-        head, tail = digits[:-3], digits[-3:]
-        groups = []
-        while len(head) > 2:
-            groups.insert(0, head[-2:])
-            head = head[:-2]
-        if head:
-            groups.insert(0, head)
-        digits = ",".join([*groups, tail])
-    return f"₹{digits}"
 
 
 def _health_cover(ctx: FinancialContext | None, *, include_parents: bool) -> tuple[str, str]:
@@ -62,7 +48,7 @@ def _build_career_start(ctx: FinancialContext | None) -> list[LifeStageRecommend
     if ctx is not None:
         monthly = ctx.annual_income // 12
         emergency_description = (
-            f"Your salary income is about {_inr(monthly)} a month. "
+            f"Your salary income is about {format_inr(monthly)} a month. "
             "Aim to keep 6 months of your expenses in a liquid fund or savings account."
         )
     else:
@@ -73,7 +59,7 @@ def _build_career_start(ctx: FinancialContext | None) -> list[LifeStageRecommend
     if ctx is not None:
         headroom = max(0, SECTION_80C_CAP - ctx.section_80c_total)
         invest_description = (
-            f"You have {_inr(headroom)} of Section 80C headroom this year."
+            f"You have {format_inr(headroom)} of Section 80C headroom this year."
             if headroom
             else "You've used your full Section 80C limit this year."
         )
@@ -114,9 +100,9 @@ def _build_mid_career(ctx: FinancialContext | None) -> list[LifeStageRecommendat
     if ctx is not None:
         nps_headroom = max(0, SECTION_80CCD_1B_CAP - ctx.section_80ccd_1b)
         retirement_description = (
-            f"You haven't used the extra {_inr(SECTION_80CCD_1B_CAP)} NPS deduction under Section 80CCD(1B)."
+            f"You haven't used the extra {format_inr(SECTION_80CCD_1B_CAP)} NPS deduction under Section 80CCD(1B)."
             if nps_headroom == SECTION_80CCD_1B_CAP
-            else f"You have {_inr(nps_headroom)} of Section 80CCD(1B) headroom left."
+            else f"You have {format_inr(nps_headroom)} of Section 80CCD(1B) headroom left."
             if nps_headroom
             else "You've used your full Section 80CCD(1B) NPS deduction."
         )
