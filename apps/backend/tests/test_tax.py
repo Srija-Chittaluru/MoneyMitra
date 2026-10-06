@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 
 from app.modules.tax.age import resolve_age_category
-from app.modules.tax.calculator import apply_rebate, calculate_slab_tax, calculate_surcharge
+from app.modules.tax.calculator import apply_rebate, calculate_slab_tax, calculate_surcharge, slab_breakdown
 from app.modules.tax.rules.fy_2025_26 import NEW_REGIME_2025_26, OLD_REGIME_2025_26, TAX_YEAR_2025_26
 from app.modules.tax.rules.types import AgeCategory
 
@@ -47,6 +47,36 @@ def test_new_regime_slab_boundaries():
     assert calculate_slab_tax(D("2000000"), NEW_SLABS) == D("200000")
     assert calculate_slab_tax(D("2400000"), NEW_SLABS) == D("300000")
     assert calculate_slab_tax(D("3000000"), NEW_SLABS) == D("480000")
+
+
+# ---------------------------------------------------------------------------
+# Unit-level: slab breakdown (bracket-by-bracket)
+# ---------------------------------------------------------------------------
+
+
+def test_slab_breakdown_sums_to_calculate_slab_tax():
+    for income in (D("0"), D("250000"), D("500000"), D("1000000"), D("1500000")):
+        breakdown = slab_breakdown(income, GENERAL_OLD_SLABS)
+        assert sum((c.tax for c in breakdown), D("0")) == calculate_slab_tax(income, GENERAL_OLD_SLABS)
+
+
+def test_slab_breakdown_bands_for_known_income():
+    breakdown = slab_breakdown(D("900000"), NEW_SLABS)
+    assert [(c.lower, c.upper, c.rate, c.amount_in_band, c.tax) for c in breakdown] == [
+        (D("0"), D("400000"), D("0"), D("400000"), D("0")),
+        (D("400000"), D("800000"), D("0.05"), D("400000"), D("20000")),
+        (D("800000"), D("1200000"), D("0.10"), D("100000"), D("10000")),
+    ]
+
+
+def test_slab_breakdown_zero_income_is_empty():
+    assert slab_breakdown(D("0"), GENERAL_OLD_SLABS) == []
+
+
+def test_slab_breakdown_top_band_has_no_upper():
+    breakdown = slab_breakdown(D("3000000"), NEW_SLABS)
+    assert breakdown[-1].upper is None
+    assert breakdown[-1].rate == D("0.30")
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +364,86 @@ def test_negative_home_loan_interest_rejected(client):
     response = client.post(
         "/api/v1/tax/comparison",
         json={"tax_year": "2025-26", "gross_total_income": 1000000, "home_loan_interest": -1},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_comparison_response_includes_slab_breakdown(client):
+    headers = _auth_headers(client)
+    response = client.post(
+        "/api/v1/tax/comparison",
+        json={"tax_year": "2025-26", "gross_total_income": 1000000, "section_80c": 150000},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    old_breakdown = body["old_regime"]["slab_breakdown"]
+    assert sum(band["tax"] for band in old_breakdown) == body["old_regime"]["tax_before_rebate"]
+
+    new_breakdown = body["new_regime"]["slab_breakdown"]
+    assert sum(band["tax"] for band in new_breakdown) == body["new_regime"]["tax_before_rebate"]
+    # New regime: taxable income 1,000,000 - 75,000 standard deduction = 925,000,
+    # which only reaches the 800,000-1,200,000 band — the unbounded top band
+    # shouldn't appear at all since the income never gets there.
+    assert new_breakdown[-1] == {"lower": 800000, "upper": 1200000, "rate": 0.10, "amount_in_band": 125000, "tax": 12500}
+
+
+# ---------------------------------------------------------------------------
+# API-level: slab reference table
+# ---------------------------------------------------------------------------
+
+
+def test_slabs_requires_authentication(client):
+    response = client.get("/api/v1/tax/slabs", params={"tax_year": "2025-26"})
+    assert response.status_code == 401
+
+
+def test_slabs_returns_full_rate_table(client):
+    headers = _auth_headers(client)
+    response = client.get("/api/v1/tax/slabs", params={"tax_year": "2025-26"}, headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tax_year"] == "2025-26"
+    assert body["age_category"] == "general"
+
+    # Full reference table — unlike slab_breakdown, every band appears regardless of income.
+    assert body["new_regime"] == [
+        {"lower": 0, "upper": 400000, "rate": 0.0},
+        {"lower": 400000, "upper": 800000, "rate": 0.05},
+        {"lower": 800000, "upper": 1200000, "rate": 0.10},
+        {"lower": 1200000, "upper": 1600000, "rate": 0.15},
+        {"lower": 1600000, "upper": 2000000, "rate": 0.20},
+        {"lower": 2000000, "upper": 2400000, "rate": 0.25},
+        {"lower": 2400000, "upper": None, "rate": 0.30},
+    ]
+    assert body["old_regime"][0] == {"lower": 0, "upper": 250000, "rate": 0.0}
+    assert body["old_regime"][-1]["upper"] is None
+
+
+def test_slabs_age_category_changes_old_regime_bands(client):
+    headers = _auth_headers(client)
+    response = client.get(
+        "/api/v1/tax/slabs",
+        params={"tax_year": "2025-26", "age_category": "senior"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["old_regime"][0] == {"lower": 0, "upper": 300000, "rate": 0.0}
+
+
+def test_slabs_unsupported_tax_year_rejected(client):
+    headers = _auth_headers(client)
+    response = client.get("/api/v1/tax/slabs", params={"tax_year": "1999-00"}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_slabs_invalid_age_category_rejected(client):
+    headers = _auth_headers(client)
+    response = client.get(
+        "/api/v1/tax/slabs",
+        params={"tax_year": "2025-26", "age_category": "toddler"},
         headers=headers,
     )
     assert response.status_code == 422

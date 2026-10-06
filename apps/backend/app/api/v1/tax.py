@@ -3,13 +3,15 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
-from app.modules.tax import chat, explain, service
+from app.modules.tax import chat, explain, service, slabs
 from app.modules.tax.rules.registry import get_supported_tax_years
+from app.modules.tax.rules.types import AgeCategory
 from app.modules.tax.schemas import (
     ChatRequest,
     ChatResponse,
     ExplanationRequest,
     ExplanationResult,
+    SlabTableOut,
     TaxComparisonInput,
     TaxComparisonResult,
 )
@@ -32,6 +34,15 @@ def compare_tax_regimes(
     result = service.calculate_comparison(payload)
     service.save_comparison_snapshot(db, current_user, payload)
     return result
+
+
+@router.get("/slabs", response_model=SlabTableOut)
+def get_slab_table(
+    tax_year: str,
+    age_category: AgeCategory = AgeCategory.GENERAL,
+    current_user: User = Depends(get_current_user),
+) -> SlabTableOut:
+    return slabs.get_slab_table(tax_year, age_category)
 
 
 @router.post("/explain", response_model=ExplanationResult)

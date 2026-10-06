@@ -63,6 +63,7 @@ def test_build_messages_includes_comparison_context_when_present():
             surcharge=0,
             cess=0,
             total_tax_payable=75000,
+            slab_breakdown=[],
         ),
         new_regime=RegimeResult(
             regime="new",
@@ -75,6 +76,7 @@ def test_build_messages_includes_comparison_context_when_present():
             surcharge=0,
             cess=0,
             total_tax_payable=0,
+            slab_breakdown=[],
         ),
         recommended_regime="new",
         difference=75000,

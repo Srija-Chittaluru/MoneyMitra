@@ -13,6 +13,7 @@ from app.modules.tax.rules.types import AgeCategory
 from app.modules.tax.schemas import (
     DeductionSectionBreakdown,
     RegimeResult,
+    SlabContributionOut,
     TaxComparisonInput,
     TaxComparisonResult,
 )
@@ -39,6 +40,16 @@ def _regime_result(calc: calculator.RegimeCalculation) -> RegimeResult:
         surcharge=int(calc.surcharge),
         cess=int(calc.cess),
         total_tax_payable=int(calc.total_tax_payable),
+        slab_breakdown=[
+            SlabContributionOut(
+                lower=int(c.lower),
+                upper=int(c.upper) if c.upper is not None else None,
+                rate=float(c.rate),
+                amount_in_band=int(c.amount_in_band),
+                tax=int(c.tax),
+            )
+            for c in calc.slab_breakdown
+        ],
     )
 
 

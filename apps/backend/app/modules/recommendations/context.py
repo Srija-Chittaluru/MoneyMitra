@@ -14,9 +14,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.itr.models import ItrFiling
-from app.modules.itr.schemas import ItrDraftData
+from app.modules.itr.schemas import Health80DDraft, ItrDraftData
 from app.modules.tax.models import TaxComparisonSnapshot
 from app.modules.users.models import User
+
+
+def _health_80d_amount(bucket: Health80DDraft) -> int:
+    """Best-effort rupee estimate, not filing-precision: premiums + preventive
+    checkup, uncapped here (the planning module applies the real cap).
+    Mirrors but doesn't call the private `_health()` in itr/computation.py,
+    which is tightly coupled to the full computation pipeline."""
+    return sum(policy.premium for policy in bucket.policies) + bucket.preventive_checkup
 
 
 @dataclass(frozen=True)
@@ -28,6 +36,8 @@ class FinancialContext:
     claims_health_self: bool
     # None when the source doesn't say (the tax comparison has no parents' 80D).
     claims_health_parents: bool | None
+    section_80d_total: int
+    home_loan_interest: int
 
 
 def _from_itr_filing(db: Session, user: User) -> tuple[datetime, FinancialContext] | None:
@@ -55,6 +65,10 @@ def _from_itr_filing(db: Session, user: User) -> tuple[datetime, FinancialContex
         section_80ccd_1b=draft.deductions.section_80ccd_1b,
         claims_health_self=draft.deductions.health_self.claiming,
         claims_health_parents=draft.deductions.health_parents.claiming,
+        section_80d_total=(
+            _health_80d_amount(draft.deductions.health_self) + _health_80d_amount(draft.deductions.health_parents)
+        ),
+        home_loan_interest=sum(prop.interest_on_loan for prop in draft.house_properties),
     )
 
 
@@ -70,6 +84,8 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
         section_80ccd_1b=snapshot.nps_contribution,
         claims_health_self=snapshot.section_80d > 0,
         claims_health_parents=None,
+        section_80d_total=snapshot.section_80d,
+        home_loan_interest=snapshot.home_loan_interest,
     )
 
 
