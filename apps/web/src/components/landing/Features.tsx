@@ -82,7 +82,7 @@ function ExtractionVisual() {
             className="min-w-0 rounded-md border border-border bg-surface px-2.5 py-2"
           >
             <dt className="truncate text-[10px] text-muted">{label}</dt>
-            <dd className="mt-0.5 truncate font-mono text-xs font-medium text-foreground">
+            <dd className="mt-0.5 truncate text-xs font-medium text-foreground">
               {value}
             </dd>
           </div>

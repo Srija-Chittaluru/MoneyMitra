@@ -29,7 +29,7 @@ function Row({ label, amount, isOutput }: { label: string; amount: number; isOut
       <span className={cn("text-sm", isOutput ? "font-medium text-foreground" : "text-muted")}>
         {label}
       </span>
-      <span className={cn("font-mono text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
+      <span className={cn("text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
         {formatINR(amount)}
       </span>
     </div>
@@ -95,7 +95,7 @@ function RegimeCard({
       </div>
       <div className="mt-4 flex items-center justify-between rounded-md bg-surface-muted px-3 py-3">
         <span className="font-semibold text-foreground">Estimated tax payable</span>
-        <span className="font-mono text-amount-lg text-foreground">
+        <span className="text-amount-lg text-foreground">
           {formatINR(data.total_tax_payable)}
         </span>
       </div>
@@ -139,8 +139,8 @@ function DeductionChecklistItem({ item }: { item: DeductionSectionBreakdown }) {
       </div>
       {hasLimit && (
         <p className="text-sm text-muted">
-          Declared <span className="font-mono text-foreground">{formatINR(item.declared_amount)}</span> of
-          the <span className="font-mono text-foreground">{formatINR(item.limit as number)}</span> limit.
+          Declared <span className="text-foreground">{formatINR(item.declared_amount)}</span> of
+          the <span className="text-foreground">{formatINR(item.limit as number)}</span> limit.
         </p>
       )}
       {item.note && <p className="text-sm text-warning">{item.note}</p>}
@@ -342,7 +342,7 @@ export default function TaxComparisonPage() {
             <p className="text-body text-muted">Tax year {result.tax_year}</p>
             <Card className="px-4 py-2">
               <span className="text-sm text-muted">Difference: </span>
-              <span className="font-mono font-semibold text-foreground">
+              <span className="font-semibold text-foreground">
                 {formatINR(result.difference)}
               </span>
             </Card>

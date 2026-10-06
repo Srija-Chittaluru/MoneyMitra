@@ -59,7 +59,7 @@ export function HowItWorks() {
               </span>
               <div className="flex flex-col gap-1.5 pr-2">
                 <p className="flex items-center gap-2 text-h2">
-                  <span className="font-mono text-sm font-medium text-muted">
+                  <span className="text-sm font-medium text-muted">
                     0{i + 1}
                   </span>
                   {title}

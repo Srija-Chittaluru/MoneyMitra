@@ -17,7 +17,7 @@ function Row({
   return (
     <div className={cn("flex items-center justify-between gap-4 py-2", indent && "pl-4")}>
       <span className={cn("text-sm", isOutput ? "font-medium text-foreground" : "text-muted")}>{label}</span>
-      <span className={cn("shrink-0 font-mono text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
+      <span className={cn("shrink-0 text-amount-sm", isOutput ? "text-foreground" : "text-muted")}>
         {formatRupees(amount)}
       </span>
     </div>
@@ -88,7 +88,7 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
         )}
       >
         <span className="font-semibold text-foreground">{payable ? "Balance tax payable" : "Refund due"}</span>
-        <span className={cn("font-mono text-amount-lg", payable ? "text-warning" : "text-success")}>
+        <span className={cn("text-amount-lg", payable ? "text-warning" : "text-success")}>
           {formatRupees(payable ? data.balance_payable : data.refund_due)}
         </span>
       </div>

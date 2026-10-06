@@ -24,11 +24,11 @@ function OverviewTab() {
     <div className="grid gap-6 lg:grid-cols-3">
       <Card>
         <p className="text-sm text-muted">This month&apos;s spending</p>
-        <p className="mt-2 font-mono text-amount-lg">{formatINR(totalSpend)}</p>
+        <p className="mt-2 text-amount-lg">{formatINR(totalSpend)}</p>
       </Card>
       <Card>
         <p className="text-sm text-muted">Estimated annual tax</p>
-        <p className="mt-2 font-mono text-amount-lg">
+        <p className="mt-2 text-amount-lg">
           {formatINR(mockFinanceTaxOverview.estimatedAnnualTax)}
         </p>
       </Card>
@@ -49,7 +49,7 @@ function ExpensesTab() {
           {mockSpendingSummary.map((c) => (
             <div key={c.category} className="flex items-center justify-between py-2">
               <span className="text-muted">{c.category}</span>
-              <span className="font-mono">{formatINR(c.amount)}</span>
+              <span>{formatINR(c.amount)}</span>
             </div>
           ))}
         </div>
@@ -81,7 +81,7 @@ function InvestmentsTab() {
                 <p className="text-sm text-muted">{inv.type}</p>
               </div>
               <div className="text-right">
-                <p className="font-mono text-amount-sm">{formatINR(inv.current)}</p>
+                <p className="text-amount-sm">{formatINR(inv.current)}</p>
                 <p className={`text-sm ${change >= 0 ? "text-success" : "text-error"}`}>
                   {change >= 0 ? "+" : ""}
                   {pct}%
@@ -102,7 +102,7 @@ function TaxTab() {
       <div className="divide-y divide-border">
         <div className="flex items-center justify-between py-2">
           <span className="text-muted">Estimated annual tax</span>
-          <span className="font-mono">{formatINR(mockFinanceTaxOverview.estimatedAnnualTax)}</span>
+          <span>{formatINR(mockFinanceTaxOverview.estimatedAnnualTax)}</span>
         </div>
         <div className="flex items-center justify-between py-2">
           <span className="text-muted">Recommended regime</span>
@@ -110,7 +110,7 @@ function TaxTab() {
         </div>
         <div className="flex items-center justify-between py-2">
           <span className="text-muted">Next filing deadline</span>
-          <span className="font-mono">{mockFinanceTaxOverview.nextDeadline}</span>
+          <span>{mockFinanceTaxOverview.nextDeadline}</span>
         </div>
       </div>
     </Card>

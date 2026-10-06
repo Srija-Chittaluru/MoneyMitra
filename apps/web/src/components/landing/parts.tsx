@@ -149,7 +149,7 @@ export function Amount({
   className?: string;
 }) {
   return (
-    <span className={cn("font-mono font-medium tabular-nums", className)}>
+    <span className={cn("font-medium tabular-nums", className)}>
       {children}
     </span>
   );

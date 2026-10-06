@@ -1,4 +1,6 @@
-# Runs the whole MoneyMitra stack: database + API + website.
+# Runs the MoneyMitra API + website in containers.
+# The database is the PostgreSQL on your own machine (port 5432), NOT a container,
+# so there is exactly one database no matter how you start the app.
 #
 #   cp .env.example .env     # then set JWT_SECRET
 #   docker compose up --build
@@ -7,30 +9,12 @@
 name: moneymitra
 
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: moneymitra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moneymitra}
-      POSTGRES_DB: moneymitra
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    # Published only on this machine, so you can inspect the DB with psql/a GUI.
-    # The backend does not use this; it reaches the database at db:5432.
-    ports:
-      - "127.0.0.1:${DB_PORT:-5433}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U moneymitra -d moneymitra"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   backend:
     build: ./apps/backend
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      DATABASE_URL: postgresql+psycopg://moneymitra:${POSTGRES_PASSWORD:-moneymitra}@db:5432/moneymitra
+      # host.docker.internal = "your Mac", as seen from inside a container.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://moneymitra:moneymitra@host.docker.internal:5432/moneymitra}
       # Origin(s) the browser loads the website from.
       CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}"]'
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
@@ -41,9 +25,9 @@ services:
     volumes:
       # Uploaded documents survive container rebuilds.
       - documents:/app/storage
-    depends_on:
-      db:
-        condition: service_healthy
+    # Lets host.docker.internal work on Linux too (Docker Desktop has it built in).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
@@ -73,5 +57,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
   documents:
