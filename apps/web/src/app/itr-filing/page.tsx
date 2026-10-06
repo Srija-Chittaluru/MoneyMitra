@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Bot, RefreshCw, UserRoundSearch } from "lucide-react";
@@ -150,20 +150,70 @@ export default function ItrFilingPage() {
   const currentView: View =
     view ?? (filingQuery.data && !hasSources && !filingQuery.data.data.personal.pan && !introDone(ay) ? "intro" : "steps");
 
-  const saveMutation = useMutation<ItrFilingOut, ApiError, ItrDraftData>({
-    mutationFn: (data) => saveItrFiling(ay, data),
-    onSuccess: (filing) => {
+  // Every edit bumps the version; a save only clears "dirty" if no newer edit
+  // arrived while it was in flight, so fast typing is never lost.
+  const editVersion = useRef(0);
+  const latestDraft = useRef<ItrDraftData | null>(null);
+  const pendingSave = useRef<{ ay: string; data: ItrDraftData } | null>(null);
+
+  const saveMutation = useMutation<ItrFilingOut, ApiError, { data: ItrDraftData; version: number }>({
+    mutationFn: ({ data }) => saveItrFiling(ay, data),
+    onSuccess: (filing, { version }) => {
       queryClient.setQueryData(["itr-filing", ay], filing);
-      setDirty(false);
+      if (version === editVersion.current) {
+        setDirty(false);
+        pendingSave.current = null;
+      }
       setSavedAt(new Date());
       return queryClient.invalidateQueries({ queryKey: ["itr-summary", ay] });
     },
   });
 
+  function saveNow(options?: Parameters<typeof saveMutation.mutate>[1]) {
+    const data = latestDraft.current ?? draft;
+    if (!data) return;
+    saveMutation.mutate({ data, version: editVersion.current }, options);
+  }
+
+  // Auto-save shortly after the user stops typing (and again if they kept
+  // typing while a save was in flight).
+  const isSaving = saveMutation.isPending;
+  const { mutate: mutateSave } = saveMutation;
+  useEffect(() => {
+    if (!dirty || isSaving || !latestDraft.current) return;
+    const timer = window.setTimeout(() => {
+      if (latestDraft.current) mutateSave({ data: latestDraft.current, version: editVersion.current });
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [dirty, isSaving, localDraft, mutateSave]);
+
+  // Warn before closing the tab with unsaved edits.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  // Leaving the page (e.g. to Documents) flushes any pending edit.
+  useEffect(() => {
+    return () => {
+      const pending = pendingSave.current;
+      if (pending) {
+        void saveItrFiling(pending.ay, pending.data).then(() =>
+          queryClient.invalidateQueries({ queryKey: ["itr-filing", pending.ay] }),
+        );
+      }
+    };
+  }, [queryClient]);
+
   const rereadMutation = useMutation<ItrFilingOut, ApiError, void>({
     mutationFn: () => rereadDocuments(ay),
     onSuccess: (filing) => {
       queryClient.setQueryData(["itr-filing", ay], filing);
+      editVersion.current += 1;
+      latestDraft.current = null;
+      pendingSave.current = null;
       setLocalDraft(null);
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ["itr-summary", ay] });
@@ -172,6 +222,9 @@ export default function ItrFilingPage() {
   });
 
   function handleChange(next: ItrDraftData) {
+    editVersion.current += 1;
+    latestDraft.current = next;
+    pendingSave.current = { ay, data: next };
     setLocalDraft(next);
     setDirty(true);
   }
@@ -191,8 +244,8 @@ export default function ItrFilingPage() {
   }
 
   function goTo(target: number) {
-    if (draft && dirty && !saveMutation.isPending) {
-      saveMutation.mutate(draft);
+    if (dirty && !saveMutation.isPending) {
+      saveNow();
     }
     setView("steps");
     setStep(target);
@@ -201,7 +254,7 @@ export default function ItrFilingPage() {
 
   function saveAndContinue() {
     if (!draft) return;
-    saveMutation.mutate(draft, {
+    saveNow({
       onSuccess: () => {
         setStep((current) => Math.min(current + 1, LAST_STEP));
         scrollTop();
@@ -211,7 +264,7 @@ export default function ItrFilingPage() {
 
   function fixAndContinue() {
     if (!draft) return;
-    saveMutation.mutate(draft, {
+    saveNow({
       onSuccess: async () => {
         const fresh = await queryClient.fetchQuery({ queryKey: ["itr-summary", ay], queryFn: () => getItrSummary(ay) });
         if (fresh.missing_fields.length === 0) {
@@ -223,14 +276,13 @@ export default function ItrFilingPage() {
     });
   }
 
-  const saveStatus = saveMutation.isPending
-    ? "Saving…"
-    : saveMutation.isError
-      ? null
-      : dirty
-        ? "Unsaved changes"
+  const saveStatus =
+    saveMutation.isPending || dirty
+      ? "Saving…"
+      : saveMutation.isError
+        ? null
         : savedAt
-          ? `Saved at ${savedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+          ? `All changes saved · ${savedAt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`
           : filingQuery.data
             ? "All changes saved"
             : null;
@@ -303,9 +355,8 @@ export default function ItrFilingPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={rereadMutation.isPending || saveMutation.isPending || dirty}
-                title={dirty ? "Save your changes first" : undefined}
-                onClick={() => rereadMutation.mutate()}
+                disabled={rereadMutation.isPending}
+                onClick={() => (dirty ? saveNow({ onSuccess: () => rereadMutation.mutate() }) : rereadMutation.mutate())}
               >
                 <RefreshCw className={rereadMutation.isPending ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
                 {rereadMutation.isPending ? "Reading documents…" : "Re-read documents"}
