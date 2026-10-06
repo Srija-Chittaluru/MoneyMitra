@@ -8,6 +8,8 @@ interface RecommendationCardProps {
   description: string;
   reason: string;
   tag: string;
+  /** Optional line saying what the advice is based on. */
+  basis?: string;
   actionLabel: string;
   /** When set, the action button links to this in-app route. */
   actionHref?: string;
@@ -18,6 +20,7 @@ export function RecommendationCard({
   description,
   reason,
   tag,
+  basis,
   actionLabel,
   actionHref,
 }: RecommendationCardProps) {
@@ -27,6 +30,7 @@ export function RecommendationCard({
         <h3 className="text-h2">{title}</h3>
         <Badge variant="neutral">{tag}</Badge>
       </div>
+      {basis && <p className="-mt-1 text-xs text-muted">{basis}</p>}
       <p className="text-body text-foreground">{description}</p>
       <p className="text-sm text-muted">
         <span className="font-medium text-foreground">Why: </span>

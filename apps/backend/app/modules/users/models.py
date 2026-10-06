@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, String, Uuid, func
+from sqlalchemy import BigInteger, Date, DateTime, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -18,6 +18,10 @@ class User(Base):
     # One-time input; not used for any business logic yet. Reserved for
     # future Tax Comparison / Life-stage Recommendation modules.
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Recommendation profile (see app/modules/recommendations/profile.py).
+    employee_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    expected_annual_income: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

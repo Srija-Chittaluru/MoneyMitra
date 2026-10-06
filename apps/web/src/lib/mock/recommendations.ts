@@ -1,7 +1,7 @@
 /**
  * MOCK DATA — illustrative demo content only. Not personalized advice.
- * Tax-saving recommendations are still mock; life-stage ones are real (see
- * the backend recommendations module).
+ * Only the Dashboard's "Recommendations for you" card still uses this; the
+ * Recommendations page itself is backed by the real engine.
  */
 export interface MockTaxSavingRecommendation {
   id: string;
