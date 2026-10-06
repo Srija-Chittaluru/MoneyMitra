@@ -1,8 +1,14 @@
+export type TaxOnboardingStatus = "completed" | "skipped";
+
 export interface User {
   id: string;
   name: string;
   email: string;
   date_of_birth: string | null;
+  /** Masked (XXXXX1234F); the full PAN is never returned by the API. */
+  pan_masked: string | null;
+  /** null until the user has seen the post-signup tax onboarding step. */
+  tax_onboarding_status: TaxOnboardingStatus | null;
   created_at: string;
 }
 
