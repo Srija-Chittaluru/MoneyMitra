@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.tax import chat, explain, service
 from app.modules.tax.rules.registry import get_supported_tax_years
@@ -25,8 +27,11 @@ def list_supported_tax_years(current_user: User = Depends(get_current_user)) -> 
 def compare_tax_regimes(
     payload: TaxComparisonInput,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> TaxComparisonResult:
-    return service.calculate_comparison(payload)
+    result = service.calculate_comparison(payload)
+    service.save_comparison_snapshot(db, current_user, payload)
+    return result
 
 
 @router.post("/explain", response_model=ExplanationResult)
