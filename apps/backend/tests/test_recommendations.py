@@ -6,6 +6,7 @@ import pytest
 
 from app.modules.itr.schemas import ItrDraftData
 from app.modules.recommendations.context import _itr_regime_outcome
+from app.modules.recommendations.money import format_inr
 from app.modules.recommendations.stages import LifeStage, calculate_age, resolve_life_stage
 
 URL = "/api/v1/recommendations"
@@ -281,13 +282,17 @@ def test_regime_outcome_old_regime_cheaper(client):
     assert "matters less" not in recs["tax_80c"]["reason"]
 
 
-def test_itr_filing_after_due_date_falls_back_to_new_regime_estimate(client):
-    # Old regime is closed for late returns, so there is nothing to compare.
+def test_itr_filing_after_due_date_uses_the_computed_return_tax(client):
+    # Old regime is closed for late returns, so there is nothing to compare; the card
+    # shows the tax the return itself computes (the figure the dashboard shows).
     headers = _auth_headers(client, _years_ago(30))
     _save_itr(client, headers, 2_400_000)
     rec = _by_id(_get(client, headers))["tax_regime_choice"]
     assert rec["basis"] == "Based on your ITR filing" and rec["level"] == 2
-    assert "estimated tax under the new regime is ₹" in rec["description"]
+    assert rec["title"] == "Your estimated tax under the new regime"
+
+    dashboard = client.get("/api/v1/dashboard/summary", headers=headers).json()
+    assert format_inr(dashboard["estimated_tax"]["amount"]) in rec["description"]
 
 
 def test_itr_regime_outcome_before_due_date():

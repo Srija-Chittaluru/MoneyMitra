@@ -67,9 +67,22 @@ def regime_choice(facts: Facts) -> list[Recommendation]:
         return [Recommendation(**base, level=2, basis=_declared_basis(facts), title=title,
                                description=description, reason=reason)]
 
-    # No regime comparison available (e.g. the old regime is closed for a late
-    # ITR), so estimate the new-regime tax from the best income figure we have.
     declared = facts.declared
+
+    # No regime comparison (e.g. the old regime is closed for a late ITR). If the
+    # user's return has been computed, use that exact figure so this card agrees
+    # with the dashboard; it counts all their income, not just salary.
+    if declared is not None and declared.selected_tax is not None:
+        selected = declared.selected_tax
+        return [Recommendation(**base, level=2, basis=_declared_basis(facts),
+                               title=f"Your estimated tax under the {selected.regime} regime",
+                               description=f"Your tax comes to about {format_inr(selected.tax)}, including tax on your "
+                               "other income and before any interest or late fee.",
+                               reason="The old regime is no longer open for this return, so only the new regime applies."
+                               if selected.regime == "new"
+                               else "This is the regime your return currently uses.")]
+
+    # Otherwise estimate the new-regime tax from the best income figure we have.
     income = declared.annual_income if declared else facts.expected_income
     year_rules = get_tax_rules(facts.tax_year)
     if income and year_rules is not None:

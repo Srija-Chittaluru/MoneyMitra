@@ -15,6 +15,7 @@ import { DocumentItem } from "@/components/documents/DocumentItem";
 import { UploadDialog } from "@/components/documents/UploadDialog";
 import { ApiError } from "@/lib/api-client";
 import { deleteDocument, listDocuments } from "@/lib/documents/api";
+import { DOCUMENT_DEPENDENT_QUERIES } from "@/lib/documents/queries";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/types";
 import type { DocumentCategory, UploadedDocument } from "@/lib/documents/types";
 
@@ -31,6 +32,10 @@ export default function DocumentsPage() {
     mutationFn: deleteDocument,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      // A deleted document changes the ITR draft's source figures and everything computed from them.
+      queryClient.invalidateQueries({ queryKey: ["itr-filing"] });
+      queryClient.invalidateQueries({ queryKey: ["itr-summary"] });
+      for (const key of DOCUMENT_DEPENDENT_QUERIES) queryClient.invalidateQueries({ queryKey: [key] });
       setPendingDelete(null);
     },
   });

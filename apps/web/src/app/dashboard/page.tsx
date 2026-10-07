@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const income = summary.data ? deriveIncome(summary.data) : null;
   const estimatedTax = summary.data ? deriveEstimatedTax(summary.data) : null;
   const comparison = summary.data ? deriveComparison(summary.data) : null;
+  const oldRegimeClosed = summary.data?.regime_unavailable_reason === "old_regime_closed";
   const documentStatus = documents.data ? deriveDocumentStatus(documents.data) : undefined;
   const activity = deriveActivity(summary.data, documents.data);
   const personalised = deriveDashboardRecommendations(recommendations.data?.recommendations ?? []);
@@ -75,7 +76,7 @@ export default function DashboardPage() {
           label="Estimated tax"
           status={summaryStatus}
           amount={estimatedTax?.amount ?? null}
-          helpText={estimatedTax ? `Under the ${estimatedTax.regime} regime` : undefined}
+          helpText={estimatedTax ? `Under the ${estimatedTax.regime} regime, before any interest or late fee` : undefined}
           emptyValue="Not calculated yet"
           emptyHint={
             flags.hasIncomeData
@@ -90,9 +91,11 @@ export default function DashboardPage() {
           helpText={comparison ? (comparison.savings > 0 ? "By choosing the better regime" : "Both regimes cost the same") : undefined}
           emptyValue="Not calculated yet"
           emptyHint={
-            flags.hasIncomeData
-              ? "Both regimes can't be compared for your latest details yet"
-              : "Complete your tax profile to compare your options"
+            oldRegimeClosed
+              ? "Only the new regime applies to your return"
+              : flags.hasIncomeData
+                ? "Both regimes can't be compared for your latest details yet"
+                : "Complete your tax profile to compare your options"
           }
         />
       </div>
@@ -102,6 +105,7 @@ export default function DashboardPage() {
           status={summaryStatus}
           tax={comparison}
           hasIncome={flags.hasIncomeData}
+          oldRegimeClosed={oldRegimeClosed}
           onRetry={() => void summary.refetch()}
         />
         <DocumentsCard

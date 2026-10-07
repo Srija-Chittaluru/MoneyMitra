@@ -24,11 +24,15 @@ class DashboardSummary(BaseModel):
     uploaded documents fill in) or saved tax comparison, whichever is newer.
     `regime` (the old-vs-new comparison) is null when both regimes can't be
     compared, e.g. a belated return where only the new regime applies;
-    `estimated_tax` is still given then, under the regime that does apply.
+    `estimated_tax` is still given then, under the regime that does apply, and
+    covers tax and cess only, before any interest or late-filing fee.
     """
 
     source: Literal["itr_filing", "tax_comparison"] | None
     annual_income: int | None
     estimated_tax: EstimatedTax | None
     regime: RegimeSummary | None
+    # Why `regime` is null even though income is known: for an ITR filed after
+    # the due date only the new regime is allowed, so there is nothing to compare.
+    regime_unavailable_reason: Literal["old_regime_closed"] | None = None
     updated_at: datetime | None

@@ -40,6 +40,7 @@ function CardGrid({ recs, tag }: { recs: Recommendation[]; tag: string }) {
 export function RecommendationsView() {
   const router = useRouter();
   const [taxYear, setTaxYear] = useState<string | undefined>(undefined);
+  const [justSaved, setJustSaved] = useState(false);
 
   const query = useQuery({
     queryKey: ["recommendations", taxYear],
@@ -47,6 +48,11 @@ export function RecommendationsView() {
     // Keep showing the previous result while a new tax year loads.
     placeholderData: (previous) => previous,
   });
+
+  function handleProfileSaved() {
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 3000);
+  }
 
   function handleNextStep(step: NextStep) {
     if (step.action_href) {
@@ -87,9 +93,12 @@ export function RecommendationsView() {
         // Re-initialise the form when the saved profile changes.
         key={JSON.stringify(data.profile)}
         profile={data.profile}
+        level={data.level}
         taxYear={data.tax_year}
         availableTaxYears={data.available_tax_years}
         onTaxYearChange={setTaxYear}
+        onSaved={handleProfileSaved}
+        justSaved={justSaved}
       />
 
       {data.level === 0 && (

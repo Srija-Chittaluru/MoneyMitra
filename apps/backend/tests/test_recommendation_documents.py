@@ -345,3 +345,20 @@ def test_level_3_needs_a_date_of_birth(client):
     _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
     body = _get(client, headers)
     assert body["level"] == 0 and body["recommendations"] == []
+
+
+def test_tax_figures_agree_across_dashboard_and_recommendations(client):
+    """One estimate of the tax, wherever it is shown: the dashboard card, the
+    regime recommendation, and (with interest and fee added) the TDS card."""
+    headers = _auth_headers(client)
+    _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
+    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")
+
+    tax = client.get("/api/v1/dashboard/summary", headers=headers).json()["estimated_tax"]["amount"]
+    recs = _by_id(_get(client, headers))
+    assert format_inr(tax) in recs["tax_regime_choice"]["description"]
+
+    selected = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["selected"]
+    assert selected["gross_tax_liability"] == tax  # the dashboard shows tax and cess, before interest and fee
+    assert selected["total_tax_and_interest"] >= tax
+    assert format_inr(selected["total_tax_and_interest"]) in recs["doc_tds_vs_tax"]["description"]
