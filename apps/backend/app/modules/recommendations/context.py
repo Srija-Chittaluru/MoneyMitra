@@ -58,6 +58,14 @@ class RegimeOutcome:
 
 
 @dataclass(frozen=True)
+class SelectedRegimeTax:
+    """Tax under the one regime the filing actually uses, for when both can't be compared."""
+
+    regime: str  # "old" | "new"
+    tax: int
+
+
+@dataclass(frozen=True)
 class FinancialContext:
     source: str  # "itr_filing" | "tax_comparison"
     annual_income: int
@@ -82,6 +90,7 @@ class FinancialContext:
     self_cover_includes_senior: bool = False
     parents_are_senior: bool = False
     hra_exemption: int = 0
+    selected_tax: SelectedRegimeTax | None = None
 
 
 def regime_outcome_from_summary(summary: ItrSummary) -> RegimeOutcome | None:
@@ -107,6 +116,14 @@ def _hra_exemption(filing: ItrFiling, draft: ItrDraftData, today: date) -> int:
         return 0
     hra = computation.compute(draft, "old", rules, today).hra
     return hra.exemption if hra else 0
+
+
+def _itr_selected_tax(filing: ItrFiling, draft: ItrDraftData, today: date) -> SelectedRegimeTax | None:
+    rules = get_itr_rules(filing.assessment_year)
+    if rules is None:
+        return None
+    selected = itr_service.build_summary(draft, rules, today).selected
+    return SelectedRegimeTax(regime=selected.regime, tax=selected.gross_tax_liability)
 
 
 def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
@@ -147,6 +164,7 @@ def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, Fi
         self_cover_includes_senior=draft.deductions.health_self.includes_senior_citizen,
         parents_are_senior=draft.deductions.health_parents.includes_senior_citizen,
         hra_exemption=_hra_exemption(filing, draft, today),
+        selected_tax=_itr_selected_tax(filing, draft, today),
     )
 
 
@@ -195,8 +213,14 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
     )
 
 
-def load_financial_context(db: Session, user: User, today: date) -> FinancialContext | None:
+def load_latest_financial_context(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
+    """The most recently updated usable source, with when it was last updated."""
     candidates = [c for c in (_from_itr_filing(db, user, today), _from_tax_comparison(db, user)) if c is not None]
     if not candidates:
         return None
-    return max(candidates, key=lambda candidate: candidate[0])[1]
+    return max(candidates, key=lambda candidate: candidate[0])
+
+
+def load_financial_context(db: Session, user: User, today: date) -> FinancialContext | None:
+    latest = load_latest_financial_context(db, user, today)
+    return latest[1] if latest else None
