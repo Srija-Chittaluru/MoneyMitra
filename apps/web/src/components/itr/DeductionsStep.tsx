@@ -1,5 +1,6 @@
 import type { Deductions, HealthInsurance, ItrDraftData } from "@/lib/itr/types";
-import { AmountInput, GRID, ListSection, Notice, SectionCard, SwitchField, TextInput } from "./fields";
+import { HeartPulse, Landmark, PiggyBank } from "lucide-react";
+import { AmountInput, GRID, ListSection, Notice, SectionCard, SwitchField, TextInput, useSectionMode } from "./fields";
 import { empty80CItem, emptyHealthPolicy } from "./options";
 
 function HealthBucket({
@@ -76,37 +77,29 @@ export function DeductionsStep({
   onChange: (draft: ItrDraftData) => void;
 }) {
   const deductions = draft.deductions;
+  const { onlyIssues } = useSectionMode();
   const set = (patch: Partial<Deductions>) => onChange({ ...draft, deductions: { ...deductions, ...patch } });
-
-  if (draft.regime === "new") {
-    return (
-      <SectionCard title="Deductions" description="You've chosen the new tax regime.">
-        <Notice>
-          The new regime doesn&apos;t allow most Chapter VI-A deductions (80C, 80D, 80CCD(1B) and so on). The only
-          one you can claim here is your employer&apos;s contribution to NPS under 80CCD(2). Switch to the old
-          regime in step 5 to claim the others.
-        </Notice>
-        <div className={GRID}>
-          <AmountInput
-            label="Employer NPS contribution – 80CCD(2)"
-            value={deductions.section_80ccd_2}
-            onChange={(v) => set({ section_80ccd_2: v })}
-          />
-          {deductions.section_80ccd_2 > 0 && (
-            <TextInput label="PRAN" required value={deductions.pran} onChange={(v) => set({ pran: v })} />
-          )}
-        </div>
-      </SectionCard>
-    );
-  }
 
   const claimsNps = deductions.section_80ccd_1b > 0 || deductions.section_80ccd_2 > 0;
 
   return (
     <div className="flex flex-col gap-6">
-      <Notice>80TTA / 80TTB on interest income are calculated automatically from step 2.</Notice>
+      {!onlyIssues && (
+        <Notice title="Save tax with deductions">
+          These deductions reduce your tax under the <span className="font-medium">old regime</span> only. Enter
+          what applies — Tax Summary compares both regimes for you. 80TTA / 80TTB on interest income are
+          calculated automatically.
+        </Notice>
+      )}
 
-      <SectionCard title="Section 80C" description="PF, PPF, ELSS, life insurance, tuition fees, home loan principal… (limit ₹1,50,000).">
+      <SectionCard
+        title="Section 80C"
+        icon={PiggyBank}
+        prefixes={["deductions.section_80c"]}
+        filled={deductions.section_80c.length > 0}
+        description="PF, PPF, ELSS, life insurance, tuition fees, home-loan principal… (limit ₹1,50,000)."
+        defaultOpen
+      >
         <ListSection
           title="Investments and payments"
           itemLabel="Item"
@@ -129,7 +122,13 @@ export function DeductionsStep({
         />
       </SectionCard>
 
-      <SectionCard title="NPS">
+      <SectionCard
+        title="NPS – Section 80CCD"
+        icon={Landmark}
+        prefixes={["deductions.section_80ccd_1b", "deductions.section_80ccd_2", "deductions.pran"]}
+        filled={deductions.section_80ccd_1b > 0 || deductions.section_80ccd_2 > 0}
+        description="Your own NPS contribution (extra ₹50,000) and your employer's contribution. Employer NPS also counts under the new regime."
+      >
         <div className={GRID}>
           <AmountInput
             label="Own contribution – 80CCD(1B)"
@@ -151,7 +150,13 @@ export function DeductionsStep({
         </div>
       </SectionCard>
 
-      <SectionCard title="Section 80D – Health insurance">
+      <SectionCard
+        title="Section 80D – Health Insurance"
+        icon={HeartPulse}
+        prefixes={["deductions.health_self", "deductions.health_parents"]}
+        filled={deductions.health_self.claiming || deductions.health_parents.claiming}
+        description="Medical insurance premiums and preventive health check-ups for you, your family and parents."
+      >
         <HealthBucket
           title="Self, spouse and children"
           description="Limit ₹25,000 (₹50,000 if anyone is a senior citizen)"

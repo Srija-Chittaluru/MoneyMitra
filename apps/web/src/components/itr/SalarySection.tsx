@@ -1,3 +1,4 @@
+import { Briefcase } from "lucide-react";
 import type { HraInputs, Regime, SalaryInfo } from "@/lib/itr/types";
 import { AmountInput, GRID, ListSection, Notice, SectionCard, SwitchField, TextInput } from "./fields";
 import { emptyEmployer } from "./options";
@@ -16,7 +17,14 @@ export function SalarySection({
   const isOld = regime === "old";
 
   return (
-    <SectionCard title="Salary" description="Enter the figures from Part B of your Form 16.">
+    <SectionCard
+      title="Salary"
+      icon={Briefcase}
+      prefixes={["salary"]}
+      filled={salary.salary_17_1 > 0 || salary.employers.length > 0}
+      description="Salary, allowances and employer TDS — from Form 16 Part A and Part B."
+      defaultOpen
+    >
       <div className={GRID}>
         <AmountInput label="Salary u/s 17(1)" path="salary.salary_17_1" value={salary.salary_17_1} onChange={(v) => set({ salary_17_1: v })} />
         <AmountInput

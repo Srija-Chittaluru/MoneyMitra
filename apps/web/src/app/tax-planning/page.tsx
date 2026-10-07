@@ -54,7 +54,7 @@ export default function TaxPlanningPage() {
   return (
     <AppShell title="Tax Planning">
       <p className="mb-6 text-sm text-muted">
-        Where you stand on tax-saving investments for this financial year — while there's still time
+        Where you stand on tax-saving investments for this financial year — while there&apos;s still time
         to act on it, not just at filing time.
       </p>
 

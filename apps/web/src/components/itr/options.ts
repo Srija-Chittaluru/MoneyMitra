@@ -11,12 +11,10 @@ import type {
 } from "@/lib/itr/types";
 
 export const STEPS = [
-  { id: 1, label: "Personal info" },
-  { id: 2, label: "Income" },
-  { id: 3, label: "Deductions" },
-  { id: 4, label: "Taxes paid" },
-  { id: 5, label: "Regime & bank" },
-  { id: 6, label: "Review & download" },
+  { id: 1, label: "Personal Info" },
+  { id: 2, label: "Income Sources" },
+  { id: 3, label: "Tax Saving" },
+  { id: 4, label: "Tax Summary" },
 ] as const;
 
 export const LAST_STEP = STEPS.length;
@@ -24,17 +22,18 @@ export const LAST_STEP = STEPS.length;
 const FIELD_STEPS: Record<string, number> = {
   personal: 1,
   eligibility: 1,
+  bank_accounts: 1,
   salary: 2,
   house_properties: 2,
   other_income: 2,
   deductions: 3,
+  regime: 4,
   taxes_paid: 4,
-  regime: 5,
-  bank_accounts: 5,
-  verification_place: 5,
+  verification_place: 4,
 };
 
 export function stepForField(field: string | null): number | null {
+  if (field === "eligibility.has_capital_gains") return 2;
   const prefix = field?.match(/^[a-z0-9_]+/)?.[0];
   return prefix ? (FIELD_STEPS[prefix] ?? null) : null;
 }

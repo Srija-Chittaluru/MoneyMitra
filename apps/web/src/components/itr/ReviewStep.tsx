@@ -152,6 +152,7 @@ export function ReviewStep({
   error,
   onRetry,
   onJump,
+  onFix,
   saving,
 }: {
   ay: string;
@@ -160,6 +161,7 @@ export function ReviewStep({
   error: Error | null;
   onRetry: () => void;
   onJump: (step: number) => void;
+  onFix: () => void;
   saving: boolean;
 }) {
   const exportMutation = useMutation<ItrExport, ApiError, void>({
@@ -246,17 +248,20 @@ export function ReviewStep({
         />
       )}
       {summary.missing_fields.length > 0 && (
-        <IssueList
-          title="Details to complete"
-          description="Fill these in to enable the download. Fields marked * on each step are required."
-          issues={summary.missing_fields}
-          variant="warning"
-          onJump={onJump}
-        />
+        <Notice variant="warning" title={`${summary.missing_fields.length} detail${summary.missing_fields.length === 1 ? " is" : "s are"} missing`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>Take a minute to complete them — the download is enabled once everything required is filled.</p>
+            <Button variant="primary" size="sm" className="shrink-0" onClick={onFix}>
+              Fix and continue
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Notice>
       )}
       {summary.warnings.length > 0 && (
         <IssueList
-          title="Please double-check"
+          title="Smart checks"
+          description="Things worth double-checking before you file."
           issues={summary.warnings.map((message) => ({ field: null, message }))}
           variant="warning"
         />

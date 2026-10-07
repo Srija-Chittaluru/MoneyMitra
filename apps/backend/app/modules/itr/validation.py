@@ -234,6 +234,20 @@ def missing_fields(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRule
 def warnings(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules) -> list[str]:
     result = list(comp.notes)
     s = comp.summary
+    p = draft.personal
+    if s.gross_total_income == 0:
+        result.append(
+            "The total income in this return is zero. Check that you have entered your salary and interest income."
+        )
+    if p.pan and PAN_RE.match(p.pan.strip()) and p.last_name and p.last_name.strip():
+        # For individuals, the 5th character of the PAN is the first letter of the surname.
+        if p.pan.strip()[4] != p.last_name.strip()[0].upper():
+            result.append(
+                f"Your last name '{p.last_name.strip()}' doesn't match your PAN — its 5th character "
+                f"('{p.pan.strip()[4]}') should be the first letter of your last name. Enter your name exactly as on PAN."
+            )
+    if s.gross_salary > 0 and not draft.salary.employers:
+        result.append("You've entered salary but no employer. Add your employer's name, TAN and TDS from Form 16.")
     if s.balance_payable > 0:
         result.append(
             "You have tax payable. Pay it as self-assessment tax (Challan 280) before uploading, "
