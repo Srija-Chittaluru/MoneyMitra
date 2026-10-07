@@ -1,3 +1,4 @@
+import { Receipt, Wallet } from "lucide-react";
 import type { ItrDraftData, TaxesPaid } from "@/lib/itr/types";
 import { AmountInput, GRID, ListSection, SectionCard, SelectField, TextInput } from "./fields";
 import { TDS_SECTIONS, emptyChallan, emptyTcs, emptyTdsOther } from "./options";
@@ -13,8 +14,11 @@ export function TaxesPaidStep({
   const set = (patch: Partial<TaxesPaid>) => onChange({ ...draft, taxes_paid: { ...taxes, ...patch } });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <SectionCard
+        icon={Receipt}
+        prefixes={["taxes_paid.tds_other"]}
+        filled={taxes.tds_other.length > 0}
         title="TDS other than salary"
         description="Tax deducted by banks, tenants and others. Salary TDS goes with your employer in step 2."
       >
@@ -51,7 +55,12 @@ export function TaxesPaidStep({
         />
       </SectionCard>
 
-      <SectionCard title="TCS (tax collected at source)">
+      <SectionCard
+        title="TCS (tax collected at source)"
+        icon={Receipt}
+        prefixes={["taxes_paid.tcs"]}
+        filled={taxes.tcs.length > 0}
+      >
         <ListSection
           title="TCS entries"
           hint="From Form 26AS / Form 27D"
@@ -84,7 +93,13 @@ export function TaxesPaidStep({
         />
       </SectionCard>
 
-      <SectionCard title="Advance & self-assessment tax">
+      <SectionCard
+        title="Advance & self-assessment tax"
+        icon={Wallet}
+        prefixes={["taxes_paid.challans"]}
+        filled={taxes.challans.length > 0}
+        description="Tax you paid yourself through challans (Challan 280)."
+      >
         <ListSection
           title="Challans"
           hint="Advance tax (paid by 31 Mar 2026) and self-assessment tax (paid after) are detected from the date"

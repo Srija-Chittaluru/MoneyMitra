@@ -367,3 +367,19 @@ def test_pdf_available_for_incomplete_draft(client, as_of_belated):
     response = client.get(f"/api/v1/itr/filings/{AY}/export/pdf", headers=headers)
     assert response.status_code == 200
     assert "ITR1_AY2026-27_DRAFT.pdf" in response.headers["content-disposition"]
+
+
+def test_smart_checks(client, as_of_belated):
+    headers = _auth_headers(client)
+    draft = _complete_draft()
+    draft["personal"]["last_name"] = "Sharma"  # PAN ABCDE1234F has 'E' as its 5th character
+    client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
+    warnings = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["warnings"]
+    assert any("doesn't match your PAN" in w for w in warnings)
+
+    empty = _complete_draft()
+    empty["salary"] = {"employers": []}
+    empty["other_income"] = {}
+    client.put(f"/api/v1/itr/filings/{AY}", json=empty, headers=headers)
+    warnings = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["warnings"]
+    assert any("total income in this return is zero" in w for w in warnings)
