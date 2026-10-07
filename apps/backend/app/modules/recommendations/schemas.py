@@ -39,6 +39,25 @@ class NextStep(BaseModel):
     action_href: str | None
 
 
+class AnalysedDocumentOut(BaseModel):
+    category: str
+    label: str
+    file_name: str
+
+
+class SkippedDocumentOut(BaseModel):
+    category: str
+    file_name: str
+    reason: str
+
+
+class DocumentsOut(BaseModel):
+    """Which uploaded documents the advice is based on, and why others weren't used."""
+
+    analysed: list[AnalysedDocumentOut]
+    skipped: list[SkippedDocumentOut]
+
+
 class RecommendationsOut(BaseModel):
     level: int
     level_label: str
@@ -50,4 +69,5 @@ class RecommendationsOut(BaseModel):
     stage_label: str | None
     context_source: Literal["itr_filing", "tax_comparison"] | None
     next_step: NextStep | None
+    documents: DocumentsOut
     recommendations: list[Recommendation]

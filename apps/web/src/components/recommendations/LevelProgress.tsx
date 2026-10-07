@@ -47,6 +47,12 @@ export function LevelProgress({ level, nextStep, onNextStep }: LevelProgressProp
         })}
       </ol>
 
+      {level === 3 && (
+        <p className="mt-5 border-t border-border pt-4 text-sm text-muted">
+          You&apos;re on the highest level: your recommendations are based on your own documents.
+        </p>
+      )}
+
       {nextStep && (
         <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

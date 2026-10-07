@@ -6,6 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.modules.recommendations.context import FinancialContext, load_financial_context
+from app.modules.recommendations.document_analysis import DocumentAnalysis, load_document_analysis
 from app.modules.recommendations.levels import Level
 from app.modules.recommendations.profile import EmployeeCategory
 from app.modules.recommendations.stages import LifeStage, calculate_age, resolve_life_stage
@@ -23,14 +24,18 @@ class Facts:
     employee_category: EmployeeCategory | None
     expected_income: int | None
     declared: FinancialContext | None
+    documents: DocumentAnalysis
 
 
 def build_facts(db: Session, user: User, tax_year: str, today: date) -> Facts:
     age = calculate_age(user.date_of_birth, today) if user.date_of_birth else None
     declared = load_financial_context(db, user, today)
+    documents = load_document_analysis(db, user, today)
 
     if age is None:
         level = Level.NONE
+    elif documents.usable:
+        level = Level.DOCUMENTS
     elif declared is None:
         level = Level.PROFILE
     else:
@@ -46,4 +51,5 @@ def build_facts(db: Session, user: User, tax_year: str, today: date) -> Facts:
         employee_category=EmployeeCategory(user.employee_category) if user.employee_category else None,
         expected_income=user.expected_annual_income,
         declared=declared,
+        documents=documents,
     )

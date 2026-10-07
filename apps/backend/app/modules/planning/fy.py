@@ -28,3 +28,9 @@ def months_remaining(today: date, fy_end: date) -> int:
     usable. Minimum 1 (there's always at least "right now")."""
     months = (fy_end.year - today.year) * 12 + (fy_end.month - today.month) + 1
     return max(1, months)
+
+
+def financial_year_of_assessment_year(assessment_year: str) -> str:
+    """Income is assessed the year after it is earned: AY "2026-27" is FY "2025-26"."""
+    start_year = int(assessment_year.split("-")[0]) - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"

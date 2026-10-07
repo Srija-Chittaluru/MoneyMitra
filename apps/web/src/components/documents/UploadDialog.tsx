@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { ApiError } from "@/lib/api-client";
 import { uploadDocument } from "@/lib/documents/api";
+import { DOCUMENT_DEPENDENT_QUERIES } from "@/lib/documents/queries";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/types";
 import type { DocumentCategory, UploadedDocument } from "@/lib/documents/types";
 
@@ -34,6 +35,8 @@ export function UploadDialog({ open, initialCategory, onClose }: UploadDialogPro
       // Uploads can auto-fill the ITR draft.
       queryClient.invalidateQueries({ queryKey: ["itr-filing"] });
       queryClient.invalidateQueries({ queryKey: ["itr-summary"] });
+      // ...and everything computed from them: the dashboard, recommendations and tax plan.
+      for (const key of DOCUMENT_DEPENDENT_QUERIES) queryClient.invalidateQueries({ queryKey: [key] });
       onClose();
     },
   });

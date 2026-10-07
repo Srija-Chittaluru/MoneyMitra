@@ -7,7 +7,7 @@ from app.modules.recommendations import engine
 from app.modules.recommendations.facts import build_facts
 from app.modules.recommendations.levels import LEVEL_LABELS
 from app.modules.recommendations.profile import profile_of
-from app.modules.recommendations.schemas import RecommendationsOut
+from app.modules.recommendations.schemas import AnalysedDocumentOut, DocumentsOut, RecommendationsOut, SkippedDocumentOut
 from app.modules.recommendations.stages import STAGE_LABELS
 from app.modules.tax.rules.registry import get_supported_tax_years
 from app.modules.users.models import User
@@ -36,5 +36,9 @@ def get_recommendations(
         stage_label=STAGE_LABELS[facts.stage] if facts.stage else None,
         context_source=facts.declared.source if facts.declared else None,
         next_step=engine.next_step(facts),
+        documents=DocumentsOut(
+            analysed=[AnalysedDocumentOut(**vars(doc)) for doc in facts.documents.analysed],
+            skipped=[SkippedDocumentOut(**vars(doc)) for doc in facts.documents.skipped],
+        ),
         recommendations=engine.run(facts),
     )
