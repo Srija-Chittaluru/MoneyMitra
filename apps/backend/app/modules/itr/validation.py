@@ -22,6 +22,7 @@ IFSC_RE = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
 TAN_RE = re.compile(r"^[A-Z]{4}[0-9]{5}[A-Z]$")
 BSR_RE = re.compile(r"^[0-9]{3}[0-9A-Z]{4}$")
 PRAN_RE = re.compile(r"^[0-9]{12}$")
+ISIN_RE = re.compile(r"^IN[0-9A-Z]{10}$")
 ACCOUNT_RE = re.compile(r"^[a-zA-Z0-9/-]*[1-9][a-zA-Z0-9/-]*$")
 STATE_CODES = {f"{n:02d}" for n in range(1, 38)}
 
@@ -43,7 +44,11 @@ def old_regime_allowed(filing_date: date, rules: ItrYearRules) -> bool:
     return filing_date <= rules.due_date
 
 
-def eligibility_issues(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules) -> list[Issue]:
+def eligibility_issues(
+    draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules, form_checked: bool = False
+) -> list[Issue]:
+    """With `form_checked`, the which-form checks (answers, income limit) are
+    left to the form selector, which reports them as one issue naming the form."""
     issues: list[Issue] = []
     e = draft.eligibility
 
@@ -55,11 +60,12 @@ def eligibility_issues(draft: ItrDraftData, comp: ItrComputation, rules: ItrYear
                 f"({rules.belated_deadline:%d %b %Y}) has passed. An updated return (ITR-U) is needed instead.",
             )
         )
-    if e.is_resident is False:
-        issues.append(Issue(field="eligibility.is_resident", message="ITR-1 is only for residents. Use ITR-2."))
-    for key, message in _ELIGIBILITY_QUESTIONS.items():
-        if getattr(e, key):
-            issues.append(Issue(field=f"eligibility.{key}", message=message))
+    if not form_checked:
+        if e.is_resident is False:
+            issues.append(Issue(field="eligibility.is_resident", message="ITR-1 is only for residents. Use ITR-2."))
+        for key, message in _ELIGIBILITY_QUESTIONS.items():
+            if getattr(e, key):
+                issues.append(Issue(field=f"eligibility.{key}", message=message))
 
     if draft.regime == "old" and not old_regime_allowed(comp.filing_date, rules):
         issues.append(
@@ -70,7 +76,7 @@ def eligibility_issues(draft: ItrDraftData, comp: ItrComputation, rules: ItrYear
             )
         )
 
-    if comp.summary.total_income > rules.itr1_total_income_limit:
+    if not form_checked and comp.summary.total_income > rules.itr1_total_income_limit:
         issues.append(
             Issue(field=None, message="Total income is above Rs 50 lakh, so ITR-1 cannot be used. Use ITR-2.")
         )
@@ -91,7 +97,9 @@ def _require(issues: list[Issue], value: str | None, field: str, label: str, pat
         issues.append(Issue(field=field, message=f"{label} is not in a valid format."))
 
 
-def missing_fields(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules) -> list[Issue]:
+def missing_fields(
+    draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules, form: str = "ITR-1"
+) -> list[Issue]:
     issues: list[Issue] = []
     p = draft.personal
     a = p.address
@@ -228,6 +236,33 @@ def missing_fields(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRule
         issues.append(Issue(field="bank_accounts", message="Select exactly one bank account for the refund."))
 
     _require(issues, draft.verification_place, "verification_place", "Place (for verification)")
+
+    if form in ("ITR-2", "ITR-3"):
+        if p.pan and PAN_RE.match(p.pan.strip()) and p.pan.strip()[3] != "P":
+            issues.append(Issue(
+                field="personal.pan",
+                message="This PAN isn't an individual's — the 4th character of an individual's PAN is 'P'.",
+            ))
+        if comp.summary.gross_salary > 0 and draft.salary.employers:
+            emp = draft.salary.employers[0]
+            _require(issues, emp.address, "salary.employers.0.address", "Employer address")
+            _require(issues, emp.city, "salary.employers.0.city", "Employer city")
+            if emp.state_code not in STATE_CODES:
+                issues.append(Issue(field="salary.employers.0.state_code", message="Employer state is required."))
+        for i, txn in enumerate(draft.capital_gains):
+            label = f"Capital gain {i + 1}"
+            _require(issues, txn.name, f"capital_gains.{i}.name", f"{label} name of share / fund")
+            if txn.sale_date is None:
+                issues.append(Issue(field=f"capital_gains.{i}.sale_date", message=f"{label}: sale date is required."))
+            elif not (rules.fy_start <= txn.sale_date <= rules.fy_end):
+                issues.append(Issue(
+                    field=f"capital_gains.{i}.sale_date",
+                    message=f"{label}: sale date must be within FY {rules.financial_year}.",
+                ))
+            if txn.asset_type != "debt_mf" and txn.term == "long":
+                _require(issues, txn.isin, f"capital_gains.{i}.isin", f"{label} ISIN", ISIN_RE)
+            if txn.sale_value <= 0:
+                issues.append(Issue(field=f"capital_gains.{i}.sale_value", message=f"{label}: enter the sale value."))
     return issues
 
 

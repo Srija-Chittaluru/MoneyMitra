@@ -73,6 +73,11 @@ class EligibilityDraft(_Draft):
 class EmployerDraft(_Draft):
     name: str | None = Field(default=None, max_length=125)
     tan: str | None = None
+    # Employer address — required in ITR-2 / ITR-3 Schedule S.
+    address: str | None = Field(default=None, max_length=50)
+    city: str | None = Field(default=None, max_length=50)
+    state_code: str | None = None
+    pin_code: str | None = None
     income_chargeable: Amount = Field(default=0, ge=0)
     tds: Amount = Field(default=0, ge=0)
 
@@ -231,6 +236,46 @@ class BankAccountDraft(_Draft):
     use_for_refund: bool = False
 
 
+# ---------------------------------------------------------------------------
+# Capital gains and trading (ITR-2 / ITR-3)
+# ---------------------------------------------------------------------------
+
+
+class CapitalGainTxn(_Draft):
+    """One sale of shares or mutual fund units.
+
+    equity_share / equity_mf: STT-paid listed equity — short term u/s 111A
+    (20%) or long term u/s 112A (12.5% above Rs 1.25 lakh).
+    debt_mf: specified mutual fund u/s 50AA — always short term, slab rate."""
+
+    asset_type: Literal["equity_share", "equity_mf", "debt_mf"] = "equity_share"
+    term: Literal["short", "long"] = "short"
+    name: str | None = Field(default=None, max_length=125)
+    isin: str | None = None
+    quantity: float = Field(default=0, ge=0)
+    purchase_date: date | None = None
+    sale_date: date | None = None
+    sale_value: Amount = Field(default=0, ge=0)
+    cost: Amount = Field(default=0, ge=0)
+    expenses: Amount = Field(default=0, ge=0)
+    # Grandfathering for long-term equity bought on or before 31 Jan 2018.
+    acquired_before_feb_2018: bool = False
+    fmv_31_jan_2018: Amount = Field(default=0, ge=0)
+
+
+class TradingDraft(_Draft):
+    """Share trading reported as business income (ITR-3, no books of account).
+
+    Intraday trades are speculative business; F&O is non-speculative business.
+    Profit can be negative (a loss)."""
+
+    speculative_turnover: Amount = Field(default=0, ge=0)
+    speculative_profit: int = 0
+    fno_turnover: Amount = Field(default=0, ge=0)
+    fno_profit: int = 0
+    fno_expenses: Amount = Field(default=0, ge=0)
+
+
 class ItrDraftData(_Draft):
     regime: Literal["new", "old"] = "new"
     personal: PersonalDraft = Field(default_factory=PersonalDraft)
@@ -240,6 +285,8 @@ class ItrDraftData(_Draft):
     other_income: OtherIncomeDraft = Field(default_factory=OtherIncomeDraft)
     deductions: DeductionsDraft = Field(default_factory=DeductionsDraft)
     taxes_paid: TaxesPaidDraft = Field(default_factory=TaxesPaidDraft)
+    capital_gains: list[CapitalGainTxn] = Field(default_factory=list, max_length=500)
+    trading: TradingDraft = Field(default_factory=TradingDraft)
     bank_accounts: list[BankAccountDraft] = Field(default_factory=list, max_length=5)
     verification_place: str | None = Field(default=None, max_length=50)
 
@@ -285,11 +332,23 @@ class RegimeComputation(BaseModel):
     income_from_house_property: int
     income_from_other_sources: int
     family_pension_deduction: int
+    # Capital gains after set-off of capital losses within the head.
+    stcg_111a: int = 0
+    stcg_slab: int = 0  # debt funds u/s 50AA and other short-term gains at slab rates
+    ltcg_112a: int = 0
+    income_from_capital_gains: int = 0
+    # Business income (ITR-3): intraday (speculative) and F&O (non-speculative).
+    speculative_income: int = 0
+    business_income: int = 0
+    income_from_business: int = 0
+    losses_carried_forward: dict[str, int] = {}
     gross_total_income: int
     chapter_via_deductions: int
     deduction_breakup: dict[str, int]
     total_income: int
     tax_on_total_income: int
+    tax_at_normal_rates: int = 0
+    tax_at_special_rates: int = 0
     rebate_87a: int
     tax_after_rebate: int
     surcharge: int
@@ -309,6 +368,29 @@ class RegimeComputation(BaseModel):
     balance_payable: int
 
 
+class FormReason(BaseModel):
+    form: Literal["ITR-1", "ITR-2", "ITR-3"]
+    reason: str
+    source: str  # "AIS", "Your answer", "Calculated", ...
+
+
+class DocumentCheck(BaseModel):
+    category: str  # Documents category to upload it under
+    title: str
+    why: str
+    required: bool
+    uploaded: bool
+
+
+class FormRecommendation(BaseModel):
+    form: Literal["ITR-1", "ITR-2", "ITR-3"]
+    supported: bool  # whether MoneyMitra can prepare this form today
+    blockers: list[str] = []  # why it can't, when not supported
+    reasons: list[FormReason]
+    other_reasons: list[FormReason]  # triggers for simpler forms, for context
+    checklist: list[DocumentCheck]
+
+
 class ItrSummary(BaseModel):
     assessment_year: str
     filing_date: date
@@ -321,8 +403,10 @@ class ItrSummary(BaseModel):
     missing_fields: list[Issue]
     warnings: list[str]
     can_export: bool
+    recommended_form: FormRecommendation | None = None
 
 
 class ItrExport(BaseModel):
     file_name: str
+    form: str = "ITR-1"
     itr: dict

@@ -68,7 +68,9 @@ def get_summary(
 ) -> ItrSummary:
     rules = service.get_rules_or_404(assessment_year)
     filing = service.get_or_create_filing(db, current_user, rules)
-    return service.build_summary(ItrDraftData.model_validate(filing.data), rules, as_of)
+    return service.build_summary(
+        ItrDraftData.model_validate(filing.data), rules, as_of, service.document_facts(db, current_user)
+    )
 
 
 @router.post("/filings/{assessment_year}/export", response_model=ItrExport)
@@ -80,7 +82,7 @@ def export_filing(
 ) -> ItrExport:
     rules = service.get_rules_or_404(assessment_year)
     filing = service.get_or_create_filing(db, current_user, rules)
-    return service.export_filing(db, filing, rules, as_of)
+    return service.export_filing(db, filing, rules, as_of, service.document_facts(db, current_user))
 
 
 @router.post("/filings/{assessment_year}/reread-documents", response_model=ItrFilingOut)
@@ -105,10 +107,11 @@ def export_pdf(
     rules = service.get_rules_or_404(assessment_year)
     filing = service.get_or_create_filing(db, current_user, rules)
     draft = ItrDraftData.model_validate(filing.data)
-    summary = service.build_summary(draft, rules, as_of)
+    summary = service.build_summary(draft, rules, as_of, service.document_facts(db, current_user))
     pan = (draft.personal.pan or "DRAFT").strip().upper()
+    form = (summary.recommended_form.form if summary.recommended_form else "ITR-1").replace("-", "")
     return Response(
         pdf.build_itr_pdf(draft, summary, rules),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="ITR1_AY{rules.assessment_year}_{pan}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{form}_AY{rules.assessment_year}_{pan}.pdf"'},
     )

@@ -73,6 +73,14 @@ class ItrYearRules:
     fee_234f_large: Decimal
     fee_234f_small_income_limit: Decimal
 
+    # Capital gains (Finance (No. 2) Act 2024 rates, transfers on/after 23 Jul 2024)
+    stcg_111a_rate: Decimal = Decimal("0.20")
+    ltcg_112a_rate: Decimal = Decimal("0.125")
+    ltcg_112a_exemption: Decimal = Decimal("125000")
+    special_rate_surcharge_cap: Decimal = Decimal("0.15")
+    # ITR-3 (business, no tax audit) is due later than ITR-1/ITR-2.
+    due_date_business: date | None = None
+
     @property
     def tax_rules(self) -> TaxYearRules:
         rules = get_tax_rules(self.financial_year)
@@ -117,6 +125,7 @@ AY_2026_27 = ItrYearRules(
     fee_234f_small=_D("1000"),
     fee_234f_large=_D("5000"),
     fee_234f_small_income_limit=_D("500000"),
+    due_date_business=date(2026, 8, 31),
 )
 
 ITR_RULES_REGISTRY: dict[str, ItrYearRules] = {

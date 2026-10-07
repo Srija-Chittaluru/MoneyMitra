@@ -13,7 +13,27 @@ tag is dropped (see `prune_sources`).
 from app.modules.extraction.parsers import Extraction
 from app.modules.itr.schemas import ItrDraftData
 
-SOURCE_LABELS = {"pan": "PAN card", "form16": "Form 16", "ais": "AIS", "payslips": "payslip"}
+SOURCE_LABELS = {
+    "pan": "PAN card",
+    "form16": "Form 16",
+    "ais": "AIS",
+    "payslips": "payslip",
+    "form26as": "Form 26AS",
+    "capital_gains": "broker statement",
+}
+
+# When two documents disagree, a more authoritative one may replace a value
+# another document auto-filled (never a value the user typed or edited):
+# the broker's tax P&L is net of charges, while the AIS only has gross figures.
+SOURCE_PRIORITY = {"your account": 0, "AIS": 1, "payslip": 1, "Form 16": 2, "Form 26AS": 2, "PAN card": 3,
+                   "broker statement": 3}
+
+
+def _can_replace(path: str, current, sources: dict, label: str) -> bool:
+    meta = sources.get(path)
+    if meta is None or current != meta.get("value"):
+        return False  # typed or edited by the user
+    return SOURCE_PRIORITY.get(label, 0) > SOURCE_PRIORITY.get(meta.get("label"), 0)
 
 _LIST_LIMITS = {
     "salary.employers": 10,
@@ -22,6 +42,7 @@ _LIST_LIMITS = {
     "deductions.section_80c": 20,
     "deductions.health_self.policies": 10,
     "deductions.health_parents.policies": 10,
+    "capital_gains": 500,
 }
 _ROW_NAME_KEYS = ("name", "deductor_name", "collector_name", "insurer", "description")
 
@@ -64,7 +85,14 @@ def _row_name(row: dict) -> str:
 def _match_row(list_path: str, items: list[dict], row: dict) -> int | None:
     """Same TAN, or — when either side has no TAN yet — the same name. A
     single existing employer is assumed to be the same employer when one
-    side has no TAN (e.g. a payslip after an AIS row)."""
+    side has no TAN (e.g. a payslip after an AIS row). A capital-gains sale
+    is the same only with the same ISIN, sale date and sale value."""
+    if list_path == "capital_gains":
+        key = (row.get("isin"), row.get("sale_date"), row.get("sale_value"))
+        return next(
+            (i for i, item in enumerate(items) if (item.get("isin"), item.get("sale_date"), item.get("sale_value")) == key),
+            None,
+        )
     if row.get("tan"):
         for i, item in enumerate(items):
             if item.get("tan") == row["tan"]:
@@ -89,7 +117,8 @@ def apply_extraction(
     filled: list[str] = []
 
     for path, value in extraction.fields.items():
-        if _is_empty(_get(data, path)):
+        current = _get(data, path)
+        if _is_empty(current) or (current != value and _can_replace(path, current, sources, label)):
             _set(data, path, value)
             filled.append(path)
 
@@ -105,9 +134,11 @@ def apply_extraction(
                 items.append({})
                 match = len(items) - 1
             for key, value in row.items():
-                if _is_empty(items[match].get(key)):
+                current = items[match].get(key)
+                path = f"{list_path}.{match}.{key}"
+                if _is_empty(current) or (current != value and _can_replace(path, current, sources, label)):
                     items[match][key] = value
-                    filled.append(f"{list_path}.{match}.{key}")
+                    filled.append(path)
 
     updated = ItrDraftData.model_validate(data)
     # Re-read through the model so recorded values match what is stored (e.g. date normalisation).
