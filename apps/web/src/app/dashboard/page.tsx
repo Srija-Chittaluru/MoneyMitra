@@ -1,133 +1,132 @@
 "use client";
 
-import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
-import { DemoBanner } from "@/components/ui/DemoBanner";
-import { StatTile } from "@/components/ui/StatTile";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { TransactionRow } from "@/components/ui/TransactionRow";
-import { formatINR } from "@/lib/format";
-import { useAuth } from "@/lib/auth/AuthContext";
+import { ActivityCard } from "@/components/dashboard/ActivityCard";
+import { DocumentsCard } from "@/components/dashboard/DocumentsCard";
+import { RecommendationsCard } from "@/components/dashboard/RecommendationsCard";
+import { RegimeCard } from "@/components/dashboard/RegimeCard";
+import { StatCard } from "@/components/dashboard/StatCard";
 import {
-  mockDashboardSummary,
-  mockTaxComparison,
-  mockTaxSavingRecommendations,
-  mockTransactions,
-} from "@/lib/mock";
+  deriveActivity,
+  deriveDashboardRecommendations,
+  deriveComparison,
+  deriveDocumentStatus,
+  deriveEstimatedTax,
+  deriveFlags,
+  deriveIncome,
+} from "@/lib/dashboard/state";
+import { useDashboardData } from "@/lib/dashboard/useDashboardData";
+import { useAuth } from "@/lib/auth/AuthContext";
 
+type SectionStatus = "loading" | "error" | "ready";
+
+function statusOf(query: { isPending: boolean; isError: boolean }): SectionStatus {
+  return query.isPending ? "loading" : query.isError ? "error" : "ready";
+}
+
+/**
+ * Every card is driven by what the user has actually provided: a figure is
+ * shown only when it can be calculated from real data, otherwise the card
+ * says what is missing and how to add it.
+ */
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { annualIncome, documentStatus } = mockDashboardSummary;
-  const savingsPotential =
-    mockTaxComparison.oldRegime.totalTax - mockTaxComparison.newRegime.totalTax;
+  const { summary, documents, recommendations } = useDashboardData();
+
+  const summaryStatus = statusOf(summary);
+  const documentsStatus = statusOf(documents);
+  const recommendationsStatus = statusOf(recommendations);
+
+  const income = summary.data ? deriveIncome(summary.data) : null;
+  const estimatedTax = summary.data ? deriveEstimatedTax(summary.data) : null;
+  const comparison = summary.data ? deriveComparison(summary.data) : null;
+  const documentStatus = documents.data ? deriveDocumentStatus(documents.data) : undefined;
+  const activity = deriveActivity(summary.data, documents.data);
+  const personalised = deriveDashboardRecommendations(recommendations.data?.recommendations ?? []);
+  const flags = deriveFlags({
+    summary: summary.data,
+    documents: documents.data,
+    recommendationCount: personalised.length,
+  });
+
+  // Activity is built from both the summary and the documents, so it is ready
+  // only once both have settled.
+  const activityStatus: SectionStatus =
+    summaryStatus === "loading" || documentsStatus === "loading"
+      ? "loading"
+      : summaryStatus === "error" && documentsStatus === "error"
+        ? "error"
+        : "ready";
 
   return (
     <AppShell title="Dashboard">
-      <DemoBanner />
-
       <h2 className="text-h1 mb-6">Welcome back, {user?.name.split(" ")[0]}</h2>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile label="Annual income" amount={annualIncome} />
-        <StatTile
+        <StatCard
+          label="Annual income"
+          status={summaryStatus}
+          amount={income?.amount ?? null}
+          helpText={income ? `From ${income.sourceLabel}` : undefined}
+          emptyValue="Not available yet"
+          emptyHint="Upload your latest payslip to calculate"
+        />
+        <StatCard
           label="Estimated tax"
-          amount={mockTaxComparison.newRegime.totalTax}
-          helpText={`Under the ${mockTaxComparison.recommended} regime`}
+          status={summaryStatus}
+          amount={estimatedTax?.amount ?? null}
+          helpText={estimatedTax ? `Under the ${estimatedTax.regime} regime` : undefined}
+          emptyValue="Not calculated yet"
+          emptyHint={
+            flags.hasIncomeData
+              ? "We couldn't estimate your tax from your latest details yet"
+              : "Add your income details to estimate your tax"
+          }
         />
-        <StatTile
+        <StatCard
           label="Potential savings"
-          amount={savingsPotential}
-          helpText="By choosing the better regime"
+          status={summaryStatus}
+          amount={comparison?.savings ?? null}
+          helpText={comparison ? (comparison.savings > 0 ? "By choosing the better regime" : "Both regimes cost the same") : undefined}
+          emptyValue="Not calculated yet"
+          emptyHint={
+            flags.hasIncomeData
+              ? "Both regimes can't be compared for your latest details yet"
+              : "Complete your tax profile to compare your options"
+          }
         />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-h2">Old vs. new regime</h3>
-            <Link href="/tax-comparison">
-              <Button variant="ghost" size="sm">
-                Full comparison
-              </Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-md border border-border p-4">
-              <p className="text-sm text-muted">Old regime</p>
-              <p className="mt-1 text-amount-lg">
-                {formatINR(mockTaxComparison.oldRegime.totalTax)}
-              </p>
-            </div>
-            <div className="rounded-md border border-border p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted">New regime</p>
-                {mockTaxComparison.recommended === "new" && (
-                  <Badge variant="accent">Recommended</Badge>
-                )}
-              </div>
-              <p className="mt-1 text-amount-lg">
-                {formatINR(mockTaxComparison.newRegime.totalTax)}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="text-h2 mb-4">Document status</h3>
-          <div className="flex flex-col gap-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Form 16</span>
-              <Badge variant="success">Processed</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Payslips</span>
-              <span>
-                {documentStatus.payslipsUploaded}/{documentStatus.payslipsExpected}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Tax proofs pending</span>
-              <span>{documentStatus.taxProofsPending}</span>
-            </div>
-          </div>
-          <Link href="/documents">
-            <Button variant="secondary" size="sm" className="mt-4 w-full">
-              Manage documents
-            </Button>
-          </Link>
-        </Card>
+        <RegimeCard
+          status={summaryStatus}
+          tax={comparison}
+          hasIncome={flags.hasIncomeData}
+          onRetry={() => void summary.refetch()}
+        />
+        <DocumentsCard
+          status={documentsStatus}
+          documents={documentStatus}
+          onRetry={() => void documents.refetch()}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-h2">Recommendations for you</h3>
-            <Link href="/recommendations">
-              <Button variant="ghost" size="sm">
-                View all
-              </Button>
-            </Link>
-          </div>
-          <div className="flex flex-col divide-y divide-border">
-            {mockTaxSavingRecommendations.slice(0, 2).map((rec) => (
-              <div key={rec.id} className="py-3">
-                <p className="font-medium text-foreground">{rec.title}</p>
-                <p className="text-sm text-muted">{rec.description}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="text-h2 mb-2">Recent activity</h3>
-          <div className="divide-y divide-border">
-            {mockTransactions.slice(0, 4).map((tx) => (
-              <TransactionRow key={tx.id} {...tx} />
-            ))}
-          </div>
-        </Card>
+        <RecommendationsCard
+          status={recommendationsStatus}
+          recommendations={personalised}
+          nextStep={recommendations.data?.next_step ?? null}
+          level={recommendations.data?.level ?? 0}
+          onRetry={() => void recommendations.refetch()}
+        />
+        <ActivityCard
+          status={activityStatus}
+          items={activity}
+          onRetry={() => {
+            void summary.refetch();
+            void documents.refetch();
+          }}
+        />
       </div>
     </AppShell>
   );

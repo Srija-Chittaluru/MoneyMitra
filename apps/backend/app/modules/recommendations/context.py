@@ -44,6 +44,14 @@ class RegimeOutcome:
 
 
 @dataclass(frozen=True)
+class SelectedRegimeTax:
+    """Tax under the one regime the filing actually uses, for when both can't be compared."""
+
+    regime: str  # "old" | "new"
+    tax: int
+
+
+@dataclass(frozen=True)
 class FinancialContext:
     source: str  # "itr_filing" | "tax_comparison"
     annual_income: int
@@ -55,6 +63,7 @@ class FinancialContext:
     section_80d_total: int = 0
     home_loan_interest: int = 0
     regime: RegimeOutcome | None = None
+    selected_tax: SelectedRegimeTax | None = None
 
 
 def _itr_regime_outcome(filing: ItrFiling, draft: ItrDraftData, today: date) -> RegimeOutcome | None:
@@ -69,6 +78,14 @@ def _itr_regime_outcome(filing: ItrFiling, draft: ItrDraftData, today: date) -> 
     difference = abs(tax["old"] - tax["new"])
     better = "either" if difference == 0 else ("old" if tax["old"] < tax["new"] else "new")
     return RegimeOutcome(old_tax=tax["old"], new_tax=tax["new"], better=better, difference=difference)
+
+
+def _itr_selected_tax(filing: ItrFiling, draft: ItrDraftData, today: date) -> SelectedRegimeTax | None:
+    rules = get_itr_rules(filing.assessment_year)
+    if rules is None:
+        return None
+    selected = itr_service.build_summary(draft, rules, today).selected
+    return SelectedRegimeTax(regime=selected.regime, tax=selected.gross_tax_liability)
 
 
 def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
@@ -101,6 +118,7 @@ def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, Fi
         ),
         home_loan_interest=sum(prop.interest_on_loan for prop in draft.house_properties),
         regime=_itr_regime_outcome(filing, draft, today),
+        selected_tax=_itr_selected_tax(filing, draft, today),
     )
 
 
@@ -145,8 +163,14 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
     )
 
 
-def load_financial_context(db: Session, user: User, today: date) -> FinancialContext | None:
+def load_latest_financial_context(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
+    """The most recently updated usable source, with when it was last updated."""
     candidates = [c for c in (_from_itr_filing(db, user, today), _from_tax_comparison(db, user)) if c is not None]
     if not candidates:
         return None
-    return max(candidates, key=lambda candidate: candidate[0])[1]
+    return max(candidates, key=lambda candidate: candidate[0])
+
+
+def load_financial_context(db: Session, user: User, today: date) -> FinancialContext | None:
+    latest = load_latest_financial_context(db, user, today)
+    return latest[1] if latest else None
