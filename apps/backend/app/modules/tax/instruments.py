@@ -170,7 +170,7 @@ INSTRUMENT_OPTIONS: dict[DeductionSection, list[InstrumentOption]] = {
         InstrumentOption(
             "Health insurance premium (parents)",
             "A separate limit for your parents' health insurance — higher if they're senior "
-            "citizens. Not modeled separately in this app's numbers yet.",
+            "citizens. Counted under its own limit in the regime estimate on the Tax Planning page.",
             "Length of the policy",
             "Insurance",
             "A separate limit from your own cover — relevant only if you're paying for your "

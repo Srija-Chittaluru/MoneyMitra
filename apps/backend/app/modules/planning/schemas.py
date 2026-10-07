@@ -20,6 +20,13 @@ class PlanningSectionOut(BaseModel):
     declared_amount: int
     headroom: int
     monthly_target: int
+    # What the same section held in the year the saved figures are for, when that
+    # isn't the current year: a reference point, not progress for this year.
+    last_year_amount: int | None
+    # True when `declared_amount` is last year's figure assumed to continue
+    # (home loan interest repeats every year; investments don't).
+    carried_forward: bool
+    note: str | None
     instruments: list[InstrumentOptionOut]
 
 
@@ -37,6 +44,9 @@ class TaxPlanOut(BaseModel):
     age: int | None
     stage_label: str | None
     context_source: Literal["itr_filing", "tax_comparison"] | None
+    # The financial year the user's saved figures are for, and whether it is this one.
+    data_fy_label: str | None
+    data_is_current_year: bool
     # None when has_data is False — nothing to compare yet.
     regime_position: RegimePosition | None
     regime_caveat: str

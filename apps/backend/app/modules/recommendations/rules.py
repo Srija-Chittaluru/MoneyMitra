@@ -10,6 +10,7 @@ from collections.abc import Callable
 from decimal import Decimal
 
 from app.modules.itr.rules import AY_2026_27
+from app.modules.recommendations.document_rules import ais_income_gap, form16_deductions, hra_claim, tds_vs_tax
 from app.modules.recommendations.facts import Facts
 from app.modules.recommendations.money import format_inr
 from app.modules.recommendations.profile import EmployeeCategory
@@ -95,6 +96,9 @@ def regime_choice(facts: Facts) -> list[Recommendation]:
 
 
 def section_80c(facts: Facts) -> list[Recommendation]:
+    if "form16" in facts.documents.categories:
+        return form16_deductions(facts)  # the Form 16 version of this topic
+
     base = dict(
         id="tax_80c",
         category="tax_saving",
@@ -165,4 +169,4 @@ def life_stage(facts: Facts) -> list[Recommendation]:
     ]
 
 
-RULES: list[Rule] = [regime_choice, section_80c, employer_nps, life_stage]
+RULES: list[Rule] = [regime_choice, tds_vs_tax, section_80c, ais_income_gap, hra_claim, employer_nps, life_stage]

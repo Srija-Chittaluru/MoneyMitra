@@ -15,10 +15,12 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.itr import computation
 from app.modules.itr import service as itr_service
 from app.modules.itr.models import ItrFiling
 from app.modules.itr.rules import get_itr_rules
-from app.modules.itr.schemas import Health80DDraft, ItrDraftData
+from app.modules.itr.schemas import Health80DDraft, ItrDraftData, ItrSummary
+from app.modules.planning.fy import financial_year_of_assessment_year
 from app.modules.tax import service as tax_service
 from app.modules.tax.models import TaxComparisonSnapshot
 from app.modules.tax.schemas import TaxComparisonInput
@@ -31,6 +33,18 @@ def _health_80d_amount(bucket: Health80DDraft) -> int:
     Mirrors but doesn't call the private `_health()` in itr/computation.py,
     which is tightly coupled to the full computation pipeline."""
     return sum(policy.premium for policy in bucket.policies) + bucket.preventive_checkup
+
+
+def declared_other_income(draft: ItrDraftData) -> int:
+    """Interest and dividend income, the part of 'other income' AIS reports."""
+    other = draft.other_income
+    return (
+        other.savings_interest
+        + other.deposit_interest
+        + other.refund_interest
+        + other.dividends.total
+        + other.other_amount
+    )
 
 
 @dataclass(frozen=True)
@@ -55,13 +69,22 @@ class FinancialContext:
     section_80d_total: int = 0
     home_loan_interest: int = 0
     regime: RegimeOutcome | None = None
+    # Interest and dividend income the user has declared; None when the source
+    # doesn't break income down (the tax comparison only has a single total).
+    other_income_total: int | None = 0
+    rent_paid: int = 0
+    # The financial year these figures are for (an ITR for AY 2026-27 is FY 2025-26).
+    financial_year: str | None = None
+    # 80D split into your own cover and your parents', which have separate limits.
+    # A tax comparison only has one 80D figure, so it is all treated as your own.
+    section_80d_self: int = 0
+    section_80d_parents: int = 0
+    self_cover_includes_senior: bool = False
+    parents_are_senior: bool = False
+    hra_exemption: int = 0
 
 
-def _itr_regime_outcome(filing: ItrFiling, draft: ItrDraftData, today: date) -> RegimeOutcome | None:
-    rules = get_itr_rules(filing.assessment_year)
-    if rules is None:
-        return None
-    summary = itr_service.build_summary(draft, rules, today)
+def regime_outcome_from_summary(summary: ItrSummary) -> RegimeOutcome | None:
     if summary.alternative is None:  # old regime no longer allowed (belated return)
         return None
     tax = {summary.selected.regime: summary.selected.gross_tax_liability}
@@ -69,6 +92,21 @@ def _itr_regime_outcome(filing: ItrFiling, draft: ItrDraftData, today: date) -> 
     difference = abs(tax["old"] - tax["new"])
     better = "either" if difference == 0 else ("old" if tax["old"] < tax["new"] else "new")
     return RegimeOutcome(old_tax=tax["old"], new_tax=tax["new"], better=better, difference=difference)
+
+
+def _itr_regime_outcome(filing: ItrFiling, draft: ItrDraftData, today: date) -> RegimeOutcome | None:
+    rules = get_itr_rules(filing.assessment_year)
+    if rules is None:
+        return None
+    return regime_outcome_from_summary(itr_service.build_summary(draft, rules, today))
+
+
+def _hra_exemption(filing: ItrFiling, draft: ItrDraftData, today: date) -> int:
+    rules = get_itr_rules(filing.assessment_year)
+    if rules is None:
+        return 0
+    hra = computation.compute(draft, "old", rules, today).hra
+    return hra.exemption if hra else 0
 
 
 def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
@@ -101,6 +139,14 @@ def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, Fi
         ),
         home_loan_interest=sum(prop.interest_on_loan for prop in draft.house_properties),
         regime=_itr_regime_outcome(filing, draft, today),
+        other_income_total=declared_other_income(draft),
+        rent_paid=salary.hra.rent_paid,
+        financial_year=financial_year_of_assessment_year(filing.assessment_year),
+        section_80d_self=_health_80d_amount(draft.deductions.health_self),
+        section_80d_parents=_health_80d_amount(draft.deductions.health_parents),
+        self_cover_includes_senior=draft.deductions.health_self.includes_senior_citizen,
+        parents_are_senior=draft.deductions.health_parents.includes_senior_citizen,
+        hra_exemption=_hra_exemption(filing, draft, today),
     )
 
 
@@ -142,6 +188,10 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
         section_80d_total=snapshot.section_80d,
         home_loan_interest=snapshot.home_loan_interest,
         regime=regime,
+        other_income_total=None,
+        financial_year=snapshot.tax_year,
+        section_80d_self=snapshot.section_80d,
+        hra_exemption=snapshot.hra_exemption,
     )
 
 

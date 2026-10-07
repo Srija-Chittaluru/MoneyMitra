@@ -103,6 +103,19 @@ export default function TaxPlanningPage() {
             <>
               <p className="mb-4 text-sm text-muted">{contextNote(plan.context_source)}</p>
 
+              {!plan.data_is_current_year && plan.data_fy_label && (
+                <div className="mb-6 rounded-lg border border-warning-bg bg-warning-bg px-4 py-3">
+                  <p className="text-sm text-foreground">
+                    Your saved figures are for FY {plan.data_fy_label}, so your progress for FY {plan.fy_label}{" "}
+                    starts from zero. To track this year, enter your investments for FY {plan.fy_label} in{" "}
+                    <Link href="/tax-comparison" className="text-link">
+                      Tax Comparison
+                    </Link>
+                    .
+                  </p>
+                </div>
+              )}
+
               {plan.regime_position && (
                 <RegimePositionBanner position={plan.regime_position} caveat={plan.regime_caveat} />
               )}
@@ -112,6 +125,7 @@ export default function TaxPlanningPage() {
                   <PlanningSectionCard
                     key={section.section}
                     section={section}
+                    dataFyLabel={plan.data_fy_label}
                     isSelected={expandedSection === section.section}
                     onSelect={() =>
                       setExpandedSection((current) => (current === section.section ? null : section.section))

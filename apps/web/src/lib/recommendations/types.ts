@@ -31,6 +31,26 @@ export interface NextStep {
   action_href: string | null;
 }
 
+export interface AnalysedDocument {
+  category: string;
+  /** Short name, e.g. "Form 16". */
+  label: string;
+  file_name: string;
+}
+
+export interface SkippedDocument {
+  category: string;
+  file_name: string;
+  /** Why this document wasn't used for advice. */
+  reason: string;
+}
+
+/** Which uploaded documents the advice is based on, and why others weren't used. */
+export interface DocumentsReport {
+  analysed: AnalysedDocument[];
+  skipped: SkippedDocument[];
+}
+
 export interface Recommendations {
   /** 0 = no profile yet, 1 = profile, 2 = your income, 3 = your documents. */
   level: number;
@@ -43,5 +63,6 @@ export interface Recommendations {
   stage_label: string | null;
   context_source: "itr_filing" | "tax_comparison" | null;
   next_step: NextStep | null;
+  documents: DocumentsReport;
   recommendations: Recommendation[];
 }

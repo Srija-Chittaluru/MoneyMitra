@@ -9,6 +9,7 @@ import { RecommendationCard } from "@/components/ui/RecommendationCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getRecommendations } from "@/lib/recommendations/api";
 import type { NextStep, Recommendation, RecommendationCategory } from "@/lib/recommendations/types";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { LevelProgress } from "./LevelProgress";
 import { ProfileCard } from "./ProfileCard";
 
@@ -81,6 +82,7 @@ export function RecommendationsView() {
   return (
     <>
       <LevelProgress level={data.level} nextStep={data.next_step} onNextStep={handleNextStep} />
+      <DocumentsPanel documents={data.documents} />
       <ProfileCard
         // Re-initialise the form when the saved profile changes.
         key={JSON.stringify(data.profile)}
