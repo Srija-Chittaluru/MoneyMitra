@@ -7,7 +7,7 @@ class Level(IntEnum):
     NONE = 0  # no usable profile yet (no date of birth)
     PROFILE = 1  # date of birth, plus optionally employee category / expected income
     DECLARED = 2  # actual income and deductions from the ITR draft or a tax comparison
-    DOCUMENTS = 3  # analysis of uploaded documents (not built yet)
+    DOCUMENTS = 3  # analysis of uploaded Form 16 / AIS / payslips
 
 
 LEVEL_LABELS: dict[Level, str] = {

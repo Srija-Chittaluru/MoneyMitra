@@ -58,6 +58,7 @@ def test_new_user_has_no_financial_data(client):
         "annual_income": None,
         "estimated_tax": None,
         "regime": None,
+        "regime_unavailable_reason": None,
         "updated_at": None,
     }
 
@@ -140,3 +141,40 @@ def test_users_never_see_each_others_numbers(client):
 
     assert client.get(URL, headers=first).json()["annual_income"] == 1_250_000
     assert client.get(URL, headers=second).json()["annual_income"] is None
+
+
+def test_every_uploaded_document_feeds_the_numbers(client):
+    """A later upload changes the figures: the AIS adds interest income to the tax."""
+    headers = _headers(client)
+    _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
+    before = client.get(URL, headers=headers).json()
+    assert before["annual_income"] == 1_500_000 and before["estimated_tax"]["amount"] == 97_500
+
+    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")  # adds ₹42,000 of interest
+    after = client.get(URL, headers=headers).json()
+    assert after["annual_income"] == 1_500_000
+    assert after["estimated_tax"]["amount"] > before["estimated_tax"]["amount"]
+
+
+def test_says_why_there_is_no_comparison_after_the_due_date(client):
+    headers, email = _signup(client)
+    _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
+
+    with TestSessionLocal() as db:
+        user = db.scalar(select(User).where(User.email == email))
+        before_due_date = service.get_summary(db, user, today=date(2026, 6, 1))
+        assert before_due_date.regime is not None and before_due_date.regime_unavailable_reason is None
+
+        belated = service.get_summary(db, user, today=date(2026, 10, 6))
+        assert belated.regime is None and belated.regime_unavailable_reason == "old_regime_closed"
+
+
+def test_no_reason_is_given_when_there_is_simply_no_data(client):
+    assert client.get(URL, headers=_headers(client)).json()["regime_unavailable_reason"] is None
+
+
+def test_a_tax_comparison_never_claims_the_old_regime_is_closed(client):
+    headers = _headers(client)
+    client.post("/api/v1/tax/comparison", headers=headers, json={"tax_year": "2025-26", "gross_total_income": 1_500_000})
+    body = client.get(URL, headers=headers).json()
+    assert body["regime"] is not None and body["regime_unavailable_reason"] is None

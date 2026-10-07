@@ -10,6 +10,7 @@ from collections.abc import Callable
 from decimal import Decimal
 
 from app.modules.itr.rules import AY_2026_27
+from app.modules.recommendations.document_rules import ais_income_gap, form16_deductions, hra_claim, tds_vs_tax
 from app.modules.recommendations.facts import Facts
 from app.modules.recommendations.money import format_inr
 from app.modules.recommendations.profile import EmployeeCategory
@@ -66,9 +67,22 @@ def regime_choice(facts: Facts) -> list[Recommendation]:
         return [Recommendation(**base, level=2, basis=_declared_basis(facts), title=title,
                                description=description, reason=reason)]
 
-    # No regime comparison available (e.g. the old regime is closed for a late
-    # ITR), so estimate the new-regime tax from the best income figure we have.
     declared = facts.declared
+
+    # No regime comparison (e.g. the old regime is closed for a late ITR). If the
+    # user's return has been computed, use that exact figure so this card agrees
+    # with the dashboard; it counts all their income, not just salary.
+    if declared is not None and declared.selected_tax is not None:
+        selected = declared.selected_tax
+        return [Recommendation(**base, level=2, basis=_declared_basis(facts),
+                               title=f"Your estimated tax under the {selected.regime} regime",
+                               description=f"Your tax comes to about {format_inr(selected.tax)}, including tax on your "
+                               "other income and before any interest or late fee.",
+                               reason="The old regime is no longer open for this return, so only the new regime applies."
+                               if selected.regime == "new"
+                               else "This is the regime your return currently uses.")]
+
+    # Otherwise estimate the new-regime tax from the best income figure we have.
     income = declared.annual_income if declared else facts.expected_income
     year_rules = get_tax_rules(facts.tax_year)
     if income and year_rules is not None:
@@ -95,6 +109,9 @@ def regime_choice(facts: Facts) -> list[Recommendation]:
 
 
 def section_80c(facts: Facts) -> list[Recommendation]:
+    if "form16" in facts.documents.categories:
+        return form16_deductions(facts)  # the Form 16 version of this topic
+
     base = dict(
         id="tax_80c",
         category="tax_saving",
@@ -165,4 +182,4 @@ def life_stage(facts: Facts) -> list[Recommendation]:
     ]
 
 
-RULES: list[Rule] = [regime_choice, section_80c, employer_nps, life_stage]
+RULES: list[Rule] = [regime_choice, tds_vs_tax, section_80c, ais_income_gap, hra_claim, employer_nps, life_stage]

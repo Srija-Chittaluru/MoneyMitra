@@ -13,10 +13,12 @@ interface RegimeCardProps {
   tax: RegimeComparison | null;
   /** Income is known, but tax couldn't be compared for it. */
   hasIncome: boolean;
+  /** The return was filed after the due date, so only the new regime is allowed. */
+  oldRegimeClosed?: boolean;
   onRetry: () => void;
 }
 
-export function RegimeCard({ status, tax, hasIncome, onRetry }: RegimeCardProps) {
+export function RegimeCard({ status, tax, hasIncome, oldRegimeClosed = false, onRetry }: RegimeCardProps) {
   return (
     <Card className="lg:col-span-2">
       <div className="mb-4 flex items-center justify-between">
@@ -53,9 +55,11 @@ export function RegimeCard({ status, tax, hasIncome, onRetry }: RegimeCardProps)
         <EmptyPanel
           icon={Scale}
           description={
-            hasIncome
-              ? "We couldn't compare both tax regimes with your latest details. Run a comparison with your own numbers."
-              : "Complete your income details to compare both tax regimes."
+            oldRegimeClosed
+              ? "The old regime is closed for your AY 2026-27 return because the due date has passed, so only the new regime applies. You can still run a comparison to plan ahead."
+              : hasIncome
+                ? "We couldn't compare both tax regimes with your latest details. Run a comparison with your own numbers."
+                : "Complete your income details to compare both tax regimes."
           }
           action={
             <Link href="/tax-comparison">

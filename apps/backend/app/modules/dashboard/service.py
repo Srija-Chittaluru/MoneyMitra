@@ -23,6 +23,9 @@ def get_summary(db: Session, user: User, today: date | None = None) -> Dashboard
     elif context.selected_tax is not None:
         estimated_tax = EstimatedTax(regime=context.selected_tax.regime, amount=context.selected_tax.tax)
 
+    # An ITR with income but no old-vs-new comparison means the old regime is closed to it.
+    old_regime_closed = context.source == "itr_filing" and regime is None and context.selected_tax is not None
+
     return DashboardSummary(
         source=context.source,
         annual_income=context.annual_income,
@@ -35,5 +38,6 @@ def get_summary(db: Session, user: User, today: date | None = None) -> Dashboard
         )
         if regime
         else None,
+        regime_unavailable_reason="old_regime_closed" if old_regime_closed else None,
         updated_at=updated_at,
     )

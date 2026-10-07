@@ -20,12 +20,27 @@ const CATEGORY_OPTIONS: { value: EmployeeCategory; label: string }[] = [
 
 interface ProfileCardProps {
   profile: RecommendationProfile;
+  /** From Level 2 the user's own figures replace expected income, so the estimate-only fields are hidden. */
+  level: number;
   taxYear: string;
   availableTaxYears: string[];
   onTaxYearChange: (taxYear: string) => void;
+  /** Called after a successful save. The card remounts when the profile changes, so the parent shows "Saved". */
+  onSaved: () => void;
+  justSaved: boolean;
 }
 
-export function ProfileCard({ profile, taxYear, availableTaxYears, onTaxYearChange }: ProfileCardProps) {
+export function ProfileCard({
+  profile,
+  level,
+  taxYear,
+  availableTaxYears,
+  onTaxYearChange,
+  onSaved,
+  justSaved,
+}: ProfileCardProps) {
+  // Expected income and tax year only feed the estimate made before the user has real figures.
+  const showEstimateFields = level < 2;
   const queryClient = useQueryClient();
   const [dob, setDob] = useState(profile.date_of_birth ?? "");
   const [category, setCategory] = useState<string>(profile.employee_category ?? "");
@@ -35,7 +50,11 @@ export function ProfileCard({ profile, taxYear, availableTaxYears, onTaxYearChan
 
   const mutation = useMutation({
     mutationFn: updateRecommendationProfile,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recommendations"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-recommendations"] });
+      onSaved();
+    },
   });
 
   function handleSubmit(event: FormEvent) {
@@ -58,14 +77,19 @@ export function ProfileCard({ profile, taxYear, availableTaxYears, onTaxYearChan
     <Card className="mb-6">
       <h3 className="text-h2 mb-1">Your profile</h3>
       <p className="mb-4 text-sm text-muted">
-        The more you tell us, the more specific your recommendations get. Everything here is optional except
-        your date of birth.
+        {showEstimateFields
+          ? "The more you tell us, the more specific your recommendations get. Everything here is optional except your date of birth."
+          : "Your recommendations now use your own figures. Your date of birth and employee category still shape your advice."}
       </p>
-      <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <form
+        onSubmit={handleSubmit}
+        className={`grid gap-4 sm:grid-cols-2 ${showEstimateFields ? "lg:grid-cols-4" : ""}`}
+      >
         <Input
           id="profile-dob"
           type="date"
           label="Date of birth"
+          hint="Sets your life stage and age-based limits"
           className="w-full min-w-0"
           value={dob}
           onChange={(e) => setDob(e.target.value)}
@@ -73,6 +97,7 @@ export function ProfileCard({ profile, taxYear, availableTaxYears, onTaxYearChan
         <Select
           id="profile-category"
           label="Employee category"
+          hint="Adjusts the employer NPS advice"
           className="w-full min-w-0"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
@@ -84,36 +109,44 @@ export function ProfileCard({ profile, taxYear, availableTaxYears, onTaxYearChan
             </option>
           ))}
         </Select>
-        <Input
-          id="profile-income"
-          type="number"
-          min={0}
-          step={1}
-          inputMode="numeric"
-          label="Expected annual income (₹)"
-          placeholder="e.g. 1200000"
-          className="w-full min-w-0"
-          value={income}
-          onChange={(e) => setIncome(e.target.value)}
-        />
-        <Select
-          id="profile-tax-year"
-          label="Tax year"
-          className="w-full min-w-0"
-          value={taxYear}
-          onChange={(e) => onTaxYearChange(e.target.value)}
+        {showEstimateFields && (
+          <>
+            <Input
+              id="profile-income"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              label="Expected annual income (₹)"
+              hint="Used only until you add your real figures"
+              placeholder="e.g. 1200000"
+              className="w-full min-w-0"
+              value={income}
+              onChange={(e) => setIncome(e.target.value)}
+            />
+            <Select
+              id="profile-tax-year"
+              label="Tax year"
+              hint="The year for that estimate"
+              className="w-full min-w-0"
+              value={taxYear}
+              onChange={(e) => onTaxYearChange(e.target.value)}
+            >
+              {availableTaxYears.map((year) => (
+                <option key={year} value={year}>
+                  FY {year}
+                </option>
+              ))}
+            </Select>
+          </>
+        )}
+        <div
+          className={`flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center ${showEstimateFields ? "lg:col-span-4" : ""}`}
         >
-          {availableTaxYears.map((year) => (
-            <option key={year} value={year}>
-              FY {year}
-            </option>
-          ))}
-        </Select>
-        <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-4 sm:flex-row sm:items-center">
           <Button type="submit" variant="primary" size="sm" disabled={mutation.isPending}>
             {mutation.isPending ? "Saving…" : "Save profile"}
           </Button>
-          {mutation.isSuccess && !error && <span className="text-sm text-success">Saved</span>}
+          {justSaved && !error && <span className="text-sm text-success">Saved</span>}
           {error && <span className="text-sm text-error">{error}</span>}
         </div>
       </form>

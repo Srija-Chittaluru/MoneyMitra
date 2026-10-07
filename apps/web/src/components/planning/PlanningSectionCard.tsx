@@ -7,10 +7,13 @@ import type { PlanningSection } from "@/lib/planning/types";
 
 export function PlanningSectionCard({
   section,
+  dataFyLabel,
   isSelected,
   onSelect,
 }: {
   section: PlanningSection;
+  /** The financial year the saved figures are for. */
+  dataFyLabel: string | null;
   isSelected: boolean;
   onSelect: () => void;
 }) {
@@ -41,7 +44,20 @@ export function PlanningSectionCard({
         of the <span className="font-medium text-foreground">{formatRupees(section.cap)}</span> limit.
       </p>
 
-      {!isFullyUsed && (
+      {section.last_year_amount !== null && (
+        <p className="text-xs text-muted">
+          Last year{dataFyLabel ? ` (FY ${dataFyLabel})` : ""} you had{" "}
+          <span className="font-medium text-foreground">{formatRupees(section.last_year_amount)}</span> here.
+        </p>
+      )}
+      {section.carried_forward && (
+        <p className="text-xs text-muted">
+          Carried forward from FY {dataFyLabel}, since this repeats every year.
+        </p>
+      )}
+      {section.note && <p className="text-xs text-muted">{section.note}</p>}
+
+      {section.monthly_target > 0 && (
         <div className="rounded-md bg-surface-muted px-3 py-3">
           <p className="text-sm text-foreground">
             Invest about <span className="font-semibold">{formatRupees(section.monthly_target)}</span> a

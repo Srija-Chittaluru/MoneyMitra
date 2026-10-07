@@ -19,7 +19,7 @@ def next_step(facts: Facts) -> NextStep | None:
             action_label="Add date of birth",
             action_href=None,
         )
-    if facts.declared is None:
+    if facts.declared is None and not facts.documents.usable:
         return NextStep(
             level=2,
             title="Add your income",
@@ -27,11 +27,13 @@ def next_step(facts: Facts) -> NextStep | None:
             action_label="Compare tax regimes",
             action_href="/tax-comparison",
         )
-    return NextStep(
-        level=3,
-        title="Upload your documents",
-        description="Documents like Form 16, AIS and payslips fill in your ITR draft automatically. "
-        "Deeper document analysis is coming soon.",
-        action_label="Upload documents",
-        action_href="/documents",
-    )
+    if not facts.documents.usable:
+        return NextStep(
+            level=3,
+            title="Upload your documents",
+            description="Upload your Form 16, AIS or payslips and we'll check your tax deducted, your income "
+            "and your deductions against what you've declared.",
+            action_label="Upload documents",
+            action_href="/documents",
+        )
+    return None  # already on the highest level
