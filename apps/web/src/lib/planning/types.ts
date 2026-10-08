@@ -1,3 +1,5 @@
+import type { Recommendation } from "@/lib/recommendations/types";
+
 export interface InstrumentOption {
   name: string;
   description: string;
@@ -43,4 +45,6 @@ export interface TaxPlan {
   regime_position: RegimePosition | null;
   regime_caveat: string;
   sections: PlanningSection[];
+  /** Cross-section nudges: regime fit, timing, priority. Empty when has_data is false. */
+  recommendations: Recommendation[];
 }
