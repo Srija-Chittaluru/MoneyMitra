@@ -24,10 +24,12 @@ from sqlalchemy.orm import Session
 
 from app.modules.planning.fy import current_financial_year
 from app.modules.planning.fy import months_remaining as _months_remaining
+from app.modules.planning.rules import build_planning_recommendations
 from app.modules.planning.schemas import InstrumentOptionOut, PlanningSectionOut, RegimePosition, TaxPlanOut
-from app.modules.recommendations.context import FinancialContext, load_financial_context
+from app.modules.recommendations.context import FinancialContext
+from app.modules.recommendations.facts import build_facts
 from app.modules.recommendations.money import format_inr
-from app.modules.recommendations.stages import STAGE_LABELS, calculate_age, resolve_life_stage
+from app.modules.recommendations.stages import STAGE_LABELS
 from app.modules.resources.content import DEDUCTION_LIMITS
 from app.modules.tax import service as tax_service
 from app.modules.tax.instruments import INSTRUMENT_OPTIONS, SECTION_LABELS, DeductionSection
@@ -129,13 +131,14 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
     fy_label, _fy_start, fy_end = current_financial_year(today)
     months = _months_remaining(today, fy_end)
 
-    age = None
-    stage_label = None
-    if user.date_of_birth is not None:
-        age = calculate_age(user.date_of_birth, today)
-        stage_label = STAGE_LABELS[resolve_life_stage(age)]
+    # Facts is the same context bundle the /recommendations engine builds from —
+    # reusing it here (rather than loading FinancialContext a second, separate
+    # way) keeps age/stage/declared-figures identical across both features.
+    facts = build_facts(db, user, fy_label, today)
+    age = facts.age
+    stage_label = STAGE_LABELS[facts.stage] if facts.stage else None
 
-    context = load_financial_context(db, user, today)
+    context = facts.declared
     if context is None:
         return TaxPlanOut(
             has_data=False,
@@ -150,6 +153,7 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
             regime_position=None,
             regime_caveat=_REGIME_CAVEAT,
             sections=[],
+            recommendations=[],
         )
 
     is_current_year = context.financial_year == fy_label
@@ -202,6 +206,8 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
             f"This uses your FY {context.financial_year} figures, assuming they stay the same this year. " + caveat
         )
 
+    regime_position = _regime_position(context, fy_label, user.date_of_birth, age)
+
     return TaxPlanOut(
         has_data=True,
         fy_label=fy_label,
@@ -212,7 +218,8 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
         context_source=context.source,
         data_fy_label=context.financial_year,
         data_is_current_year=is_current_year,
-        regime_position=_regime_position(context, fy_label, user.date_of_birth, age),
+        regime_position=regime_position,
         regime_caveat=caveat,
         sections=sections,
+        recommendations=build_planning_recommendations(facts, sections, regime_position, months),
     )

@@ -357,3 +357,95 @@ def test_unsupported_financial_year_drops_the_regime_banner_not_the_page(client)
     plan = _plan_on(client, headers, date(2031, 5, 1))  # FY 2031-32 has no tax rules
     assert plan.has_data is True and plan.regime_position is None
     assert len(plan.sections) == 4
+
+
+# ---------------------------------------------------------------------------
+# Cross-section recommendations — built from the same Facts the
+# /recommendations engine uses, not a separate context model.
+# ---------------------------------------------------------------------------
+
+
+def _rec_ids(plan) -> set:
+    return {rec["id"] for rec in plan["recommendations"]}
+
+
+def test_no_recommendations_without_data(client):
+    headers = _auth_headers(client, _years_ago(24))
+    assert client.get(URL, headers=headers).json()["recommendations"] == []
+
+
+def test_new_regime_fit_recommendation_when_new_regime_wins_with_headroom_left(client):
+    headers = _auth_headers(client, _years_ago(24))
+    # High income, no deductions: the new regime's lower slabs win comfortably,
+    # and every section still has headroom (nothing declared).
+    _compare(client, headers, _this_fy())
+
+    plan = client.get(URL, headers=headers).json()
+    assert plan["regime_position"]["recommended_regime"] == "new"
+    assert "planning_new_regime_fit" in _rec_ids(plan)
+
+
+def test_no_new_regime_fit_recommendation_when_old_regime_wins(client):
+    headers = _auth_headers(client, _years_ago(24))
+    # Maxing out every old-regime-only deduction tips the balance back to the old regime.
+    _compare(
+        client,
+        headers,
+        _this_fy(),
+        section_80c=150_000,
+        section_80d=25_000,
+        home_loan_interest=200_000,
+        nps_contribution=50_000,
+        hra_exemption=200_000,
+        other_deductions=50_000,
+    )
+
+    plan = client.get(URL, headers=headers).json()
+    assert plan["regime_position"]["recommended_regime"] == "old"
+    assert "planning_new_regime_fit" not in _rec_ids(plan)
+
+
+def test_priority_section_recommendation_picks_the_biggest_monthly_commitment(client):
+    headers = _auth_headers(client, _years_ago(24))
+    # 80C nearly maxed out (small headroom); 80CCD(1B) fully unclaimed (full
+    # 50,000 headroom) — the NPS section needs the bigger monthly commitment.
+    _compare(client, headers, _this_fy(), section_80c=140_000)
+
+    plan = client.get(URL, headers=headers).json()
+    priority = next(rec for rec in plan["recommendations"] if rec["id"] == "planning_priority_section")
+    assert "80CCD(1B)" in priority["title"]
+
+
+def test_time_pressure_recommendation_appears_near_year_end(client):
+    headers = _auth_headers(client, _years_ago(24))
+    _compare(client, headers, _this_fy(), section_80c=50_000)
+
+    near_year_end = _plan_on(client, headers, date(int(_this_fy()[:4]) + 1, 2, 15)).model_dump()
+    assert near_year_end["months_remaining"] <= 2
+    assert "planning_time_pressure" in _rec_ids(near_year_end)
+
+
+def test_no_time_pressure_recommendation_mid_year(client):
+    headers = _auth_headers(client, _years_ago(24))
+    _compare(client, headers, _this_fy(), section_80c=50_000)
+
+    plan = client.get(URL, headers=headers).json()
+    assert plan["months_remaining"] > 2
+    assert "planning_time_pressure" not in _rec_ids(plan)
+
+
+def test_missing_dob_recommendation_when_no_date_of_birth_on_file(client):
+    headers = _auth_headers(client)  # no date of birth
+    _compare(client, headers, _this_fy())
+
+    plan = client.get(URL, headers=headers).json()
+    assert plan["age"] is None
+    assert "planning_missing_dob" in _rec_ids(plan)
+
+
+def test_no_missing_dob_recommendation_with_date_of_birth(client):
+    headers = _auth_headers(client, _years_ago(24))
+    _compare(client, headers, _this_fy())
+
+    plan = client.get(URL, headers=headers).json()
+    assert "planning_missing_dob" not in _rec_ids(plan)
