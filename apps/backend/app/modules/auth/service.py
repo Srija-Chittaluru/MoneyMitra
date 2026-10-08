@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.modules.auth.models import RefreshToken
 from app.modules.auth.security import (
     create_access_token,
@@ -69,9 +70,28 @@ def signup(db: Session, name: str, email: str, password: str, date_of_birth) -> 
 
 
 def login(db: Session, email: str, password: str) -> tuple[User, str, int, str]:
+    settings = get_settings()
     user = get_user_by_email(db, email)
+    now = datetime.now(timezone.utc)
+    if user is not None and user.locked_until and user.locked_until > now:
+        minutes = int((user.locked_until - now).total_seconds() // 60) + 1
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Too many wrong passwords. This account is locked for {minutes} more minute"
+            f"{'s' if minutes != 1 else ''} — try again later.",
+        )
     if user is None or not verify_password(password, user.password_hash):
+        if user is not None:
+            user.failed_login_count = (user.failed_login_count or 0) + 1
+            if user.failed_login_count >= settings.login_max_failures:
+                user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
+                user.failed_login_count = 0
+            db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS_MESSAGE)
+    if user.failed_login_count or user.locked_until:
+        user.failed_login_count = 0
+        user.locked_until = None
+        db.commit()
 
     access_token, expires_in, raw_refresh_token = _issue_session(db, user)
     return user, access_token, expires_in, raw_refresh_token

@@ -13,3 +13,6 @@ pypdf==5.1.0
 openai==3.22.1
 reportlab==4.2.5
 cryptography==44.0.0
+pytesseract==0.3.13
+pypdfium2==4.30.0
+pillow==11.1.0

@@ -42,6 +42,10 @@ export default function SignupPage() {
       setFieldError("Password must be at least 8 characters.");
       return;
     }
+    if (password.length < 12 && !(/[A-Za-z]/.test(password) && /[^A-Za-z]/.test(password))) {
+      setFieldError("Use at least 12 characters, or mix letters with numbers or symbols.");
+      return;
+    }
     if (password !== confirmPassword) {
       setFieldError("Passwords don't match.");
       return;
@@ -96,6 +100,7 @@ export default function SignupPage() {
               type="password"
               label="Password"
               placeholder="At least 8 characters"
+              hint="Mix letters with numbers or symbols. Avoid common passwords and your email name."
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"

@@ -23,6 +23,8 @@ class Document(Base):
     content_type: Mapped[str] = mapped_column(String(100))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     storage_key: Mapped[str] = mapped_column(String(255), unique=True)
+    # SHA-256 of the file, to refuse uploading the same file twice.
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     # Result of rule-based extraction (see app/modules/extraction):
     # "extracted" | "nothing_found" | "unsupported" | "not_applicable"

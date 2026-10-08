@@ -3,11 +3,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import get_settings
+from app.core.guardrails import limiter
 from app.db.all_models import Base
 from app.db.session import get_db
 from app.main import app
 
 TEST_DATABASE_URL = "postgresql+psycopg://moneymitra:moneymitra@localhost:5432/moneymitra_test"
+
+# Tests create many accounts from one client; rate-limit tests turn this back on.
+get_settings().rate_limit_enabled = False
 
 engine = create_engine(TEST_DATABASE_URL)
 TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -42,3 +47,10 @@ app.dependency_overrides[get_db] = _override_get_db
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    limiter.reset()
+    yield
+    limiter.reset()

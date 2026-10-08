@@ -237,6 +237,26 @@ def missing_fields(
 
     _require(issues, draft.verification_place, "verification_place", "Place (for verification)")
 
+    # Plausibility: numbers that can't be right.
+    for i, emp in enumerate(draft.salary.employers):
+        if emp.tds > 0 and emp.income_chargeable > 0 and emp.tds > emp.income_chargeable:
+            issues.append(Issue(
+                field=f"salary.employers.{i}.tds",
+                message=f"Employer {i + 1}: TDS can't be more than the salary it was deducted from.",
+            ))
+    for i, tds in enumerate(tp.tds_other):
+        if tds.amount_paid > 0 and tds.tds_deducted > tds.amount_paid:
+            issues.append(Issue(
+                field=f"taxes_paid.tds_other.{i}.tds_deducted",
+                message=f"TDS {i + 1}: tax deducted can't be more than the amount paid or credited.",
+            ))
+    for i, txn in enumerate(draft.capital_gains):
+        if txn.purchase_date and txn.sale_date and txn.purchase_date > txn.sale_date:
+            issues.append(Issue(
+                field=f"capital_gains.{i}.purchase_date",
+                message=f"Capital gain {i + 1}: the purchase date is after the sale date.",
+            ))
+
     if form in ("ITR-2", "ITR-3"):
         if p.pan and PAN_RE.match(p.pan.strip()) and p.pan.strip()[3] != "P":
             issues.append(Issue(
@@ -299,6 +319,25 @@ def warnings(draft: ItrDraftData, comp: ItrComputation, rules: ItrYearRules) -> 
             "Income chargeable under salaries reported by your employers does not match the salary computed "
             "here — check it against Form 16 Part B."
         )
+    p = draft.personal
+    if p.date_of_birth:
+        age = rules.fy_end.year - p.date_of_birth.year - (
+            (rules.fy_end.month, rules.fy_end.day) < (p.date_of_birth.month, p.date_of_birth.day)
+        )
+        if age < 18:
+            result.append(
+                f"The date of birth makes you {age} at the end of the year — check it. A minor's income is "
+                "usually added to a parent's return."
+            )
+        elif age > 100:
+            result.append(f"The date of birth makes you {age} — please check it.")
+    if comp.regime == "old":
+        raw_80c = sum(i.amount for i in draft.deductions.section_80c)
+        if raw_80c > rules.cap_80c:
+            result.append(f"You entered Rs {raw_80c:,} under 80C; only Rs {int(rules.cap_80c):,} is allowed and has been used.")
+    salary_tds = sum(e.tds for e in draft.salary.employers)
+    if salary_tds and s.gross_salary and salary_tds > s.gross_salary * 0.5:
+        result.append("TDS on salary is more than half your salary — check the TDS figure from Form 16.")
     if draft.regime == "new" and draft.deductions.section_80c:
         result.append("80C/80D and other old-regime deductions are ignored under the new regime.")
     return result

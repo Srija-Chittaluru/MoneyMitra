@@ -79,9 +79,19 @@ def test_march_payslip_gives_annual_salary():
     assert ex.fields["salary.hra.basic_salary"] == 600000
 
 
-def test_images_are_unsupported():
-    with pytest.raises(UnreadableDocument):
-        extract("pan", "image/png", _fixture("PAN_Card_SAMPLE.png"), [])
+def test_images_are_read_with_ocr_when_available():
+    import shutil
+
+    if shutil.which("tesseract") is None:
+        with pytest.raises(UnreadableDocument):
+            extract("pan", "image/png", _fixture("PAN_Card_SAMPLE.png"), [])
+        return
+    ex = extract("pan", "image/png", _fixture("PAN_Card_SAMPLE.png"), [])
+    assert ex.facts["ocr"] is True
+    assert ex.fields["personal.pan"] == "ABCDE1234F"
+    assert ex.fields["personal.father_name"] == "RAVI VERMA"
+    # The watermark garbles the date ("40/05/1990"): an invalid date is left empty, never filled wrong.
+    assert ex.fields.get("personal.date_of_birth") in (None, "1990-05-10")
 
 
 # ---------------------------------------------------------------------------
@@ -110,15 +120,16 @@ def test_upload_fills_itr_draft_and_tags_sources(client):
 def test_typed_values_are_never_overwritten(client):
     headers = _auth_headers(client)
     draft = _filing(client, headers)["data"]
-    draft["personal"]["pan"] = "ZZZZZ9999Z"
+    draft["personal"]["pan"] = "ABCDE1234F"  # typed by the user (same PAN as the Form 16)
+    draft["personal"]["father_name"] = "TYPED FATHER"
     draft["salary"]["salary_17_1"] = 999
     client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
 
     _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
     filing = _filing(client, headers)
-    assert filing["data"]["personal"]["pan"] == "ZZZZZ9999Z"
+    assert filing["data"]["personal"]["father_name"] == "TYPED FATHER"
     assert filing["data"]["salary"]["salary_17_1"] == 999
-    assert "personal.pan" not in filing["field_sources"]
+    assert "salary.salary_17_1" not in filing["field_sources"]
     assert filing["data"]["salary"]["employers"][0]["tan"] == "BLRA12345B"  # empty list was filled
 
 
@@ -163,17 +174,25 @@ def test_editing_an_autofilled_value_drops_its_tag(client):
     assert saved["field_sources"]["personal.pan"] == "Form 16"
 
 
-def test_image_upload_is_stored_but_not_read(client):
+def test_image_upload_is_read_or_reported(client):
+    import shutil
+
     headers = _auth_headers(client)
-    doc = _upload(client, headers, "pan", "PAN_Card_SAMPLE.png", "image/png")
-    assert doc["extraction_status"] == "unsupported"
-    assert "Images" in doc["extraction_message"]
+    doc = _upload(client, headers, "pan", "PAN_Card_SPECIMEN.png", "image/png")
+    if shutil.which("tesseract") is None:
+        assert doc["extraction_status"] == "unsupported"
+    else:
+        assert doc["extraction_status"] == "extracted"
+        assert "OCR" in doc["extraction_message"]
 
 
-def test_bills_are_not_extracted(client):
+def test_tax_documents_cannot_be_filed_as_bills(client):
     headers = _auth_headers(client)
-    doc = _upload(client, headers, "bills", "Form16_AY2026-27_SAMPLE.pdf")
-    assert doc["extraction_status"] == "not_applicable"
+    response = client.post(
+        "/api/v1/documents", data={"category": "bills"},
+        files={"file": ("f16.pdf", _fixture("Form16_AY2026-27_SAMPLE.pdf"), "application/pdf")}, headers=headers,
+    )
+    assert response.status_code == 422
     assert _filing(client, headers)["data"]["salary"]["salary_17_1"] == 0
 
 
