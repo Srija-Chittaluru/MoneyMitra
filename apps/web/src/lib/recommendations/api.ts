@@ -1,9 +1,8 @@
 import { apiFetch } from "@/lib/api-client";
 import type { RecommendationProfile, Recommendations } from "./types";
 
-export function getRecommendations(taxYear?: string) {
-  const query = taxYear ? `?tax_year=${encodeURIComponent(taxYear)}` : "";
-  return apiFetch<Recommendations>(`/api/v1/recommendations${query}`);
+export function getRecommendations() {
+  return apiFetch<Recommendations>("/api/v1/recommendations");
 }
 
 export function updateRecommendationProfile(profile: RecommendationProfile) {
