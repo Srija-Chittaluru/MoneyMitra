@@ -17,7 +17,6 @@ from app.modules.users.models import User
 class Facts:
     level: Level
     today: date
-    tax_year: str
     date_of_birth: date | None
     age: int | None
     stage: LifeStage | None
@@ -27,7 +26,7 @@ class Facts:
     documents: DocumentAnalysis
 
 
-def build_facts(db: Session, user: User, tax_year: str, today: date) -> Facts:
+def build_facts(db: Session, user: User, today: date) -> Facts:
     age = calculate_age(user.date_of_birth, today) if user.date_of_birth else None
     declared = load_financial_context(db, user, today)
     documents = load_document_analysis(db, user, today)
@@ -44,7 +43,6 @@ def build_facts(db: Session, user: User, tax_year: str, today: date) -> Facts:
     return Facts(
         level=level,
         today=today,
-        tax_year=tax_year,
         date_of_birth=user.date_of_birth,
         age=age,
         stage=resolve_life_stage(age) if age is not None else None,

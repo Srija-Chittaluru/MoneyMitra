@@ -78,7 +78,7 @@ MoneyMitra keeps those pieces together and keeps them current:
 | **AI tax explanation and chat** | Plain-language "why" and a tax Q&A assistant (requires an OpenAI key) | Live, optional |
 | **Tax Planning** | Remaining deduction headroom and monthly targets for the current financial year | Live |
 | **ITR Filing** | Four-step ITR-1 preparation for AY 2026-27 with JSON and PDF export | Live |
-| **Recommendations** | Three levels of reason-backed advice, from a profile to your own documents, that get more specific as data is added | Live |
+| **Recommendations** | Life-stage guidance on making your existing money work harder, with worked numbers, steps and options, that gets more specific as data is added | Live |
 | **Resources and Alerts** | Government deadlines, deduction limits, slab explorer | Live |
 | **Landing page** | Product-led marketing page with light and dark themes | Live |
 | **Finance Management** | Spending, investments and savings views | Prototype (demo data only) |
@@ -233,40 +233,70 @@ A four-step flow: **Personal Info, Income Sources, Tax Saving, Tax Summary.**
 
 ### Recommendations
 
-Advice is tiered by how much MoneyMitra knows about the user, and each item
-carries its reason and basis (for example "Based on your ITR filing" or "From
-your Form 16"). The page shows a progress bar for the levels, a profile card,
-and a note on what to provide to reach the next one.
+Life-stage guidance on **how to make your existing money work harder**. It is
+the product's central feature, and it is rule-based (no AI writes the advice),
+so every number can be reproduced. Tax-saving advice lives elsewhere (Tax
+Comparison, Tax Planning, ITR Filing).
 
-| Level | Built on | Example |
+Each stage of life gets five pieces of advice:
+
+| Stage | Advice |
+|---|---|
+| **Career Start** (under 30) | Build an emergency fund and keep it earning; don't leave idle money in a savings account; start investing every month; protect your income (health and term cover); pay off expensive debt first |
+| **Mid-Career** (30-49) | Put idle savings to work; work out your retirement number and close the gap; check your growth-vs-safety split; cover the people who depend on you; give each big goal its own money and timeline |
+| **Pre-Retirement** (50+) | Shift gradually from growth to safety; plan the monthly income that replaces your salary; put idle money to work; lock in health cover before you retire; make sure nominations and a will are in place |
+
+Every recommendation is built to be understood and acted on, not just read:
+
+- **What to do and why**, in plain language.
+- **A worked example** with real rupee figures, such as "what ₹1,80,000 earns in
+  a year in a savings account vs a fixed deposit", or "what ₹10,000 a month
+  grows to over 10, 20 and 30 years". The numbers use the best income figure
+  available: documents, then declared figures, then expected income, then a
+  clearly labelled sample income of ₹50,000 a month.
+- **Step-by-step how-to** and **where the money can go**, described by type
+  with a risk label. No specific product or fund is ever recommended.
+- **What it is based on**, e.g. "From your Form 16 and AIS".
+
+**The rates are illustrative assumptions**, kept in one file
+(`recommendations/wealth.py`): about 3% for a savings account, 6.5% for fixed
+deposits and liquid funds, 10% for long-term equity-oriented investing, and 6%
+inflation. They are shown next to every example, and the page carries a
+disclaimer that this is general guidance, not personal investment advice.
+Review and update them before real use.
+
+The levels describe how much MoneyMitra knows, and they change how specific the
+numbers are:
+
+| Level | Built on | What changes |
 |---|---|---|
-| 0 | Nothing yet | "Complete your profile" |
-| 1 | Profile (age, employee category, expected income) | Life-stage guidance, general tax tips, a new-regime tax estimate from expected income |
-| 2 | The user's own income and deductions (tax comparison or ITR draft) | "The new regime looks cheaper for you", "You have unused Section 80C limit" |
-| 3 | The user's uploaded documents (Form 16, AIS, payslips) | "You may get a tax refund", "Your AIS reports income that isn't in your ITR draft" |
+| 0 | Nothing yet | A prompt to add a date of birth |
+| 1 | Profile: date of birth, plus optionally employee category and expected income | Example figures, or yours if you gave an expected income. Employee category sets the emergency fund (4 months of expenses for government and PSU jobs, 6 otherwise) |
+| 2 | Income from the ITR draft or latest tax comparison | The numbers use your real income, and health-cover advice reads your declared premiums |
+| 3 | Uploaded Form 16, AIS and payslips | Income comes from your documents. With an AIS, MoneyMitra estimates how much of your money sits idle in savings accounts from the interest you earned, and how much more it could earn in a deposit |
 
-Rules cover regime choice, Section 80C, employer NPS (adjusted for government,
-PSU, private or other employees) and life stage (Career Start under 30,
-Mid-Career 30-49, Pre-Retirement 50+). Every recommendation has a title,
-description, reason, basis and a call to action.
+Life stage comes from age, with the cut-offs in `recommendations/stages.py`.
+For Level 3, MoneyMitra builds an ITR draft from your documents alone using the
+same extraction code as the ITR auto-fill; the saved draft is never changed.
+The page lists which documents were analysed and why any others were skipped (a
+PAN card only identifies the user; images can't be read; document types such as
+Form 26AS are stored but not analysed), so it is always clear why a user is or
+isn't on Level 3.
 
-**Level 3: document analysis.** MoneyMitra builds an ITR draft from the
-documents alone, with the same extraction code the ITR auto-fill uses, and runs
-the existing ITR computation on it. The saved draft is never changed. This
-produces four checks:
+Where the code lives (`apps/backend/app/modules/recommendations/`):
 
-- **Tax deducted vs tax owed:** a likely refund, a balance due, or "covered".
-  Skipped for a payslip-only upload, since a payslip covers only part of the year.
-- **AIS income gap:** interest and dividends that AIS reports but the ITR draft
-  does not include.
-- **Form 16 deductions:** Section 80C according to Form 16, and whether the ITR
-  draft matches it. This replaces the general 80C card, so a topic appears once.
-- **HRA:** HRA is being paid but no rent is recorded, so no exemption is claimed.
+```
+facts.py              # gathers profile, declared figures and document analysis; picks the level
+life_stage.py         # the advice for each stage, with the worked examples
+wealth.py             # the illustrative rates and the compounding arithmetic
+context.py            # declared figures from the ITR draft or tax comparison (most recent wins)
+document_analysis.py  # Level 3: documents -> draft -> ITR computation
+engine.py, rules.py   # run the rules and work out the "next step"
+profile.py            # employee category, expected income, date of birth
+```
 
-The page lists which documents were analysed and why any others were skipped
-(a PAN card only identifies the user; images can't be read; document types such
-as Form 26AS are stored but not analysed), so it is always clear why a user is
-or isn't on Level 3.
+To add or change advice, edit a builder in `life_stage.py` and list it for its
+stage in `BUILDERS`.
 
 ### Resources and Alerts
 
@@ -375,7 +405,7 @@ Interactive docs: `http://localhost:8000/docs`.
 | Tax | `GET /tax/years`; `POST /tax/comparison`; `GET /tax/slabs`; `POST /tax/explain`; `POST /tax/chat` |
 | Planning | `GET /planning/tax-plan` |
 | ITR | `GET /itr/assessment-years`; `GET`/`PUT /itr/filings/{ay}`; `GET /itr/filings/{ay}/summary`; `POST .../export`; `POST .../reread-documents`; `GET .../export/pdf` |
-| Recommendations | `GET /recommendations?tax_year=` (level, recommendations, next step, documents analysed); `PUT /recommendations/profile` |
+| Recommendations | `GET /recommendations` (level, life-stage advice, next step, documents analysed, disclaimer); `PUT /recommendations/profile` |
 | Resources | `GET /resources` |
 
 ---
@@ -465,7 +495,7 @@ apps/
         documents/ extraction/ # uploads, rule-based parsers, ITR auto-fill
         tax/                   # slabs, calculator, comparison, AI explain and chat, rules/
         itr/                   # ITR-1 rules, computation, interest, validation, JSON/PDF export
-        recommendations/       # profile, levels, facts, rule engine, document analysis (level 3)
+        recommendations/       # life-stage advice, worked examples, levels, facts, document analysis (level 3)
         planning/              # financial-year headroom and monthly targets
         resources/             # deadlines and deduction-limit reference data
         dashboard/             # data-driven summary
@@ -575,7 +605,7 @@ Generate a `PII_ENCRYPTION_KEY` with:
 
 ## 15. Testing and quality
 
-**Backend** (232 tests, in an isolated `moneymitra_test` database):
+**Backend** (300 tests, in an isolated `moneymitra_test` database):
 
 ```bash
 cd apps/backend && source .venv/bin/activate
@@ -622,9 +652,14 @@ type-checking, linting and the production build.
   against official Income Tax Department sources before relying on them.
 - **The Tax Planning regime estimate** leaves out rental income, employer NPS
   (80CCD(2)) and less common deductions such as 80E and 80TTA.
-- **Document analysis (Level 3)** covers Form 16, AIS and payslips only. A
-  payslip-only upload can't say whether TDS is enough, and Form 26AS, tax proofs
-  and images are not analysed.
+- **Recommendation numbers are illustrations.** The growth, deposit and inflation
+  rates in `wealth.py` are assumptions, not forecasts or live rates, and
+  spending is assumed to be 60% of income until the user's real figure is known.
+  Review them before real use. The advice is general guidance, not personal
+  investment advice, and says so.
+- **Document analysis (Level 3)** covers Form 16, AIS and payslips only. The
+  idle-savings estimate infers a balance from AIS interest at an assumed rate, so
+  it is approximate. Form 26AS, tax proofs and images are not analysed.
 - **Resources and Alerts** are curated by hand, not live-fetched.
 - **Data at rest:** PAN is encrypted, but `itr_filings.data` is not yet.
 - **AI features** need an OpenAI key and are not used for any calculation.
@@ -665,7 +700,7 @@ A ready-to-adapt kit for the slide deck and the demo.
 | 10 | Architecture | Diagram from section 5; API-first modular monolith |
 | 11 | Trust and security | Rotating sessions, encrypted PAN, user-scoped data |
 | 12 | Responsible AI | Deterministic maths; AI only for explanation, with fallbacks |
-| 13 | Quality | 199 backend tests; typed, linted, built frontend |
+| 13 | Quality | 300 backend tests; typed, linted, built frontend |
 | 14 | Limitations and roadmap | Honest scope and next steps (section 16) |
 | 15 | Demo / Q&A | Live walkthrough |
 
@@ -710,5 +745,5 @@ backup, and keep `OPENAI_API_KEY` set so the explanation and chat work on stage.
 - 11 live features end to end; 1 prototype (Finance Management)
 - 2 supported tax years (FY 2025-26, FY 2026-27); 1 ITR form (ITR-1, AY 2026-27)
 - 7 document categories; 3 document formats extracted (Form 16, AIS, payslips)
-- 4-step ITR flow; 7 recommendation rules across 3 levels; 4 deduction sections planned
-- 232 automated backend tests
+- 4-step ITR flow; 5 life-stage recommendations per stage across 3 levels; 4 deduction sections planned
+- 300 automated backend tests

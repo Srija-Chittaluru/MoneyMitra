@@ -8,6 +8,31 @@ export interface RecommendationProfile {
   expected_annual_income: number | null;
 }
 
+/** One place the money could go, described by type (no specific product or fund). */
+export interface InvestmentOption {
+  name: string;
+  summary: string;
+  risk: "low" | "medium" | "high";
+  suits: string;
+}
+
+export interface IllustrationLine {
+  label: string;
+  value: string;
+  /** The line that carries the point of the example. */
+  emphasis: boolean;
+}
+
+/** Worked numbers that show what the advice is worth. */
+export interface Illustration {
+  title: string;
+  lines: IllustrationLine[];
+  /** The assumptions behind the numbers. */
+  note: string;
+  /** True when the figures use a sample income because the user's own isn't known yet. */
+  is_example: boolean;
+}
+
 export interface Recommendation {
   id: string;
   category: RecommendationCategory;
@@ -18,8 +43,12 @@ export interface Recommendation {
   reason: string;
   /** One short line saying what the advice is based on. */
   basis: string;
-  action_label: string;
-  action_href: string;
+  /** Concrete how-to steps; empty for advice that is just a headline. */
+  steps: string[];
+  illustration: Illustration | null;
+  options: InvestmentOption[];
+  action_label: string | null;
+  action_href: string | null;
 }
 
 export interface NextStep {
@@ -55,8 +84,6 @@ export interface Recommendations {
   /** 0 = no profile yet, 1 = profile, 2 = your income, 3 = your documents. */
   level: number;
   level_label: string;
-  tax_year: string;
-  available_tax_years: string[];
   profile: RecommendationProfile;
   age: number | null;
   stage: LifeStage | null;
@@ -64,5 +91,7 @@ export interface Recommendations {
   context_source: "itr_filing" | "tax_comparison" | null;
   next_step: NextStep | null;
   documents: DocumentsReport;
+  /** General-guidance and illustrative-rates notice to show with the advice. */
+  disclaimer: string;
   recommendations: Recommendation[];
 }
