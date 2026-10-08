@@ -22,6 +22,9 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
       # Software ID written into exported ITR JSON (see apps/backend/app/core/config.py).
       ITR_SOFTWARE_ID: ${ITR_SOFTWARE_ID:-SW00000000}
+      # Optional: enables the AI tax explanation and chat. Empty = those features fall back / stay off.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
       # Uploaded documents survive container rebuilds.
       - documents:/app/storage

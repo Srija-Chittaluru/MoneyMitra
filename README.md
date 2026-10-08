@@ -50,7 +50,8 @@ MoneyMitra keeps those pieces together and keeps them current:
 - **Compare** the old and new tax regimes on the user's real numbers.
 - **Act**: tax-saving advice that always says why it applies, with a monthly
   plan for the deductions that are still open this year.
-- **File**: prepare an ITR-1 return and export it for upload to the e-filing portal.
+- **File**: work out which ITR form applies (ITR-1, ITR-2 or ITR-3) from the
+  documents, prepare the return and export it for upload to the e-filing portal.
 
 ### Guiding principles
 
@@ -73,11 +74,11 @@ MoneyMitra keeps those pieces together and keeps them current:
 | **Authentication** | Sign up, log in, rotating refresh sessions, protected routes | Live |
 | **Tax onboarding** | Post-signup PAN and date-of-birth step (skippable, completable later) | Live |
 | **Dashboard** | Income, estimated tax, savings, documents, recommendations, activity, all driven by real user data | Live |
-| **Documents** | Upload and manage seven document types; automatic extraction | Live |
+| **Documents** | Upload and manage ten document types; automatic extraction from Form 16, AIS, Form 26AS, payslips and broker statements | Live |
 | **Tax Comparison** | Old vs. new regime for FY 2025-26 and FY 2026-27, with deduction checklist | Live |
 | **AI tax explanation and chat** | Plain-language "why" and a tax Q&A assistant (requires an OpenAI key) | Live, optional |
 | **Tax Planning** | Remaining deduction headroom and monthly targets for the current financial year | Live |
-| **ITR Filing** | Four-step ITR-1 preparation for AY 2026-27 with JSON and PDF export | Live |
+| **ITR Filing** | Four-step ITR-1, ITR-2 and ITR-3 preparation for AY 2026-27, with the right form chosen from your documents; JSON and PDF export | Live |
 | **Recommendations** | Life-stage guidance on making your existing money work harder, with worked numbers, steps and options, that gets more specific as data is added | Live |
 | **Resources and Alerts** | Government deadlines, deduction limits, slab explorer | Live |
 | **Landing page** | Product-led marketing page with light and dark themes | Live |
@@ -99,7 +100,7 @@ flowchart LR
     G --> D
     D --> H[Tax planning]
     D --> I[Recommendations]
-    F --> J[ITR-1 JSON + PDF export]
+    F --> J[ITR JSON + PDF export]
 ```
 
 A typical journey:
@@ -114,7 +115,8 @@ A typical journey:
 4. **Numbers appear.** The dashboard, comparison, recommendations and plan all
    update from the same underlying data.
 5. **Plan and file.** Use tax planning to pace deductions through the year, then
-   prepare and export the ITR-1.
+   prepare and export the ITR. MoneyMitra recommends the form (ITR-1, ITR-2 or
+   ITR-3) from the uploaded documents.
 
 ---
 
@@ -152,20 +154,28 @@ The dashboard renders only what the user's data supports:
 Recent activity lists only real events (uploads, saved tax details). When two
 regimes cannot be compared (for example, a belated return where only the new
 regime applies), the dashboard still shows the estimated tax under the regime
-that applies and says plainly that no comparison is available.
+that applies and says plainly why no comparison is available. The estimate
+covers tax and cess only, before any interest or late-filing fee.
 
 ### Documents and automatic extraction
 
-- **Categories:** PAN card, Form 16, AIS, payslips, tax proofs, bills, other.
+- **Categories (ten):** PAN card, Form 16, AIS, Form 26AS, payslips, capital
+  gains and trading statements, home-loan certificate, tax proofs, bills, other.
 - **Upload:** PDF, PNG, JPEG, and AIS JSON; content is checked by file
   signature, not extension; 10 MB limit; stored on a Docker volume with
-  metadata in the database.
+  metadata in the database. Re-uploading an identical file is detected by its
+  SHA-256 hash and refused, with a message saying where it already is.
 - **Extraction is rule-based, not AI.** It reads text PDFs and AIS JSON for:
   TRACES Form 16 (Parts A and B), the e-filing AIS (including the taxpayer
-  information summary), and payslips with Current/YTD columns. Password-protected
-  AIS PDFs are opened using the user's PAN and date of birth.
-- Scanned or image-only documents have no text layer and are reported as
-  unsupported rather than guessed at.
+  information summary and securities sales), Form 26AS, broker capital-gains /
+  tax P&L statements, payslips with Current/YTD columns, and PAN cards.
+  Password-protected AIS PDFs are opened using the user's PAN and date of birth.
+  Home-loan certificates, tax proofs, bills and other documents are stored but
+  not read.
+- **Scans and photos are read with local OCR.** Photographed PAN cards and
+  scanned PDFs (up to 10 pages) go through Tesseract running on the server, so
+  no document leaves the machine. If OCR is not installed, or a file still
+  cannot be read, it is reported as unreadable rather than guessed at.
 - **Auto-fill rules:** only empty fields are filled; values the user typed are
   never overwritten; every filled field is tagged with its source ("from Form 16").
 
@@ -215,16 +225,33 @@ mean per remaining month?" while there is still time to act.
   rental income, the employer's NPS contribution (80CCD(2)) and deductions such
   as 80E and 80TTA, and the page says so.
 
-### ITR Filing (ITR-1, AY 2026-27)
+### ITR Filing (ITR-1, ITR-2 and ITR-3, AY 2026-27)
 
 A four-step flow: **Personal Info, Income Sources, Tax Saving, Tax Summary.**
 
+- **The right form, chosen for the user.** A "Your ITR form" card recommends
+  ITR-1, ITR-2 or ITR-3 from the uploaded documents, explains why, and lists the
+  documents still needed. For example: capital gains beyond the ITR-1 limit or
+  income above Rs 50 lakh point to ITR-2; intraday or F&O trading points to ITR-3.
+- **What each form covers.**
+  - **ITR-1:** salary or pension, up to two house properties, other sources.
+  - **ITR-2:** adds capital gains on listed shares and mutual funds (Sections
+    111A, 112A and 50AA), set-off, special-rate tax and TDS.
+  - **ITR-3:** adds share trading as business income without books of account,
+    both intraday (speculative) and F&O (non-speculative). It has a later due
+    date than ITR-1 and ITR-2.
+- **Honest about what is not built.** Cases that need schedules MoneyMitra does
+  not build yet are shown as blockers on the card instead of producing a wrong
+  return: other business or professional income, non-residents, foreign assets
+  or income, income above Rs 50 lakh, house property in ITR-2 or ITR-3, and the
+  old regime in ITR-2 or ITR-3 (choose the new regime).
 - Auto-fills from uploaded documents, auto-saves as the user types, and can
   re-read documents on demand.
-- Computes tax under both regimes, including interest under 234A/B/C and fee
-  under 234F, with eligibility and field validation.
+- Computes tax under both regimes where allowed, including interest under
+  234A/B/C and fee under 234F, with eligibility and field validation.
 - **Exports** the official e-filing JSON, validated against the Income Tax
-  Department's ITR-1 schema (v1.1), plus a human-readable **PDF summary**.
+  Department's schema for the chosen form (ITR-1 v1.1, ITR-2 v1.2, ITR-3 v1.1),
+  plus a human-readable **PDF summary**.
 - After the due date (31 Jul 2026) only the new regime is allowed (belated
   return u/s 139(4)), and the product enforces this.
 - MoneyMitra does **not** submit returns. The user uploads the JSON at
@@ -273,15 +300,16 @@ numbers are:
 | 0 | Nothing yet | A prompt to add a date of birth |
 | 1 | Profile: date of birth, plus optionally employee category and expected income | Example figures, or yours if you gave an expected income. Employee category sets the emergency fund (4 months of expenses for government and PSU jobs, 6 otherwise) |
 | 2 | Income from the ITR draft or latest tax comparison | The numbers use your real income, and health-cover advice reads your declared premiums |
-| 3 | Uploaded Form 16, AIS and payslips | Income comes from your documents. With an AIS, MoneyMitra estimates how much of your money sits idle in savings accounts from the interest you earned, and how much more it could earn in a deposit |
+| 3 | Uploaded Form 16, AIS, Form 26AS, payslips and broker statements | Income comes from your documents. With an AIS, MoneyMitra estimates how much of your money sits idle in savings accounts from the interest you earned, and how much more it could earn in a deposit |
 
 Life stage comes from age, with the cut-offs in `recommendations/stages.py`.
 For Level 3, MoneyMitra builds an ITR draft from your documents alone using the
 same extraction code as the ITR auto-fill; the saved draft is never changed.
 The page lists which documents were analysed and why any others were skipped (a
-PAN card only identifies the user; images can't be read; document types such as
-Form 26AS are stored but not analysed), so it is always clear why a user is or
-isn't on Level 3.
+PAN card only identifies the user; files that can't be read, even with OCR, are skipped; document types such as
+tax proofs, bills and home-loan certificates are stored but not analysed), so it
+is always clear why a user is or isn't on Level 3. Form 16, AIS, Form 26AS,
+payslips and broker statements are all analysed.
 
 Where the code lives (`apps/backend/app/modules/recommendations/`):
 
@@ -370,7 +398,7 @@ Design decisions:
 | Backend | Python 3.12, FastAPI, Pydantic, SQLAlchemy 2, Alembic |
 | Database | PostgreSQL (psycopg 3) |
 | Auth and crypto | bcrypt, PyJWT, `cryptography` (Fernet) |
-| Documents | pypdf for text extraction, reportlab for PDF summaries, jsonschema for ITR export validation |
+| Documents | pypdf for text extraction, Tesseract OCR (pytesseract, pypdfium2) for scans and photos, reportlab for PDF summaries, jsonschema for ITR export validation |
 | AI (optional) | OpenAI API (model configurable, default `gpt-4.1-mini`) |
 | Tooling | pytest, ruff, ESLint, `tsc`, Docker and Docker Compose |
 
@@ -417,17 +445,24 @@ Interactive docs: `http://localhost:8000/docs`.
   HttpOnly, SameSite cookie, stored hashed, rotated atomically on use (a reused
   token is rejected), and revoked on logout.
 - **PAN** is encrypted at rest with Fernet and exposed only in masked form
-  (for example `XXXXX1234F`). Set `PII_ENCRYPTION_KEY` in production; without it,
-  PAN encryption raises an error rather than silently falling back.
+  (for example `XXXXX1234F`). Aadhaar, mobile number, bank account numbers and
+  the NPS PRAN in ITR drafts are encrypted with the same key. In production the
+  API refuses to start without `PII_ENCRYPTION_KEY` (or with non-HTTPS
+  `CORS_ORIGINS`).
+- **Sign-in protection:** an account is locked for 15 minutes after 5 wrong
+  passwords. Requests are rate-limited per IP and per user, request sizes are
+  capped, and responses carry security headers (`X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, and HSTS in production).
 - **Authorization:** every data endpoint is scoped to the authenticated user.
-- **Uploads:** file type is verified by content signature, size is capped, and
-  stored names are not trusted.
+- **Uploads:** file type is verified by content signature, size is capped,
+  duplicates are refused, and stored names are not trusted. OCR runs locally.
 - **AI privacy:** chat is stateless; no conversation is stored. Only the
   computed comparison and the user's messages are sent to OpenAI, and only when
   an API key is configured.
-- **Before real users:** encrypt `itr_filings.data` at rest (it holds PAN,
-  Aadhaar and bank details), replace the placeholder `ITR_SOFTWARE_ID`, and
-  review the tax rules against official circulars.
+- **Before real users:** set `PII_ENCRYPTION_KEY`, replace the placeholder
+  `ITR_SOFTWARE_ID`, consider encrypting the rest of the ITR draft (the rate
+  limiter is in-memory and needs a shared store if the API runs as several
+  processes), and review the tax rules against official circulars.
 
 ---
 
@@ -436,7 +471,7 @@ Interactive docs: `http://localhost:8000/docs`.
 | Task | Method |
 |---|---|
 | Tax calculation, regime comparison, ITR computation | Deterministic, versioned rules (no AI) |
-| Document extraction | Pattern-based parsing of text PDFs and JSON (no AI) |
+| Document extraction | Pattern-based parsing of text PDFs and JSON, plus local Tesseract OCR for scans and photos (no AI) |
 | Recommendations | Rule engine over the user's data (no AI) |
 | Plain-language explanation of a comparison | OpenAI, constrained to a fixed JSON shape, restating computed numbers; deterministic fallback |
 | Tax Q&A chat | OpenAI; degrades to a polite message if unavailable |
@@ -492,9 +527,11 @@ apps/
       api/v1/                  # thin versioned routes
       modules/
         auth/  users/          # sessions, JWT, PAN encryption
-        documents/ extraction/ # uploads, rule-based parsers, ITR auto-fill
+        documents/ extraction/ # uploads, rule-based parsers (Form 16, AIS, 26AS, payslips,
+                               #   broker statements, PAN), ITR auto-fill
         tax/                   # slabs, calculator, comparison, AI explain and chat, rules/
-        itr/                   # ITR-1 rules, computation, interest, validation, JSON/PDF export
+        itr/                   # rules, computation, interest, validation, form selector (ITR-1/2/3),
+                               #   JSON export per form against the official schemas, PDF summary
         recommendations/       # life-stage advice, worked examples, levels, facts, document analysis (level 3)
         planning/              # financial-year headroom and monthly targets
         resources/             # deadlines and deduction-limit reference data
@@ -513,6 +550,7 @@ run_all.sh                     # one-command start, stop, logs, status
 
 - Node.js 20+ and npm
 - Python 3.12+
+- Tesseract OCR (optional for local development, e.g. `brew install tesseract`; the Docker image includes it)
 - PostgreSQL running locally on port 5432
 - Docker Desktop (only for the containerised setup)
 
@@ -592,7 +630,9 @@ Backend settings come from `apps/backend/.env`; Docker reads the root `.env`.
 | `DATABASE_URL` | PostgreSQL connection | Default targets local `moneymitra` |
 | `CORS_ORIGINS` | Allowed website origins | JSON array |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | Session lifetimes | 15 minutes / 30 days |
-| `PII_ENCRYPTION_KEY` | Encrypts PAN at rest | Optional in development (derived from `JWT_SECRET`); **required in production** |
+| `PII_ENCRYPTION_KEY` | Encrypts PAN and sensitive ITR draft fields at rest | Optional in development (derived from `JWT_SECRET`); **required in production** |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | Account lockout after wrong passwords | 5 failures / 15 minutes |
+| `RATE_LIMIT_ENABLED` | Per-IP and per-user request limits | On by default |
 | `ITR_SOFTWARE_ID` | Software ID written into exported ITR JSON | Default `SW00000000` is a placeholder |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | Enables AI explanation and chat | Optional; the product works without it |
 | `WEB_PORT` / `BACKEND_PORT` | Host ports for Docker | 3000 / 8000 |
@@ -605,7 +645,7 @@ Generate a `PII_ENCRYPTION_KEY` with:
 
 ## 15. Testing and quality
 
-**Backend** (300 tests, in an isolated `moneymitra_test` database):
+**Backend** (302 tests in 16 files, in an isolated `moneymitra_test` database):
 
 ```bash
 cd apps/backend && source .venv/bin/activate
@@ -615,7 +655,7 @@ ruff check app tests
 
 The suite covers authentication and sessions, onboarding and PAN handling,
 tax calculation and rules, AI explanation and chat fallbacks, document upload,
-extraction and auto-fill, ITR computation, validation and export,
+extraction and auto-fill, ITR computation, form selection, validation and export,
 recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources and the dashboard summary.
 
 **Frontend:**
@@ -637,12 +677,14 @@ type-checking, linting and the production build.
 **Limitations (stated openly)**
 
 - **Finance Management** is a prototype on demo data, with no backend.
-- **ITR scope:** ITR-1 for AY 2026-27 only. Not supported: capital gains
-  (including LTCG u/s 112A), deductions such as 80E/80G/80GG/80DD/80U, relief
-  u/s 89, and co-owned properties. These users should use the official utility.
+- **ITR scope:** ITR-1, ITR-2 and ITR-3 for AY 2026-27 only. Not supported:
+  ITR-4 to ITR-7, the cases listed as blockers above, deductions such as
+  80E/80G/80GG/80DD/80U, relief u/s 89, and co-owned properties. These users
+  should use the official utility.
 - **No e-filing submission.** Returns are exported for manual upload.
-- **Extraction** handles text PDFs and AIS JSON in known layouts; scanned
-  documents are not read, and unusual layouts may fill only partly.
+- **Extraction** handles known layouts only (text PDFs, AIS JSON, and scans or
+  photos through OCR); unusual layouts may fill only partly, and OCR quality
+  depends on the scan.
 - **Tax-comparison simplifications:** surcharge has no marginal-relief smoothing
   above Rs 50L; the extra 80D deduction for parents' premiums is not modelled
   in the Tax Comparison (Tax Planning does count it separately); HRA and "other
@@ -657,19 +699,23 @@ type-checking, linting and the production build.
   spending is assumed to be 60% of income until the user's real figure is known.
   Review them before real use. The advice is general guidance, not personal
   investment advice, and says so.
-- **Document analysis (Level 3)** covers Form 16, AIS and payslips only. The
+- **Document analysis (Level 3)** covers Form 16, AIS, Form 26AS, payslips and
+  broker statements. A payslip-only upload can't say whether TDS is enough, and
+  tax proofs, bills and home-loan certificates are not analysed. The
   idle-savings estimate infers a balance from AIS interest at an assumed rate, so
-  it is approximate. Form 26AS, tax proofs and images are not analysed.
+  it is approximate.
 - **Resources and Alerts** are curated by hand, not live-fetched.
-- **Data at rest:** PAN is encrypted, but `itr_filings.data` is not yet.
+- **Data at rest:** the profile PAN and the most sensitive ITR draft fields
+  (Aadhaar, mobile number, bank account numbers, NPS PRAN) are encrypted. The
+  rest of the draft, including the PAN inside it, is stored as plain JSON.
 - **AI features** need an OpenAI key and are not used for any calculation.
 
 **Natural next steps**
 
 - Backend for Finance Management (spending, investments, savings tracking).
-- Analyse more document types (Form 26AS, tax proofs) and read scanned documents.
+- Analyse more document types (tax proofs, home-loan certificates).
 - Encrypt ITR drafts at rest; direct filing via ERI registration.
-- More assessment years and ITR forms; live tax-rule updates.
+- More assessment years, the remaining ITR forms and schedules; live tax-rule updates.
 - Frontend automated tests and end-to-end coverage.
 
 ---
@@ -693,14 +739,14 @@ A ready-to-adapt kit for the slide deck and the demo.
 | 3 | The solution | One workspace: upload, understand, compare, act, file |
 | 4 | How it works | The five-step flow (use the flowchart in section 3) |
 | 5 | Product tour (1/3) | Dashboard that never invents numbers; progressive empty states |
-| 6 | Product tour (2/3) | Documents with automatic extraction feeding the ITR draft |
+| 6 | Product tour (2/3) | Documents with automatic extraction feeding the ITR draft and Level 3 advice |
 | 7 | Product tour (3/3) | Tax comparison with plain-language explanation |
 | 8 | Year-round value | Tax planning: headroom and monthly targets; recommendations with reasons |
-| 9 | Filing | Four-step ITR-1 flow; official JSON and PDF export |
+| 9 | Filing | Four-step flow; the right form (ITR-1/2/3) chosen from your documents; official JSON and PDF export |
 | 10 | Architecture | Diagram from section 5; API-first modular monolith |
-| 11 | Trust and security | Rotating sessions, encrypted PAN, user-scoped data |
+| 11 | Trust and security | Rotating sessions, sign-in lockout and rate limits, encrypted PAN and sensitive ITR fields, local OCR, user-scoped data |
 | 12 | Responsible AI | Deterministic maths; AI only for explanation, with fallbacks |
-| 13 | Quality | 300 backend tests; typed, linted, built frontend |
+| 13 | Quality | 302 backend tests; typed, linted, built frontend |
 | 14 | Limitations and roadmap | Honest scope and next steps (section 16) |
 | 15 | Demo / Q&A | Live walkthrough |
 
@@ -717,33 +763,37 @@ A ready-to-adapt kit for the slide deck and the demo.
    the recommended one, the deduction checklist and the AI explanation.
 6. **Tax planning and recommendations** (45s): remaining headroom, monthly
    targets, and recommendations that show their reason and basis.
-7. **ITR filing** (30s): the four steps and the JSON/PDF export.
+7. **ITR filing** (30s): the "Your ITR form" card, the four steps and the JSON/PDF export.
 
 Tip: seed a demo user ahead of time with a Form 16 so the live upload is a
 backup, and keep `OPENAI_API_KEY` set so the explanation and chat work on stage.
 
 ### Likely questions
 
-- **Does it file my return?** No. It prepares an ITR-1 and exports the official
-  JSON for upload at incometax.gov.in; direct filing needs ERI registration.
+- **Does it file my return?** No. It prepares an ITR-1, ITR-2 or ITR-3 and exports
+  the official JSON for upload at incometax.gov.in; direct filing needs ERI
+  registration.
 - **Is the tax calculation AI-generated?** No. It is deterministic and versioned;
   AI only explains results.
 - **What if the AI is down?** The product keeps working; explanations fall back
   to a deterministic template.
 - **How do you handle sensitive data?** Hashed passwords, rotating sessions,
-  encrypted PAN shown only masked, and per-user data scoping. Encrypting ITR
-  drafts at rest is the next hardening step.
+  sign-in lockout and rate limiting, encrypted PAN (shown only masked) and
+  encrypted Aadhaar, mobile, bank and PRAN fields in ITR drafts, local OCR so
+  documents never leave the server, and per-user data scoping. Encrypting the
+  rest of the ITR draft is the next hardening step.
 - **How do you keep tax rules current?** Rules are versioned data per tax year
   and assessment year; adding a year is a new rules entry.
 - **Why trust the recommendations?** Each one states its reason and what data it
   is based on, and nothing personalised appears without the data to justify it.
-- **What is not finished?** Finance Management is a prototype, and ITR-1 is the
-  only supported return form.
+- **What is not finished?** Finance Management is a prototype, and only ITR-1,
+  ITR-2 and ITR-3 are supported; cases needing other schedules are shown as
+  blockers, never guessed at.
 
 ### Key numbers to quote
 
 - 11 live features end to end; 1 prototype (Finance Management)
-- 2 supported tax years (FY 2025-26, FY 2026-27); 1 ITR form (ITR-1, AY 2026-27)
-- 7 document categories; 3 document formats extracted (Form 16, AIS, payslips)
+- 2 supported tax years (FY 2025-26, FY 2026-27); 3 ITR forms (ITR-1, ITR-2, ITR-3, AY 2026-27)
+- 10 document categories; 6 document types read automatically (Form 16, AIS, Form 26AS, payslips, broker statements, PAN)
 - 4-step ITR flow; 5 life-stage recommendations per stage across 3 levels; 4 deduction sections planned
-- 300 automated backend tests
+- 302 automated backend tests
