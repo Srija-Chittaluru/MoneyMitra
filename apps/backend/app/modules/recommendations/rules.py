@@ -22,7 +22,7 @@ from app.modules.tax.rules.registry import get_tax_rules
 
 Rule = Callable[[Facts], list[Recommendation]]
 
-_SOURCE_BASIS = {
+SOURCE_BASIS = {
     "itr_filing": "Based on your ITR filing",
     "tax_comparison": "Based on your latest tax comparison",
 }
@@ -34,7 +34,7 @@ def _percent(rate: Decimal) -> int:
 
 def _declared_basis(facts: Facts) -> str:
     assert facts.declared is not None
-    return _SOURCE_BASIS[facts.declared.source]
+    return SOURCE_BASIS[facts.declared.source]
 
 
 # ---------------------------------------------------------------------------

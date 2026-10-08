@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.modules.recommendations.schemas import Recommendation
+
 
 class InstrumentOptionOut(BaseModel):
     name: str
@@ -51,3 +53,5 @@ class TaxPlanOut(BaseModel):
     regime_position: RegimePosition | None
     regime_caveat: str
     sections: list[PlanningSectionOut]
+    # Cross-section nudges: regime fit, timing, priority. Empty when has_data is False.
+    recommendations: list[Recommendation]

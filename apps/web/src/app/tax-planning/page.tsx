@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { PlanningSectionCard } from "@/components/planning/PlanningSectionCard";
+import { RecommendationCard } from "@/components/ui/RecommendationCard";
 import { formatRupees } from "@/lib/format";
 import { getTaxPlan } from "@/lib/planning/api";
 import type { RegimePosition, TaxPlan } from "@/lib/planning/types";
@@ -118,6 +119,23 @@ export default function TaxPlanningPage() {
 
               {plan.regime_position && (
                 <RegimePositionBanner position={plan.regime_position} caveat={plan.regime_caveat} />
+              )}
+
+              {plan.recommendations.length > 0 && (
+                <div className="mb-6 grid gap-4 md:grid-cols-2">
+                  {plan.recommendations.map((rec) => (
+                    <RecommendationCard
+                      key={rec.id}
+                      title={rec.title}
+                      description={rec.description}
+                      reason={rec.reason}
+                      tag="Tax saving"
+                      basis={rec.basis}
+                      actionLabel={rec.action_label}
+                      actionHref={rec.action_href}
+                    />
+                  ))}
+                </div>
               )}
 
               <div className="flex flex-col gap-4">
