@@ -7,11 +7,26 @@ import { useHasMounted } from "@/lib/use-has-mounted";
 interface LogoProps {
   className?: string;
   height?: number;
+  /** Mark only, no wordmark — for the collapsed nav rail. Same on both themes. */
+  markOnly?: boolean;
 }
 
-export function Logo({ className, height = 40 }: LogoProps) {
+export function Logo({ className, height = 40, markOnly = false }: LogoProps) {
   const { resolvedTheme } = useTheme();
   const mounted = useHasMounted();
+
+  if (markOnly) {
+    return (
+      <Image
+        src="/brand/moneymitra-mark.png"
+        alt="MoneyMitra"
+        width={Math.round(height * 1.259)}
+        height={height}
+        className={className}
+        priority
+      />
+    );
+  }
 
   const isDark = mounted && resolvedTheme === "dark";
   const src = isDark

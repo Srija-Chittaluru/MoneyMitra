@@ -16,12 +16,12 @@ export function Header({ onMenuClick, title }: HeaderProps) {
   const router = useRouter();
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 md:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-frame px-4 md:px-6">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-md p-2 text-muted hover:bg-surface-muted hover:text-foreground md:hidden"
+          className="rounded-md p-2 text-muted hover:bg-hover hover:text-foreground md:hidden"
           aria-label="Open navigation"
         >
           <Menu className="h-5 w-5" />
@@ -36,7 +36,7 @@ export function Header({ onMenuClick, title }: HeaderProps) {
           onClick={() => {
             logout().finally(() => router.push("/"));
           }}
-          className="rounded-md p-2 text-muted hover:bg-surface-muted hover:text-foreground"
+          className="rounded-md p-2 text-muted hover:bg-hover hover:text-foreground"
           aria-label="Log out"
           title="Log out"
         >

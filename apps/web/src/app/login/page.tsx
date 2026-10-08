@@ -52,7 +52,7 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm bg-card border-line">
       <h1 className="text-h1 mb-1">Log in</h1>
       <p className="mb-6 text-sm text-muted">Welcome back to MoneyMitra.</p>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -65,6 +65,7 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
+          className="bg-field border-line"
         />
         <Input
           id="password"
@@ -75,6 +76,7 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
+          className="bg-field border-line"
         />
         {(fieldError || apiError) && (
           <p className="text-sm text-error">{fieldError ?? apiError}</p>

@@ -21,14 +21,14 @@ export function FormDecisionCard({ recommendation }: { recommendation: FormRecom
   const missing = checklist.filter((c) => c.required && !c.uploaded).length;
 
   return (
-    <Card className={cn("p-0", !supported && "ring-2 ring-warning")}>
+    <Card className={cn("p-0 bg-card border-line", !supported && "ring-2 ring-warning")}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-start gap-3 rounded-lg p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:p-6"
       >
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-field">
           <FileSearch className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
@@ -102,7 +102,7 @@ export function FormDecisionCard({ recommendation }: { recommendation: FormRecom
 
           <div className="flex min-w-0 flex-col gap-2">
             <p className="text-sm font-semibold text-foreground">Documents for {form}</p>
-            <ul className="flex flex-col divide-y divide-border">
+            <ul className="flex flex-col divide-y divide-line">
               {checklist.map((c) => (
                 <li key={c.category} className="flex items-start gap-3 py-2">
                   {c.uploaded ? (
@@ -123,7 +123,7 @@ export function FormDecisionCard({ recommendation }: { recommendation: FormRecom
             {missing > 0 && (
               <Link
                 href="/documents"
-                className="inline-flex h-9 w-fit items-center justify-center rounded-md border border-border px-3 text-sm font-semibold text-foreground hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="inline-flex h-9 w-fit items-center justify-center rounded-md border border-line px-3 text-sm font-semibold text-foreground hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 Upload missing documents
               </Link>

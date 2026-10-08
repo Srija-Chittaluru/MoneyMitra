@@ -68,7 +68,7 @@ export function ProfileCard({
         : null;
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 bg-card border-line">
       <h3 className="text-h2 mb-1">Your profile</h3>
       <p className="mb-4 text-sm text-muted">
         {showEstimateFields
@@ -84,7 +84,7 @@ export function ProfileCard({
           type="date"
           label="Date of birth"
           hint="Sets your life stage and the advice you see"
-          className="w-full min-w-0"
+          className="w-full min-w-0 bg-field border-line"
           value={dob}
           onChange={(e) => setDob(e.target.value)}
         />
@@ -92,7 +92,7 @@ export function ProfileCard({
           id="profile-category"
           label="Employee category"
           hint="Sets how big your emergency fund should be"
-          className="w-full min-w-0"
+          className="w-full min-w-0 bg-field border-line"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         >
@@ -113,7 +113,7 @@ export function ProfileCard({
             label="Expected annual income (₹)"
             hint="Used for example numbers until you add real figures"
             placeholder="e.g. 1200000"
-            className="w-full min-w-0"
+            className="w-full min-w-0 bg-field border-line"
             value={income}
             onChange={(e) => setIncome(e.target.value)}
           />

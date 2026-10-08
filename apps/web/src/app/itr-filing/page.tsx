@@ -92,14 +92,14 @@ function LoadingState() {
 function HelpCards() {
   return (
     <div className="flex flex-col gap-4">
-      <Card className="flex items-start gap-3 p-4">
+      <Card className="flex items-start gap-3 bg-card border-line p-4">
         <Bot className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         <div>
           <p className="font-semibold text-foreground">Need help?</p>
           <p className="text-sm text-muted">Ask the MoneyMitra tax assistant — use the chat button at the bottom right.</p>
         </div>
       </Card>
-      <Card className="flex items-start gap-3 p-4">
+      <Card className="flex items-start gap-3 bg-card border-line p-4">
         <UserRoundSearch className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         <div>
           <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">

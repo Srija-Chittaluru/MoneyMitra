@@ -41,7 +41,7 @@ export default function FinancePage() {
   return (
     <AppShell title="Finance Management">
       {overview.isPending ? (
-        <Card>
+        <Card className="bg-card border-line">
           <SectionSkeleton lines={6} />
         </Card>
       ) : overview.isError ? (
@@ -67,7 +67,7 @@ function Overview({ data }: { data: FinanceOverview }) {
           </p>
         </div>
       ) : (
-        <Card>
+        <Card className="bg-card border-line">
           <EmptyPanel
             icon={Wallet}
             title="Your finances will appear here"

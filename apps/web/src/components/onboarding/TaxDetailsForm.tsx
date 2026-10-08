@@ -100,7 +100,7 @@ export function TaxDetailsForm({ submitLabel, onSkipped, onSaved, onCancel }: Ta
         spellCheck={false}
         maxLength={10}
         aria-required="true"
-        className="uppercase tracking-wider"
+        className="uppercase tracking-wider bg-field border-line"
       />
       <Input
         id="dob"
@@ -116,6 +116,7 @@ export function TaxDetailsForm({ submitLabel, onSkipped, onSaved, onCancel }: Ta
         max={todayISO()}
         autoComplete="bday"
         aria-required="true"
+        className="bg-field border-line"
       />
       {apiError && <p className="text-sm text-error">{apiError}</p>}
       <div className="mt-2 flex flex-col gap-2">

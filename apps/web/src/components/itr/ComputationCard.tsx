@@ -33,12 +33,12 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
   const payable = data.balance_payable > 0;
 
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <h3 className="text-h2 mb-2">
         Computation – {data.regime === "new" ? "New" : "Old"} regime
       </h3>
       <p className="mb-2 text-xs uppercase tracking-wide text-muted">Income</p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <Row label="Gross salary" amount={data.gross_salary} />
         <Row label="Less: exempt allowances" amount={data.exempt_allowances} indent />
         <Row label="Less: standard deduction" amount={data.standard_deduction} indent />
@@ -73,7 +73,7 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
       </div>
 
       <p className="mb-2 mt-4 text-xs uppercase tracking-wide text-muted">Tax</p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         {data.tax_at_special_rates > 0 && (
           <>
             <Row label="Tax at slab rates" amount={data.tax_at_normal_rates} indent />
@@ -94,7 +94,7 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
       </div>
 
       <p className="mb-2 mt-4 text-xs uppercase tracking-wide text-muted">Taxes paid</p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <Row label="TDS" amount={data.tds} />
         <Row label="TCS" amount={data.tcs} />
         <Row label="Advance tax" amount={data.advance_tax} />

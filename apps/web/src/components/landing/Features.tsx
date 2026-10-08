@@ -1,147 +1,93 @@
-import type { ReactNode } from "react";
-import { FileText, Scale, Sparkles, Wallet } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import {
-  EXTRACTED_FIELDS,
-  FINANCE,
-  RECOMMENDATIONS,
-  TAX,
-  inr,
-} from "./demo-data";
-import { Amount, Container, Eyebrow, Pill, RegimeBars } from "./parts";
+import { DEDUCTION_CHIPS, TAX, TAX_ACTIONS, inr } from "./demo-data";
+import { Amount, Container, Eyebrow, RegimeBars } from "./parts";
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  headline,
-  benefit,
-  className,
-  children,
-}: {
-  icon: LucideIcon;
-  title: string;
-  headline: string;
-  benefit: string;
-  className?: string;
-  children: ReactNode;
-}) {
+function TaxBreakdown() {
+  const bars = [
+    { label: "Income", value: TAX.gross, height: 100, accent: false },
+    { label: "Deductions", value: TAX.deductions, height: 41, accent: false },
+    { label: "Taxable", value: TAX.taxable, height: 59, accent: false },
+    { label: "Tax", value: TAX.oldRegime.total, height: 18, accent: true },
+  ];
   return (
-    <article
-      data-reveal
-      data-lift
-      className={cn(
-        "flex flex-col gap-6 rounded-lg border border-border bg-surface p-6 md:p-8",
-        className,
-      )}
-    >
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted">
-          <Icon className="h-4 w-4 text-link" strokeWidth={1.75} />
-          {title}
-        </div>
-        <h3 className="text-h2">{headline}</h3>
-        <p className="text-body text-muted">{benefit}</p>
+    <div className="rounded-lg border border-line bg-card p-5">
+      <div className="mb-5 flex items-center justify-between text-sm">
+        <span className="text-foreground">How your tax adds up</span>
+        <span className="font-mono text-[11px] text-muted">{TAX.year} · Estimate</span>
       </div>
-      <div
-        aria-hidden
-        className="mt-auto rounded-md border border-border bg-background p-4"
-      >
-        {children}
-      </div>
-    </article>
-  );
-}
-
-function ComparisonVisual() {
-  return (
-    <div className="flex flex-col gap-4">
-      <RegimeBars />
-      <div className="flex items-center justify-between border-t border-border pt-3 text-xs">
-        <span className="text-muted">Difference under the new regime</span>
-        <Amount className="text-success">−{inr(TAX.savings)}</Amount>
-      </div>
-    </div>
-  );
-}
-
-function ExtractionVisual() {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-xs">
-        <FileText className="h-4 w-4 text-muted" strokeWidth={1.75} />
-        <span className="truncate font-medium text-foreground">
-          Form16_FY2025-26.pdf
-        </span>
-        <Pill tone="success" className="ml-auto">
-          Extracted
-        </Pill>
-      </div>
-      <dl className="grid grid-cols-2 gap-2">
-        {EXTRACTED_FIELDS.map(({ label, value }) => (
-          <div
-            key={label}
-            className="min-w-0 rounded-md border border-border bg-surface px-2.5 py-2"
-          >
-            <dt className="truncate text-[10px] text-muted">{label}</dt>
-            <dd className="mt-0.5 truncate text-xs font-medium text-foreground">
-              {value}
-            </dd>
+      <div className="grid grid-cols-4 items-end gap-3">
+        {bars.map((bar) => (
+          <div key={bar.label}>
+            <p className={cn("mb-2 text-xs", bar.accent ? "text-accent-text" : "text-muted")}>{bar.label}</p>
+            <div
+              className={cn("rounded-md", bar.accent ? "bg-accent" : "bg-field")}
+              style={{ height: `${Math.max(bar.height, 12)}px` }}
+            />
+            <Amount className={cn("mt-2 block text-xs", bar.accent && "text-accent-text")}>{inr(bar.value)}</Amount>
           </div>
         ))}
-      </dl>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {DEDUCTION_CHIPS.map((chip) => (
+          <span key={chip.label} className="rounded-md bg-field px-2.5 py-1.5 text-xs text-muted">
+            {chip.label} {chip.value}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-function RecommendationVisual() {
-  const rec = RECOMMENDATIONS[1];
+function WaysToPayLess() {
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold text-foreground">{rec.title}</p>
-        <Pill tone="neutral">{rec.tag}</Pill>
+    <div className="flex h-full flex-col rounded-lg border border-line bg-card p-5">
+      <div className="mb-4 flex items-center justify-between text-sm">
+        <span className="text-foreground">Ways to pay less this year</span>
+        <span className="font-mono text-[11px] text-muted">176 days to 31 March</span>
       </div>
-      <p className="rounded-md bg-surface-muted p-2.5 text-[11px] leading-4 text-muted">
-        <span className="font-semibold text-foreground">Why: </span>
-        {rec.reason}
-      </p>
-    </div>
-  );
-}
-
-function FinanceVisual() {
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
-      <div className="grid shrink-0 grid-cols-2 gap-4 lg:w-40 lg:grid-cols-1 lg:gap-3">
-        <div>
-          <p className="text-[11px] text-muted">Saved this month</p>
-          <Amount className="text-base text-foreground">
-            {inr(FINANCE.saved)}
-          </Amount>
-        </div>
-        <div>
-          <p className="text-[11px] text-muted">Savings rate</p>
-          <Amount className="text-base text-foreground">
-            {FINANCE.savingsRate}%
-          </Amount>
-        </div>
-      </div>
-      <div className="flex h-24 min-w-0 flex-1 items-end gap-2">
-        {FINANCE.months.map((m, i) => (
-          <div key={m.label} className="flex flex-1 flex-col items-center gap-1.5">
-            <div className="flex h-20 w-full items-end">
-              <div
-                className={cn(
-                  "w-full rounded-sm",
-                  i === FINANCE.months.length - 1 ? "bg-link" : "bg-foreground/15",
-                )}
-                style={{ height: `${(m.spent / FINANCE.chartMax) * 100}%` }}
-              />
+      <div className="flex flex-col gap-2.5">
+        {TAX_ACTIONS.map((action) =>
+          action.saved === null ? (
+            <div key={action.title} className="flex items-center justify-between gap-3 rounded-md bg-field p-3.5">
+              <div>
+                <p className="text-sm font-medium text-muted">{action.title}</p>
+                <p className="mt-0.5 text-xs text-muted">{action.detail}</p>
+              </div>
+              <span className="flex shrink-0 items-center gap-1 text-xs text-link">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Fully used
+              </span>
             </div>
-            <span className="text-[10px] text-muted">{m.label}</span>
+          ) : (
+            <div
+              key={action.title}
+              className="flex items-start justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-3.5"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">{action.title}</p>
+                <p className="mt-0.5 text-xs text-muted">{action.detail}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <Amount className="block text-accent-text">{inr(action.saved)}</Amount>
+                <p className="text-[10px] text-muted">saved</p>
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+      <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-line pt-5">
+        <div>
+          <p className="text-xs text-muted">Tax after both actions</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <Amount className="text-2xl font-semibold tracking-tight text-foreground">
+              {inr(TAX.taxAfterActions)}
+            </Amount>
+            <span className="font-mono text-xs text-muted line-through">{inr(TAX.oldRegime.total)}</span>
           </div>
-        ))}
+        </div>
+        <div className="flex h-11 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-foreground">
+          Review both actions
+        </div>
       </div>
     </div>
   );
@@ -149,62 +95,38 @@ function FinanceVisual() {
 
 export function Features() {
   return (
-    <section
-      id="features"
-      className="scroll-mt-20 pb-20 md:pb-28"
-    >
+    <section id="tax" className="scroll-mt-16 py-16 md:py-24">
       <Container>
-        <div data-reveal className="mb-10 flex max-w-2xl flex-col gap-3 md:mb-14">
-          <Eyebrow>Features</Eyebrow>
-          <h2 className="text-h1 md:text-[40px]">
-            Everything your salary touches, made clear.
-          </h2>
-          <p className="text-body text-muted">
-            Four tools that work together, so you spend less time decoding
-            forms and more time making confident decisions.
+        <div className="mb-14 flex flex-wrap items-end justify-between gap-8 md:mb-16">
+          <div data-reveal className="flex max-w-xl flex-col gap-3">
+            <Eyebrow>04 · Tax</Eyebrow>
+            <h2 className="text-h1 md:text-[44px]">
+              Save on taxes.
+              <br />
+              <span className="text-muted">Keep more of your money.</span>
+            </h2>
+          </div>
+          <p data-reveal className="max-w-sm text-body text-muted md:text-lg">
+            See how your tax is calculated, which regime suits you, and what you can still do this year to
+            pay less. Before the deadline, not after.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-          <FeatureCard
-            className="md:col-span-7"
-            icon={Scale}
-            title="Old vs. new tax comparison"
-            headline="Know which regime costs you less."
-            benefit="We run both regimes on your actual numbers and show the gap to the rupee — no spreadsheets, no guesswork before you declare to your employer."
-          >
-            <ComparisonVisual />
-          </FeatureCard>
-
-          <FeatureCard
-            className="md:col-span-5"
-            icon={FileText}
-            title="Document intelligence"
-            headline="Upload once. We read the rest."
-            benefit="Drop in payslips, Form 16 and proofs. MoneyMitra pulls out salary, TDS and deductions so you never retype a figure."
-          >
-            <ExtractionVisual />
-          </FeatureCard>
-
-          <FeatureCard
-            className="md:col-span-5"
-            icon={Sparkles}
-            title="Tax-saving recommendations"
-            headline="Advice that shows its work."
-            benefit="Every suggestion comes with the reason behind it, based on your income and deductions — not a generic list of tips."
-          >
-            <RecommendationVisual />
-          </FeatureCard>
-
-          <FeatureCard
-            className="md:col-span-7"
-            icon={Wallet}
-            title="Finance management"
-            headline="Taxes are one part of the picture."
-            benefit="See spending, investments and savings next to your tax position, so every money decision comes with context."
-          >
-            <FinanceVisual />
-          </FeatureCard>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div data-reveal className="flex flex-col gap-5">
+            <TaxBreakdown />
+            <div className="rounded-lg border border-line bg-card p-5">
+              <p className="mb-4 text-sm text-foreground">Old vs new regime</p>
+              <RegimeBars />
+              <p className="mt-4 text-sm text-muted">
+                Your HRA and home loan interest make the old regime{" "}
+                <span className="text-foreground">{inr(TAX.regimeDifference)} cheaper</span> this year.
+              </p>
+            </div>
+          </div>
+          <div data-reveal>
+            <WaysToPayLess />
+          </div>
         </div>
       </Container>
     </section>

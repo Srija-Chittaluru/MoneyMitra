@@ -74,17 +74,17 @@ function SlabRateTable({ title, rows }: { title: string; rows: SlabRate[] }) {
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-x-auto rounded-md border border-line">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-surface-muted text-left text-xs uppercase tracking-wide text-muted">
+            <tr className="border-b border-line bg-field text-left text-xs uppercase tracking-wide text-muted">
               <th className="px-3 py-2">Income range</th>
               <th className="px-3 py-2 text-right">Rate</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.lower} className="border-b border-border last:border-0">
+              <tr key={row.lower} className="border-b border-line last:border-0">
                 <td className="px-3 py-2 text-foreground">
                   {row.upper === null
                     ? `Above ${formatRupees(row.lower)}`
@@ -142,7 +142,7 @@ export default function ResourcesPage() {
         )}
         {resourcesQuery.data && resourcesQuery.data.alerts.length > 0 && (
           <div className="relative flex flex-col gap-5 pl-2">
-            <div className="absolute bottom-4 left-[19px] top-4 w-px bg-border" aria-hidden />
+            <div className="absolute bottom-4 left-[19px] top-4 w-px bg-line" aria-hidden />
             {resourcesQuery.data.alerts.map((alert, index) => {
               const meta = CATEGORY_META[alert.category];
               const Icon = meta.icon;
@@ -157,7 +157,7 @@ export default function ResourcesPage() {
                   >
                     <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </div>
-                  <Card className={cn("flex flex-1 flex-col gap-2", index === 0 && "ring-2 ring-border")}>
+                  <Card className={cn("flex flex-1 flex-col gap-2 bg-card border-line", index === 0 && "ring-2 ring-line")}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs font-medium uppercase tracking-wide text-muted">
@@ -179,7 +179,7 @@ export default function ResourcesPage() {
 
       <div className="mb-8 flex flex-col gap-3">
         <h3 className="text-h2">Tax slab rates</h3>
-        <Card className="flex flex-col gap-4">
+        <Card className="flex flex-col gap-4 bg-card border-line">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               id="slab-tax-year"
@@ -187,6 +187,7 @@ export default function ResourcesPage() {
               value={selectedTaxYear}
               onChange={(e) => setTaxYear(e.target.value)}
               disabled={yearsQuery.isLoading}
+              className="bg-field border-line"
             >
               {(yearsQuery.data ?? []).map((year) => (
                 <option key={year} value={year}>
@@ -199,6 +200,7 @@ export default function ResourcesPage() {
               label="Age"
               value={ageCategory}
               onChange={(e) => setAgeCategory(e.target.value)}
+              className="bg-field border-line"
             >
               {AGE_CATEGORIES.map((category) => (
                 <option key={category.value} value={category.value}>
@@ -233,9 +235,9 @@ export default function ResourcesPage() {
             {resourcesQuery.data.deduction_limits.map((limit) => {
               const Icon = SECTION_META[limit.section]?.icon ?? PiggyBank;
               return (
-                <Card key={limit.section} className="flex flex-col gap-3">
+                <Card key={limit.section} className="flex flex-col gap-3 bg-card border-line">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-foreground">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-field text-foreground">
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                     </div>
                     <span className="text-sm font-medium text-foreground">{limit.label}</span>

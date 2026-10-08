@@ -18,7 +18,7 @@ interface LevelProgressProps {
 
 export function LevelProgress({ level, nextStep, onNextStep }: LevelProgressProps) {
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 bg-card border-line">
       <ol className="grid gap-4 sm:grid-cols-3">
         {STEPS.map((step) => {
           const done = level >= step.level;
@@ -30,7 +30,7 @@ export function LevelProgress({ level, nextStep, onNextStep }: LevelProgressProp
                   "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm font-semibold",
                   done
                     ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border text-muted",
+                    : "border-line text-muted",
                 )}
               >
                 {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : step.level}
@@ -48,13 +48,13 @@ export function LevelProgress({ level, nextStep, onNextStep }: LevelProgressProp
       </ol>
 
       {level === 3 && (
-        <p className="mt-5 border-t border-border pt-4 text-sm text-muted">
+        <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
           You&apos;re on the highest level: your recommendations are based on your own documents.
         </p>
       )}
 
       {nextStep && (
-        <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-foreground">{nextStep.title}</p>
             <p className="text-sm text-muted">{nextStep.description}</p>

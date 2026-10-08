@@ -41,7 +41,7 @@ function OnboardingContent() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md bg-card border-line">
       <h1 className="text-h1 mb-1">Tell us about you</h1>
       <p className="mb-6 text-sm text-muted">
         We&apos;ll use these details to personalize your tax and finance experience.
@@ -58,7 +58,7 @@ function OnboardingContent() {
 export default function OnboardingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-4 md:px-8">
+      <header className="flex items-center justify-between border-b border-line bg-frame px-4 py-4 md:px-8">
         <Link href="/" className="flex items-center">
           <Logo height={40} />
         </Link>

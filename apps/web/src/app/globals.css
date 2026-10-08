@@ -34,6 +34,21 @@
 
   --color-focus-ring: var(--focus-ring);
 
+  /* Shell tokens: the app frame, rail nav, and card chrome. See tokens.css. */
+  --color-frame: var(--frame);
+  --color-rail-active: var(--rail-active);
+  --color-rail-fg: var(--rail-fg);
+  --color-card: var(--card-bg);
+  --color-card-strong: var(--card-bg-strong);
+  --color-chip: var(--chip-bg);
+  --color-chip-fg: var(--chip-fg);
+  --color-field: var(--field-bg);
+  --color-hover: var(--hover-bg);
+  --color-seg: var(--seg-bg);
+  --color-seg-on: var(--seg-on);
+  --color-line: var(--line);
+  --color-glass: var(--glass-bg);
+
   /* Radius scale, per style guide (overrides Tailwind defaults) */
   --radius-sm: 8px;
   --radius-md: 12px;

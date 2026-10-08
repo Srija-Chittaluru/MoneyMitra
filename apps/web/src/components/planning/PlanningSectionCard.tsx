@@ -30,7 +30,10 @@ export function PlanningSectionCard({
           onSelect();
         }
       }}
-      className={cn("flex cursor-pointer flex-col gap-3 transition-shadow", isSelected && "ring-2 ring-border")}
+      className={cn(
+        "flex cursor-pointer flex-col gap-3 bg-card border-line transition-shadow",
+        isSelected && "ring-2 ring-line",
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-h2">{section.label}</h3>
@@ -58,7 +61,7 @@ export function PlanningSectionCard({
       {section.note && <p className="text-xs text-muted">{section.note}</p>}
 
       {section.monthly_target > 0 && (
-        <div className="rounded-md bg-surface-muted px-3 py-3">
+        <div className="rounded-md bg-field px-3 py-3">
           <p className="text-sm text-foreground">
             Invest about <span className="font-semibold">{formatRupees(section.monthly_target)}</span> a
             month to use this fully before the year ends.
@@ -71,7 +74,7 @@ export function PlanningSectionCard({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Where this can go</p>
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
             {section.instruments.map((instrument) => (
-              <div key={instrument.name} className="rounded-md border border-border px-3 py-2">
+              <div key={instrument.name} className="rounded-md border border-line px-3 py-2">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm font-medium text-foreground">{instrument.name}</span>
                   <Badge variant="neutral">{instrument.type}</Badge>

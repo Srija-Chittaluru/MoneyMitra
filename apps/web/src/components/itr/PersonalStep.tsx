@@ -36,9 +36,9 @@ function PrefillCard() {
   const { onlyIssues } = useSectionMode();
   if (onlyIssues) return null;
   return (
-    <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+    <Card className="flex flex-col gap-4 bg-card border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-field">
           <FileUp className="h-4 w-4" />
         </span>
         <div>
@@ -51,7 +51,7 @@ function PrefillCard() {
       <div className="flex shrink-0 flex-col gap-2 sm:items-end">
         <Link
           href="/documents"
-          className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-semibold text-foreground hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="inline-flex h-9 items-center justify-center rounded-md border border-line px-3 text-sm font-semibold text-foreground hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           Upload documents
         </Link>
@@ -345,7 +345,7 @@ export function PersonalStep({
         filled={eligibility.is_resident !== null}
         description="Your residential status depends on the number of days you stayed in India. ITR-1 is for residents with salary, up to two house properties and other-sources income."
       >
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-line">
           <YesNo
             label="Were you a resident of India for FY 2025-26?"
             required

@@ -6,8 +6,10 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { LandingMotion } from "@/components/landing/LandingMotion";
 import { LandingNav } from "@/components/landing/LandingNav";
+import { NextMove } from "@/components/landing/NextMove";
+import { Problem } from "@/components/landing/Problem";
 import { Showcase } from "@/components/landing/Showcase";
-import { ValueStrip } from "@/components/landing/ValueStrip";
+import { YearRound } from "@/components/landing/YearRound";
 
 export const metadata: Metadata = {
   title: "MoneyMitra — Your money, finally in one place",
@@ -30,10 +32,12 @@ export default function LandingPage() {
       <LandingNav />
       <main className="flex-1">
         <Hero />
-        <ValueStrip />
-        <Features />
+        <Problem />
         <HowItWorks />
+        <Features />
         <Showcase />
+        <NextMove />
+        <YearRound />
         <FinalCta />
       </main>
       <LandingFooter />

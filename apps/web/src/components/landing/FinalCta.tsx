@@ -20,18 +20,19 @@ export function FinalCta() {
                 "radial-gradient(ellipse 60% 70% at 50% 50%, black, transparent 80%)",
             }}
           />
-          <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6">
-            <h2 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[48px]">
-              Take control of your money.
+          <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-6">
+            <h2 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[56px]">
+              Understand your money. <span className="text-accent-text">Make your next move.</span>
             </h2>
-            <p className="max-w-xl text-body text-muted md:text-lg">
-              Bring your taxes, documents and finances together, and start
-              making decisions with clarity.
-            </p>
             <LinkButton href="/signup" className="mt-2">
               Get started
               <ArrowRight className="h-4 w-4" />
             </LinkButton>
+            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-1 text-sm text-muted">
+              <span>Read-only access to your accounts</span>
+              <span>Encrypted end to end</span>
+              <span>Your data is never sold</span>
+            </div>
           </div>
         </div>
       </Container>

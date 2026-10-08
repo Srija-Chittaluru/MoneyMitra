@@ -191,7 +191,7 @@ export function SwitchField({
   description?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md bg-surface-muted px-3 py-3">
+    <div className="flex items-center justify-between gap-4 rounded-md bg-field px-3 py-3">
       <div>
         <p className="text-sm font-medium text-foreground">{label}</p>
         {description && <p className="text-sm text-muted">{description}</p>}
@@ -218,7 +218,7 @@ export function YesNo({
         {label}
         {required && <> <RequiredMark /></>}
       </span>
-      <div className="inline-flex shrink-0 rounded-full bg-surface-muted p-1" role="radiogroup" aria-label={label}>
+      <div className="inline-flex shrink-0 rounded-full bg-seg p-1" role="radiogroup" aria-label={label}>
         {([true, false] as const).map((option) => (
           <button
             key={String(option)}
@@ -228,7 +228,7 @@ export function YesNo({
             onClick={() => onChange(option)}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-              value === option ? "bg-surface text-foreground shadow-sm" : "text-muted",
+              value === option ? "bg-seg-on text-foreground shadow-sm" : "text-muted",
             )}
           >
             {option ? "Yes" : "No"}
@@ -252,7 +252,7 @@ export function Notice({
     <div
       className={cn(
         "rounded-md px-4 py-3 text-sm text-foreground",
-        variant === "info" && "bg-surface-muted",
+        variant === "info" && "bg-field",
         variant === "warning" && "bg-warning-bg",
         variant === "error" && "bg-error-bg",
       )}
@@ -307,7 +307,7 @@ export function SectionCard({
   const isOpen = onlyIssues || open;
 
   return (
-    <Card className={cn("p-0", className)}>
+    <Card className={cn("p-0 bg-card border-line", className)}>
       <button
         type="button"
         aria-expanded={isOpen}
@@ -316,7 +316,7 @@ export function SectionCard({
         className="flex w-full items-start gap-3 rounded-lg p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:p-6"
       >
         {Icon && (
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-foreground">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-field text-foreground">
             <Icon className="h-4 w-4" />
           </span>
         )}
@@ -389,12 +389,12 @@ export function ListSection<T>({
         </Button>
       </div>
       {items.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border px-4 py-4 text-sm text-muted">
+        <p className="rounded-md border border-dashed border-line px-4 py-4 text-sm text-muted">
           Nothing added yet.
         </p>
       ) : (
         items.map((item, index) => (
-          <div key={index} className="rounded-md border border-border p-4">
+          <div key={index} className="rounded-md border border-line p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs uppercase tracking-wide text-muted">
                 {itemLabel} {index + 1}

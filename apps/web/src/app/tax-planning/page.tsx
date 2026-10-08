@@ -74,7 +74,7 @@ export default function TaxPlanningPage() {
       {plan && (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-3">
-            <Card className="flex items-center gap-3 px-4 py-3">
+            <Card className="flex items-center gap-3 bg-card border-line px-4 py-3">
               <CalendarRange className="h-5 w-5 text-muted" strokeWidth={1.5} />
               <span className="text-sm text-foreground">
                 FY {plan.fy_label} &middot; {plan.months_remaining}{" "}
@@ -133,6 +133,7 @@ export default function TaxPlanningPage() {
                       basis={rec.basis}
                       actionLabel={rec.action_label}
                       actionHref={rec.action_href}
+                      className="bg-card border-line"
                     />
                   ))}
                 </div>

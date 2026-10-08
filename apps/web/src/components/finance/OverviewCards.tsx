@@ -66,7 +66,7 @@ function signedRupees(amount: number): string {
 
 export function Tile({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "success" | "error" }) {
   return (
-    <Card className="p-5">
+    <Card className="bg-card border-line p-5">
       <p className="text-sm text-muted">{label}</p>
       <p
         className={cn(
@@ -88,7 +88,7 @@ export function IncomeCard({ income }: { income: FinanceIncome }) {
   const positive = income.lines.filter((line) => line.amount > 0);
   const largest = Math.max(1, ...positive.map((line) => line.amount));
   return (
-    <Card className="lg:col-span-2">
+    <Card className="bg-card border-line lg:col-span-2">
       <CardHeader title="Where your income comes from" href="/itr-filing" linkLabel="Edit in ITR" />
       <div className="flex flex-col gap-3">
         {income.lines.map((line) => (
@@ -98,7 +98,7 @@ export function IncomeCard({ income }: { income: FinanceIncome }) {
               <span className="tabular-nums">{signedRupees(line.amount)}</span>
             </div>
             {line.amount > 0 && (
-              <div className="mt-1.5 h-2 rounded-full bg-surface-muted">
+              <div className="mt-1.5 h-2 rounded-full bg-field">
                 <div
                   className="h-2 rounded-full bg-primary"
                   style={{ width: `${Math.max(2, (100 * line.amount) / largest)}%` }}
@@ -108,7 +108,7 @@ export function IncomeCard({ income }: { income: FinanceIncome }) {
           </div>
         ))}
       </div>
-      <div className="mt-4 border-t border-border pt-2">
+      <div className="mt-4 border-t border-line pt-2">
         <Row label="Gross total income" value={formatRupees(income.total)} strong />
       </div>
     </Card>
@@ -119,9 +119,9 @@ export function IncomeCard({ income }: { income: FinanceIncome }) {
 
 export function TaxCard({ tax }: { tax: FinanceTax }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="Tax" href="/tax-comparison" linkLabel="Compare" />
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <Row label={`Tax (${tax.regime} regime)`} value={formatRupees(tax.tax)} strong />
         <Row label="Effective rate" value={`${tax.effective_rate}%`} />
         {tax.other_regime_tax !== null && (
@@ -145,7 +145,7 @@ export function TaxCard({ tax }: { tax: FinanceTax }) {
 
 export function FilingCard({ filing }: { filing: FinanceFiling | null }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="ITR filing" />
       {filing ? (
         <div className="flex flex-col gap-3">
@@ -158,7 +158,7 @@ export function FilingCard({ filing }: { filing: FinanceFiling | null }) {
               <Badge variant="neutral">{filing.days_to_due} days left</Badge>
             )}
           </div>
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-line">
             <Row label="Due date" value={formatDate(filing.due_date)} />
             <Row
               label="Status"
@@ -203,7 +203,7 @@ export function FilingCard({ filing }: { filing: FinanceFiling | null }) {
 
 function LineList({ lines }: { lines: AmountLine[] }) {
   return (
-    <div className="divide-y divide-border">
+    <div className="divide-y divide-line">
       {lines.map((line) => (
         <Row
           key={line.key}
@@ -218,7 +218,7 @@ function LineList({ lines }: { lines: AmountLine[] }) {
 
 export function InvestmentsCard({ investments }: { investments: FinanceInvestments | null }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="Investments & trading" />
       {investments ? (
         <div className="flex flex-col gap-4">
@@ -228,7 +228,7 @@ export function InvestmentsCard({ investments }: { investments: FinanceInvestmen
                 {investments.trades} sale{investments.trades === 1 ? "" : "s"} worth {formatRupees(investments.sale_value)}
               </p>
               <LineList lines={investments.gains} />
-              <div className="border-t border-border">
+              <div className="border-t border-line">
                 <Row label="Capital gains" value={signedRupees(investments.total_gain)} strong />
               </div>
             </div>
@@ -261,7 +261,7 @@ export function InvestmentsCard({ investments }: { investments: FinanceInvestmen
 
 export function TaxSavingCard({ sections, year, note }: { sections: TaxSavingSection[]; year: string; note: string }) {
   return (
-    <Card className="lg:col-span-2">
+    <Card className="bg-card border-line lg:col-span-2">
       <CardHeader title={`Tax-saving room, FY ${year}`} href="/tax-planning" linkLabel="Plan" />
       {sections.length > 0 ? (
         <>
@@ -276,7 +276,7 @@ export function TaxSavingCard({ sections, year, note }: { sections: TaxSavingSec
                       {formatRupees(s.declared)} / {formatRupees(s.cap)}
                     </span>
                   </div>
-                  <div className="mt-1.5 h-2 rounded-full bg-surface-muted">
+                  <div className="mt-1.5 h-2 rounded-full bg-field">
                     <div className="h-2 rounded-full bg-success" style={{ width: `${used}%` }} />
                   </div>
                   <p className="mt-1 text-caption text-muted">
@@ -302,10 +302,10 @@ export function TaxSavingCard({ sections, year, note }: { sections: TaxSavingSec
 
 export function DocumentsCard({ documents }: { documents: FinanceDocuments }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="Documents" href="/documents" linkLabel="Manage" />
       {documents.uploaded > 0 ? (
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-line">
           {documents.by_category.map((d) => (
             <Row key={d.category} label={d.label} value={d.count} />
           ))}
@@ -340,7 +340,7 @@ export function DocumentsCard({ documents }: { documents: FinanceDocuments }) {
 
 export function ActionsCard({ actions }: { actions: FinanceAction[] }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="Next steps" href="/recommendations" linkLabel="All" />
       {actions.length > 0 ? (
         <div className="flex flex-col gap-4">
@@ -365,7 +365,7 @@ export function ActionsCard({ actions }: { actions: FinanceAction[] }) {
 
 export function AlertsCard({ alerts }: { alerts: FinanceAlert[] }) {
   return (
-    <Card>
+    <Card className="bg-card border-line">
       <CardHeader title="Upcoming dates" href="/resources" linkLabel="All" />
       {alerts.length > 0 ? (
         <div className="flex flex-col gap-3">

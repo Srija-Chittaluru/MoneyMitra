@@ -60,7 +60,7 @@ export function AppShell({ title, children }: AppShellProps) {
             onClick={() => setMobileNavOpen(false)}
           />
           <div className="absolute inset-y-0 left-0">
-            <Sidebar />
+            <Sidebar forceExpanded />
           </div>
         </div>
       )}

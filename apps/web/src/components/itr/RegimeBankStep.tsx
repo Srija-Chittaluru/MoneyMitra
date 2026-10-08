@@ -61,7 +61,7 @@ export function RegimeSection({
               aria-pressed={selected}
               onClick={() => onChange({ ...draft, regime: regime.value })}
               className={cn(
-                "flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
+                "flex flex-col gap-2 rounded-lg border border-line bg-field p-4 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
                 selected && "ring-2 ring-accent",
               )}
             >
