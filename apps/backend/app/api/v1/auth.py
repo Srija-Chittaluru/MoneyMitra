@@ -2,6 +2,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.guardrails import rate_limit_ip
 from app.db.session import get_db
 from app.modules.auth import service
 from app.modules.auth.dependencies import get_current_user
@@ -35,7 +36,10 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-@router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_ip("signup"))],
+)
 def signup(payload: SignupRequest, response: Response, db: Session = Depends(get_db)) -> TokenResponse:
     user, access_token, expires_in, raw_refresh_token = service.signup(
         db, payload.name, payload.email, payload.password, payload.date_of_birth
@@ -44,14 +48,14 @@ def signup(payload: SignupRequest, response: Response, db: Session = Depends(get
     return TokenResponse(access_token=access_token, expires_in=expires_in, user=UserPublic.model_validate(user))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(rate_limit_ip("login"))])
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)) -> TokenResponse:
     user, access_token, expires_in, raw_refresh_token = service.login(db, payload.email, payload.password)
     _set_refresh_cookie(response, raw_refresh_token)
     return TokenResponse(access_token=access_token, expires_in=expires_in, user=UserPublic.model_validate(user))
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=TokenResponse, dependencies=[Depends(rate_limit_ip("refresh"))])
 def refresh(
     response: Response,
     db: Session = Depends(get_db),

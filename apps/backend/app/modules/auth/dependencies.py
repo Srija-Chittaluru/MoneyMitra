@@ -1,4 +1,6 @@
 from fastapi import Depends, HTTPException, status
+
+from app.core.guardrails import enforce
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -23,3 +25,13 @@ def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
 
     return user
+
+
+def rate_limited_user(scope: str):
+    """Like get_current_user, but also applies the per-user rate limit for `scope`."""
+
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        enforce(scope, str(current_user.id))
+        return current_user
+
+    return dependency

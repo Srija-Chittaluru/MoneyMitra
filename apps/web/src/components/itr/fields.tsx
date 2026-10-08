@@ -54,6 +54,9 @@ export function removeAt<T>(list: T[], index: number): T[] {
   return list.filter((_, i) => i !== index);
 }
 
+// Same ceiling the server enforces (₹1,000 crore).
+export const MAX_AMOUNT = 10_000_000_000;
+
 export function AmountInput({
   label,
   value,
@@ -78,6 +81,7 @@ export function AmountInput({
       id={id}
       type="number"
       min={0}
+      max={MAX_AMOUNT}
       inputMode="numeric"
       label={meta.label}
       hint={meta.hint}
@@ -86,7 +90,7 @@ export function AmountInput({
       value={value ? String(value) : ""}
       onChange={(e) => {
         const parsed = Math.floor(Number(e.target.value));
-        onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+        onChange(Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MAX_AMOUNT) : 0);
       }}
     />
   );

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import uuid
@@ -11,10 +12,18 @@ from app.core.config import get_settings
 from app.modules.documents.models import Document
 from app.modules.documents.schemas import DocumentCategory
 from app.modules.extraction.autofill import clear_autofilled
-from app.modules.extraction.parsers import EXTRACTABLE_CATEGORIES, UnreadableDocument, extract
+from app.modules.extraction import guardrails
+from app.modules.extraction.parsers import (
+    EXTRACTABLE_CATEGORIES,
+    PAN_RE,
+    Extraction,
+    UnreadableDocument,
+    extract,
+    read_lines,
+)
 from app.modules.itr import service as itr_service
 from app.modules.itr.models import ItrFiling
-from app.modules.itr.rules import ItrYearRules
+from app.modules.itr.rules import ItrYearRules, get_supported_assessment_years
 from app.modules.itr.schemas import ItrDraftData
 from app.modules.users.models import User
 
@@ -82,6 +91,30 @@ async def upload_document(db: Session, user: User, category: DocumentCategory, f
         )
     content_type, extension = detected
 
+    if content_type == "application/pdf" and (active := guardrails.pdf_active_content(data)):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"This PDF contains {', '.join(active)}, which tax documents never have. For your safety it "
+            "can't be uploaded — download a fresh copy from the official source.",
+        )
+
+    content_hash = hashlib.sha256(data).hexdigest()
+    duplicate = db.scalar(
+        select(Document).where(Document.user_id == user.id, Document.content_hash == content_hash)
+    )
+    if duplicate is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"You've already uploaded this file ({duplicate.file_name}) under "
+            f"{guardrails.DOCUMENT_NAMES.get(duplicate.category, duplicate.category)}.",
+        )
+
+    # Read and check the document before anything is stored.
+    try:
+        extraction, extraction_status, message = _inspect(db, user, category.value, content_type, data)
+    except guardrails.UploadRejected as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
     document_id = uuid.uuid4()
     storage_key = f"{user.id}/{document_id}{extension}"
     path = storage_root() / storage_key
@@ -96,6 +129,10 @@ async def upload_document(db: Session, user: User, category: DocumentCategory, f
         content_type=content_type,
         size_bytes=len(data),
         storage_key=storage_key,
+        content_hash=content_hash,
+        extraction_status=extraction_status,
+        extraction_message=message,
+        extracted=extraction.to_json() if extraction else None,
     )
     db.add(document)
     try:
@@ -105,9 +142,67 @@ async def upload_document(db: Session, user: User, category: DocumentCategory, f
         raise
     db.refresh(document)
 
-    _extract_and_autofill(db, user, document, data)
-    db.refresh(document)
+    if extraction_status == "extracted":
+        document.extraction_message = itr_service.autofill_from_document(db, user, document)[:500]
+        db.commit()
+        db.refresh(document)
     return document
+
+
+def _taxpayer_pan(db: Session, user: User) -> str | None:
+    """The PAN this account files for: the return's PAN, else the one on documents already accepted."""
+    for filing in db.scalars(select(ItrFiling).where(ItrFiling.user_id == user.id)):
+        pan = ((filing.data or {}).get("personal") or {}).get("pan")
+        if pan and PAN_RE.fullmatch(pan.strip().upper()):
+            return pan.strip().upper()
+    for extracted in db.scalars(select(Document.extracted).where(Document.user_id == user.id)):
+        pan = ((extracted or {}).get("fields") or {}).get("personal.pan")
+        if pan:
+            return pan
+    return None
+
+
+def _inspect(
+    db: Session, user: User, category: str, content_type: str, data: bytes
+) -> tuple[Extraction | None, str, str | None]:
+    """Recognises the document and applies the upload guardrails.
+    Returns (extraction, status, message); raises UploadRejected."""
+    if content_type == "application/json":
+        if category != "ais":
+            raise guardrails.UploadRejected("Only the AIS can be uploaded as a JSON file.")
+        lines, used_ocr, readable = [], False, True
+    else:
+        try:
+            lines, used_ocr = read_lines(content_type, data, _pdf_passwords(db, user))
+            readable = True
+        except UnreadableDocument as exc:
+            if category in guardrails.TAX_DOCUMENTS and "password" in str(exc).lower():
+                raise guardrails.UploadRejected(str(exc)) from exc
+            lines, used_ocr, readable = [], False, False
+            unreadable_message = str(exc)
+
+    detected = guardrails.classify(lines) if lines else ("ais" if content_type == "application/json" else None)
+    guardrails.check_type(category, detected, readable and bool(lines))
+
+    if category not in EXTRACTABLE_CATEGORIES:
+        return None, "not_applicable", None
+    if not readable:
+        return None, "unsupported", unreadable_message
+
+    try:
+        extraction = extract(category, content_type, data, [], lines=lines or None, used_ocr=used_ocr)
+    except UnreadableDocument as exc:
+        return None, "unsupported", str(exc)
+    except Exception:
+        # A parser bug must never lose the upload itself.
+        logger.exception("Extraction failed for a %s upload", category)
+        return None, "unsupported", "This document could not be read automatically."
+
+    guardrails.check_owner(category, extraction.fields.get("personal.pan"), _taxpayer_pan(db, user))
+    guardrails.check_year(category, extraction.assessment_year, get_supported_assessment_years(), lines)
+    if extraction.is_empty:
+        return extraction, "nothing_found", "No ITR details could be found in this document."
+    return extraction, "extracted", None
 
 
 def _pdf_passwords(db: Session, user: User) -> list[str]:

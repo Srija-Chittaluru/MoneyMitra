@@ -13,6 +13,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Amount = int
+# Rs 1,000 crore — far above any individual return; stops typos and abuse.
+MAX_AMOUNT = 10_000_000_000
 
 
 class _Draft(BaseModel):
@@ -78,29 +80,29 @@ class EmployerDraft(_Draft):
     city: str | None = Field(default=None, max_length=50)
     state_code: str | None = None
     pin_code: str | None = None
-    income_chargeable: Amount = Field(default=0, ge=0)
-    tds: Amount = Field(default=0, ge=0)
+    income_chargeable: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    tds: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class HraDraft(_Draft):
     """Inputs for the section 10(13A) HRA exemption (old regime only)."""
 
-    basic_salary: Amount = Field(default=0, ge=0)
-    dearness_allowance: Amount = Field(default=0, ge=0)
-    hra_received: Amount = Field(default=0, ge=0)
-    rent_paid: Amount = Field(default=0, ge=0)
+    basic_salary: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    dearness_allowance: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    hra_received: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    rent_paid: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     is_metro: bool = False
 
 
 class SalaryDraft(_Draft):
-    salary_17_1: Amount = Field(default=0, ge=0)
-    perquisites_17_2: Amount = Field(default=0, ge=0)
-    profits_17_3: Amount = Field(default=0, ge=0)
+    salary_17_1: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    perquisites_17_2: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    profits_17_3: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     hra: HraDraft = Field(default_factory=HraDraft)
-    lta_exemption: Amount = Field(default=0, ge=0)
-    gratuity_exemption: Amount = Field(default=0, ge=0)
-    leave_encashment_exemption: Amount = Field(default=0, ge=0)
-    professional_tax: Amount = Field(default=0, ge=0)
+    lta_exemption: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    gratuity_exemption: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    leave_encashment_exemption: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    professional_tax: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     employers: list[EmployerDraft] = Field(default_factory=list, max_length=10)
 
 
@@ -109,8 +111,8 @@ class HomeLoanDraft(_Draft):
     lender_name: str | None = Field(default=None, max_length=125)
     account_no: str | None = Field(default=None, max_length=20)
     sanction_date: date | None = None
-    total_amount: Amount = Field(default=0, ge=0)
-    outstanding_amount: Amount = Field(default=0, ge=0)
+    total_amount: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    outstanding_amount: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class HousePropertyDraft(_Draft):
@@ -119,9 +121,9 @@ class HousePropertyDraft(_Draft):
     city: str | None = Field(default=None, max_length=50)
     state_code: str | None = None
     pin_code: str | None = None
-    gross_rent: Amount = Field(default=0, ge=0)
-    municipal_tax_paid: Amount = Field(default=0, ge=0)
-    interest_on_loan: Amount = Field(default=0, ge=0)
+    gross_rent: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    municipal_tax_paid: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    interest_on_loan: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     loan: HomeLoanDraft = Field(default_factory=HomeLoanDraft)
     tenant_name: str | None = Field(default=None, max_length=125)
 
@@ -129,11 +131,11 @@ class HousePropertyDraft(_Draft):
 class DividendDraft(_Draft):
     """Quarterly breakup required by the schema (used for 234C)."""
 
-    upto_15_jun: Amount = Field(default=0, ge=0)
-    jun_16_to_sep_15: Amount = Field(default=0, ge=0)
-    sep_16_to_dec_15: Amount = Field(default=0, ge=0)
-    dec_16_to_mar_15: Amount = Field(default=0, ge=0)
-    mar_16_to_mar_31: Amount = Field(default=0, ge=0)
+    upto_15_jun: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    jun_16_to_sep_15: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    sep_16_to_dec_15: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    dec_16_to_mar_15: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    mar_16_to_mar_31: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
     @property
     def total(self) -> int:
@@ -147,12 +149,12 @@ class DividendDraft(_Draft):
 
 
 class OtherIncomeDraft(_Draft):
-    savings_interest: Amount = Field(default=0, ge=0)
-    deposit_interest: Amount = Field(default=0, ge=0)
-    refund_interest: Amount = Field(default=0, ge=0)
-    family_pension: Amount = Field(default=0, ge=0)
+    savings_interest: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    deposit_interest: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    refund_interest: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    family_pension: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     dividends: DividendDraft = Field(default_factory=DividendDraft)
-    other_amount: Amount = Field(default=0, ge=0)
+    other_amount: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     other_description: str | None = Field(default=None, max_length=125)
 
 
@@ -164,13 +166,13 @@ class OtherIncomeDraft(_Draft):
 class Section80CItem(_Draft):
     description: str | None = Field(default=None, max_length=50)
     identification_no: str | None = Field(default=None, max_length=50)
-    amount: Amount = Field(default=0, ge=0)
+    amount: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class HealthPolicyDraft(_Draft):
     insurer: str | None = Field(default=None, max_length=125)
     policy_no: str | None = Field(default=None, max_length=75)
-    premium: Amount = Field(default=0, ge=0)
+    premium: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class Health80DDraft(_Draft):
@@ -179,15 +181,15 @@ class Health80DDraft(_Draft):
     claiming: bool = False
     includes_senior_citizen: bool = False
     policies: list[HealthPolicyDraft] = Field(default_factory=list, max_length=10)
-    preventive_checkup: Amount = Field(default=0, ge=0)
+    preventive_checkup: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     # Only allowed when the bucket includes a senior citizen with no insurance.
-    medical_expenditure: Amount = Field(default=0, ge=0)
+    medical_expenditure: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class DeductionsDraft(_Draft):
     section_80c: list[Section80CItem] = Field(default_factory=list, max_length=20)
-    section_80ccd_1b: Amount = Field(default=0, ge=0)
-    section_80ccd_2: Amount = Field(default=0, ge=0)
+    section_80ccd_1b: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    section_80ccd_2: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     pran: str | None = None
     health_self: Health80DDraft = Field(default_factory=Health80DDraft)
     health_parents: Health80DDraft = Field(default_factory=Health80DDraft)
@@ -202,24 +204,24 @@ class TdsOtherDraft(_Draft):
     deductor_name: str | None = Field(default=None, max_length=125)
     tan: str | None = None
     section: str = "94A"
-    amount_paid: Amount = Field(default=0, ge=0)
-    tds_deducted: Amount = Field(default=0, ge=0)
-    tds_claimed: Amount = Field(default=0, ge=0)
+    amount_paid: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    tds_deducted: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    tds_claimed: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     deducted_year: str = "2025"
 
 
 class TcsDraft(_Draft):
     collector_name: str | None = Field(default=None, max_length=125)
     tan: str | None = None
-    amount_collected: Amount = Field(default=0, ge=0)
-    amount_claimed: Amount = Field(default=0, ge=0)
+    amount_collected: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    amount_claimed: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class ChallanDraft(_Draft):
     bsr_code: str | None = None
     date_of_deposit: date | None = None
     challan_serial_no: str | None = None
-    amount: Amount = Field(default=0, ge=0)
+    amount: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class TaxesPaidDraft(_Draft):
@@ -252,15 +254,15 @@ class CapitalGainTxn(_Draft):
     term: Literal["short", "long"] = "short"
     name: str | None = Field(default=None, max_length=125)
     isin: str | None = None
-    quantity: float = Field(default=0, ge=0)
+    quantity: float = Field(default=0, ge=0, le=MAX_AMOUNT)
     purchase_date: date | None = None
     sale_date: date | None = None
-    sale_value: Amount = Field(default=0, ge=0)
-    cost: Amount = Field(default=0, ge=0)
-    expenses: Amount = Field(default=0, ge=0)
+    sale_value: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    cost: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    expenses: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
     # Grandfathering for long-term equity bought on or before 31 Jan 2018.
     acquired_before_feb_2018: bool = False
-    fmv_31_jan_2018: Amount = Field(default=0, ge=0)
+    fmv_31_jan_2018: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class TradingDraft(_Draft):
@@ -269,11 +271,11 @@ class TradingDraft(_Draft):
     Intraday trades are speculative business; F&O is non-speculative business.
     Profit can be negative (a loss)."""
 
-    speculative_turnover: Amount = Field(default=0, ge=0)
-    speculative_profit: int = 0
-    fno_turnover: Amount = Field(default=0, ge=0)
-    fno_profit: int = 0
-    fno_expenses: Amount = Field(default=0, ge=0)
+    speculative_turnover: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    speculative_profit: int = Field(default=0, ge=-MAX_AMOUNT, le=MAX_AMOUNT)
+    fno_turnover: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
+    fno_profit: int = Field(default=0, ge=-MAX_AMOUNT, le=MAX_AMOUNT)
+    fno_expenses: Amount = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class ItrDraftData(_Draft):

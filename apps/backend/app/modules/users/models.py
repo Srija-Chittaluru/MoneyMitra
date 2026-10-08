@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, DateTime, String, Uuid, func
+from sqlalchemy import BigInteger, Date, DateTime, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -33,6 +33,10 @@ class User(Base):
 
     # Post-signup tax onboarding: NULL (not yet shown), "completed" or "skipped".
     tax_onboarding_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    # Sign-in lockout after repeated wrong passwords (see auth.service.login).
+    failed_login_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

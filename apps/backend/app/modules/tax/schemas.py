@@ -3,20 +3,22 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+MAX_AMOUNT = 10_000_000_000  # Rs 1,000 crore
+
 
 class TaxComparisonInput(BaseModel):
     tax_year: str = Field(examples=["2025-26"])
-    gross_total_income: int = Field(ge=0, description="Total annual income before deductions, in rupees")
+    gross_total_income: int = Field(ge=0, le=MAX_AMOUNT, description="Total annual income before deductions, in rupees")
     date_of_birth: date | None = Field(default=None, description="Used to select the old-regime age category")
 
     # Old-regime-only inputs. The new regime does not allow these
     # deductions by law, so they are ignored when calculating it.
-    section_80c: int = Field(default=0, ge=0)
-    section_80d: int = Field(default=0, ge=0)
-    hra_exemption: int = Field(default=0, ge=0)
-    home_loan_interest: int = Field(default=0, ge=0, description="Section 24(b)")
-    nps_contribution: int = Field(default=0, ge=0, description="Section 80CCD(1B)")
-    other_deductions: int = Field(default=0, ge=0)
+    section_80c: int = Field(default=0, ge=0, le=MAX_AMOUNT)
+    section_80d: int = Field(default=0, ge=0, le=MAX_AMOUNT)
+    hra_exemption: int = Field(default=0, ge=0, le=MAX_AMOUNT)
+    home_loan_interest: int = Field(default=0, ge=0, le=MAX_AMOUNT, description="Section 24(b)")
+    nps_contribution: int = Field(default=0, ge=0, le=MAX_AMOUNT, description="Section 80CCD(1B)")
+    other_deductions: int = Field(default=0, ge=0, le=MAX_AMOUNT)
 
 
 class SlabContributionOut(BaseModel):

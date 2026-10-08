@@ -19,6 +19,7 @@ import logging
 import openai
 
 from app.core.config import get_settings
+from app.modules.tax import ai_guardrails
 from app.modules.tax.context import comparison_context
 from app.modules.tax.schemas import ExplanationResult, TaxComparisonResult
 
@@ -129,7 +130,7 @@ def generate_explanation(comparison: TaxComparisonResult) -> ExplanationResult:
             temperature=0.2,
             max_completion_tokens=500,
             messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": _SYSTEM_PROMPT + ai_guardrails.POLICY},
                 {"role": "user", "content": _build_user_prompt(comparison)},
             ],
             response_format={

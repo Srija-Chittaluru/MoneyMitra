@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, rate_limited_user
 from app.modules.documents import service
 from app.modules.documents.schemas import DocumentCategory, DocumentOut
 from app.modules.users.models import User
@@ -25,7 +25,7 @@ def list_documents(
 async def upload_document(
     category: DocumentCategory = Form(...),
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(rate_limited_user("upload")),
     db: Session = Depends(get_db),
 ) -> DocumentOut:
     document = await service.upload_document(db, current_user, category, file)
@@ -43,7 +43,10 @@ def download_document(
         service.file_path(document),
         media_type=document.content_type,
         filename=document.file_name,
-        content_disposition_type="inline",
+        # PDFs and images open in the browser; anything else downloads.
+        content_disposition_type="inline" if document.content_type != "application/json" else "attachment",
+        # Stored files can never run scripts or load anything, even if opened directly.
+        headers={"Content-Security-Policy": "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"},
     )
 
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, rate_limited_user
 from app.modules.tax import chat, explain, service, slabs
 from app.modules.tax.rules.registry import get_supported_tax_years
 from app.modules.tax.rules.types import AgeCategory
@@ -48,7 +48,7 @@ def get_slab_table(
 @router.post("/explain", response_model=ExplanationResult)
 def explain_tax_comparison(
     payload: ExplanationRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(rate_limited_user("ai_explain")),
 ) -> ExplanationResult:
     return explain.generate_explanation(payload.comparison)
 
@@ -56,6 +56,6 @@ def explain_tax_comparison(
 @router.post("/chat", response_model=ChatResponse)
 def chat_about_tax(
     payload: ChatRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(rate_limited_user("ai_chat")),
 ) -> ChatResponse:
     return chat.generate_reply(payload)

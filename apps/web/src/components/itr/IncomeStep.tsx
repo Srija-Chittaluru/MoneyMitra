@@ -5,6 +5,7 @@ import {
   AmountInput,
   GRID,
   ListSection,
+  MAX_AMOUNT,
   Notice,
   SectionCard,
   SelectField,
@@ -184,7 +185,10 @@ function SignedAmountInput({
       inputMode="numeric"
       placeholder="0"
       value={value ? String(value) : ""}
-      onChange={(v) => onChange(Math.trunc(Number((v ?? "").replace(/[^\d-]/g, ""))) || 0)}
+      onChange={(v) => {
+        const parsed = Math.trunc(Number((v ?? "").replace(/[^\d-]/g, ""))) || 0;
+        onChange(Math.max(-MAX_AMOUNT, Math.min(parsed, MAX_AMOUNT)));
+      }}
     />
   );
 }

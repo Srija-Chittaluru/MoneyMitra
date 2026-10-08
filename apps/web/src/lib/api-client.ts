@@ -31,12 +31,31 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   if (!response.ok) {
     const message = await response
       .json()
-      .then((body: { detail?: string }) => (typeof body.detail === "string" ? body.detail : undefined))
+      .then((body: { detail?: unknown }) => errorDetail(body.detail))
       .catch(() => undefined);
-    throw new ApiError(response.status, message ?? `Request to ${path} failed with ${response.status}`);
+    throw new ApiError(response.status, message ?? FALLBACK_MESSAGES[response.status] ?? `Request to ${path} failed with ${response.status}`);
   }
 
   return response;
+}
+
+const FALLBACK_MESSAGES: Record<number, string> = {
+  413: "That's too large to send. Try a smaller file.",
+  429: "Too many requests. Please wait a few minutes and try again.",
+  500: "Something went wrong on our side. Please try again.",
+};
+
+// FastAPI sends a string for handled errors and a list for validation errors.
+function errorDetail(detail: unknown): string | undefined {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: string; loc?: unknown[]; type?: string };
+    const msg = (first.msg ?? "").replace(/^Value error, /, "");
+    if (first.type === "less_than_equal") return "One of the amounts is unrealistically large. Please check it.";
+    const field = Array.isArray(first.loc) ? first.loc[first.loc.length - 1] : undefined;
+    return field && typeof field === "string" && first.type !== "value_error" ? `${field.replace(/_/g, " ")}: ${msg}` : msg;
+  }
+  return undefined;
 }
 
 export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {

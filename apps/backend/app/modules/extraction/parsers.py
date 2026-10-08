@@ -822,17 +822,45 @@ def parse_payslip(lines: list[str]) -> Extraction:
     return ex
 
 
+_TO_LETTER = {"0": "O", "1": "I", "2": "Z", "5": "S", "8": "B", "6": "G"}
+_TO_DIGIT = {"O": "0", "D": "0", "Q": "0", "I": "1", "L": "1", "Z": "2", "S": "5", "B": "8", "G": "6"}
+
+
+def fix_pan(token: str) -> str | None:
+    """Repairs OCR confusions in a 10-character PAN (letters 1-5 and 10, digits 6-9)."""
+    token = re.sub(r"[^A-Z0-9]", "", token.upper())
+    if len(token) != 10:
+        return None
+    chars = [
+        _TO_LETTER.get(c, c) if i < 5 or i == 9 else _TO_DIGIT.get(c, c)
+        for i, c in enumerate(token)
+    ]
+    pan = "".join(chars)
+    return pan if PAN_RE.fullmatch(pan) else None
+
+
 def parse_pan(lines: list[str]) -> Extraction:
     ex = Extraction()
     pan = None
+    for line in lines:
+        for token in re.findall(r"\b[A-Z0-9]{10}\b", line.upper()):
+            if not pan and (fixed := fix_pan(token)) and fixed[3] == "P":
+                pan = fixed
     for i, line in enumerate(lines):
         if re.search(r"Permanent Account Number", line, re.IGNORECASE):
             if m := PAN_RE.search(" ".join(lines[i : i + 2])):
                 pan = m.group(1)
     ex.set("personal.pan", pan or employee_pan(lines))
-    set_name(ex, value_after(lines, re.compile(r"Name$", re.IGNORECASE)))
-    ex.set("personal.father_name", value_after(lines, re.compile(r"Father'?s Name$", re.IGNORECASE)))
-    ex.set("personal.date_of_birth", parse_date(value_after(lines, re.compile(r"Date of Birth", re.IGNORECASE))))
+    name = value_after(lines, re.compile(r"Name$", re.IGNORECASE))
+    father_index = _index(lines, r"Father\W*s\W*Name")
+    if not name and father_index:
+        # OCR sometimes drops the "Name" label; the holder's name sits just above "Father's Name".
+        candidate = lines[father_index - 1]
+        if re.fullmatch(r"[A-Za-z][A-Za-z .']+", candidate) and len(candidate.split()) >= 2:
+            name = candidate
+    set_name(ex, name)
+    ex.set("personal.father_name", value_after(lines, re.compile(r"Father\W*s\W*Name$", re.IGNORECASE)))
+    ex.set("personal.date_of_birth", parse_date(value_after(lines, re.compile(r"Date\W*of\W*Birth", re.IGNORECASE))))
     return ex
 
 
@@ -997,14 +1025,47 @@ _PDF_PARSERS = {
 EXTRACTABLE_CATEGORIES = set(_PDF_PARSERS)
 
 
-def extract(category: str, content_type: str, data: bytes, passwords: list[str]) -> Extraction:
+def read_lines(content_type: str, data: bytes, passwords: list[str]) -> tuple[list[str], bool]:
+    """Text lines of a PDF or image, using OCR when there is no text layer.
+    Returns (lines, used_ocr). Raises UnreadableDocument when nothing can be read."""
+    from app.modules.extraction import ocr
+
+    if content_type.startswith("image/"):
+        if not ocr.ocr_available():
+            raise UnreadableDocument("Images can't be read on this server yet — enter these details by hand.")
+        try:
+            lines = ocr.ocr_image(data)
+        except Exception as exc:  # corrupt or unsupported image data
+            raise UnreadableDocument("This image couldn't be read — upload a clear JPG or PNG photo.") from exc
+        if not lines:
+            raise UnreadableDocument("No text could be read from this image — try a clearer, well-lit photo.")
+        return lines, True
+    try:
+        return pdf_lines(data, passwords), False
+    except UnreadableDocument as exc:
+        if "password" in str(exc).lower() or not ocr.ocr_available():
+            raise
+        try:
+            lines = ocr.ocr_pdf(data)
+        except Exception as ocr_exc:  # damaged PDF
+            raise UnreadableDocument("This PDF could not be read.") from ocr_exc
+        if not lines:
+            raise UnreadableDocument("This scanned PDF couldn't be read — upload a clearer scan.") from exc
+        return lines, True
+
+
+def extract(category: str, content_type: str, data: bytes, passwords: list[str],
+            lines: list[str] | None = None, used_ocr: bool = False) -> Extraction:
     """Raises UnreadableDocument when the file has no usable text."""
     if content_type == "application/json":
         if category != "ais":
             raise UnreadableDocument("Only AIS can be read from a JSON file.")
         return parse_ais_json(data)
-    if content_type.startswith("image/"):
-        raise UnreadableDocument("Images can't be read automatically yet — enter these details by hand.")
-    ex = _PDF_PARSERS[category](pdf_lines(data, passwords))
+    if lines is None:
+        lines, used_ocr = read_lines(content_type, data, passwords)
+    ex = _PDF_PARSERS[category](lines)
     ex.fields.pop("_dividend_total", None)
+    if used_ocr:
+        ex.facts["ocr"] = True
+        ex.note("Read from an image using OCR — please check the filled values carefully.")
     return ex

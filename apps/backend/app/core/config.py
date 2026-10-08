@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     document_storage_dir: str = "storage/documents"
     max_document_bytes: int = 10 * 1024 * 1024
 
+    # Per-IP / per-user request limits (see app/core/guardrails.py). Tests turn this off.
+    rate_limit_enabled: bool = True
+    # Sign-in lockout after repeated wrong passwords for one account.
+    login_max_failures: int = 5
+    login_lockout_minutes: int = 15
+
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1-mini"
 

@@ -6,14 +6,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.modules.itr.encrypted_json import EncryptedDraftJSON
 
 
 class ItrFiling(Base):
     """One ITR draft per user per assessment year.
 
-    `data` holds the draft as entered (`ItrDraftData`). It contains PAN,
-    Aadhaar and bank account numbers in plain text — encrypt this column at
-    rest before production use.
+    `data` holds the draft as entered (`ItrDraftData`); Aadhaar, mobile, bank
+    account numbers and PRAN inside it are encrypted at rest (see encrypted_json).
     """
 
     __tablename__ = "itr_filings"
@@ -25,7 +25,7 @@ class ItrFiling(Base):
     )
     assessment_year: Mapped[str] = mapped_column(String(7))
     status: Mapped[str] = mapped_column(String(16), default="draft")
-    data: Mapped[dict] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), default=dict)
+    data: Mapped[dict] = mapped_column(EncryptedDraftJSON(), default=dict)
     # {"applied": [document ids], "sources": {draft path: {"label", "value"}}}
     # — which fields were auto-filled from uploaded documents.
     autofill: Mapped[dict] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), default=dict)
