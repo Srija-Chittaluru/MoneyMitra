@@ -5,49 +5,19 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { RecommendationCard } from "@/components/ui/RecommendationCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getRecommendations } from "@/lib/recommendations/api";
-import type { NextStep, Recommendation, RecommendationCategory } from "@/lib/recommendations/types";
+import type { NextStep } from "@/lib/recommendations/types";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { LevelProgress } from "./LevelProgress";
+import { LifeStageCard } from "./LifeStageCard";
 import { ProfileCard } from "./ProfileCard";
-
-const SECTIONS: { category: RecommendationCategory; title: string; tag: string }[] = [
-  { category: "tax_saving", title: "Tax-saving recommendations", tag: "Tax saving" },
-  { category: "life_stage", title: "Life-stage recommendations", tag: "Life stage" },
-];
-
-function CardGrid({ recs, tag }: { recs: Recommendation[]; tag: string }) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {recs.map((rec) => (
-        <RecommendationCard
-          key={rec.id}
-          title={rec.title}
-          description={rec.description}
-          reason={rec.reason}
-          tag={tag}
-          basis={rec.basis}
-          actionLabel={rec.action_label}
-          actionHref={rec.action_href}
-        />
-      ))}
-    </div>
-  );
-}
 
 export function RecommendationsView() {
   const router = useRouter();
-  const [taxYear, setTaxYear] = useState<string | undefined>(undefined);
   const [justSaved, setJustSaved] = useState(false);
 
-  const query = useQuery({
-    queryKey: ["recommendations", taxYear],
-    queryFn: () => getRecommendations(taxYear),
-    // Keep showing the previous result while a new tax year loads.
-    placeholderData: (previous) => previous,
-  });
+  const query = useQuery({ queryKey: ["recommendations"], queryFn: getRecommendations });
 
   function handleProfileSaved() {
     setJustSaved(true);
@@ -94,9 +64,6 @@ export function RecommendationsView() {
         key={JSON.stringify(data.profile)}
         profile={data.profile}
         level={data.level}
-        taxYear={data.tax_year}
-        availableTaxYears={data.available_tax_years}
-        onTaxYearChange={setTaxYear}
         onSaved={handleProfileSaved}
         justSaved={justSaved}
       />
@@ -107,19 +74,24 @@ export function RecommendationsView() {
         </p>
       )}
 
-      {SECTIONS.map(({ category, title, tag }) => {
-        const recs = data.recommendations.filter((rec) => rec.category === category);
-        if (recs.length === 0) return null;
-        return (
-          <section key={category} className="mb-10">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <h2 className="text-h1">{title}</h2>
-              {category === "life_stage" && data.stage_label && <Badge variant="accent">{data.stage_label}</Badge>}
-            </div>
-            <CardGrid recs={recs} tag={tag} />
-          </section>
-        );
-      })}
+      {data.recommendations.length > 0 && (
+        <section className="mb-10">
+          <div className="mb-1 flex flex-wrap items-center gap-3">
+            <h2 className="text-h1">Life-stage recommendations</h2>
+            {data.stage_label && <Badge variant="accent">{data.stage_label}</Badge>}
+          </div>
+          <p className="mb-4 text-sm text-muted">
+            Ways to make your existing money work harder at this stage of life, with worked numbers so you can see
+            what each one is worth.
+          </p>
+          <div className="flex flex-col gap-4">
+            {data.recommendations.map((rec) => (
+              <LifeStageCard key={rec.id} rec={rec} />
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-muted">{data.disclaimer}</p>
+        </section>
+      )}
     </>
   );
 }

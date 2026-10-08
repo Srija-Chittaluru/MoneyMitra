@@ -22,9 +22,6 @@ interface ProfileCardProps {
   profile: RecommendationProfile;
   /** From Level 2 the user's own figures replace expected income, so the estimate-only fields are hidden. */
   level: number;
-  taxYear: string;
-  availableTaxYears: string[];
-  onTaxYearChange: (taxYear: string) => void;
   /** Called after a successful save. The card remounts when the profile changes, so the parent shows "Saved". */
   onSaved: () => void;
   justSaved: boolean;
@@ -33,13 +30,10 @@ interface ProfileCardProps {
 export function ProfileCard({
   profile,
   level,
-  taxYear,
-  availableTaxYears,
-  onTaxYearChange,
   onSaved,
   justSaved,
 }: ProfileCardProps) {
-  // Expected income and tax year only feed the estimate made before the user has real figures.
+  // Expected income only feeds the example numbers shown before the user has real figures.
   const showEstimateFields = level < 2;
   const queryClient = useQueryClient();
   const [dob, setDob] = useState(profile.date_of_birth ?? "");
@@ -83,13 +77,13 @@ export function ProfileCard({
       </p>
       <form
         onSubmit={handleSubmit}
-        className={`grid gap-4 sm:grid-cols-2 ${showEstimateFields ? "lg:grid-cols-4" : ""}`}
+        className={`grid gap-4 sm:grid-cols-2 ${showEstimateFields ? "lg:grid-cols-3" : ""}`}
       >
         <Input
           id="profile-dob"
           type="date"
           label="Date of birth"
-          hint="Sets your life stage and age-based limits"
+          hint="Sets your life stage and the advice you see"
           className="w-full min-w-0"
           value={dob}
           onChange={(e) => setDob(e.target.value)}
@@ -97,7 +91,7 @@ export function ProfileCard({
         <Select
           id="profile-category"
           label="Employee category"
-          hint="Adjusts the employer NPS advice"
+          hint="Sets how big your emergency fund should be"
           className="w-full min-w-0"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
@@ -110,38 +104,22 @@ export function ProfileCard({
           ))}
         </Select>
         {showEstimateFields && (
-          <>
-            <Input
-              id="profile-income"
-              type="number"
-              min={0}
-              step={1}
-              inputMode="numeric"
-              label="Expected annual income (₹)"
-              hint="Used only until you add your real figures"
-              placeholder="e.g. 1200000"
-              className="w-full min-w-0"
-              value={income}
-              onChange={(e) => setIncome(e.target.value)}
-            />
-            <Select
-              id="profile-tax-year"
-              label="Tax year"
-              hint="The year for that estimate"
-              className="w-full min-w-0"
-              value={taxYear}
-              onChange={(e) => onTaxYearChange(e.target.value)}
-            >
-              {availableTaxYears.map((year) => (
-                <option key={year} value={year}>
-                  FY {year}
-                </option>
-              ))}
-            </Select>
-          </>
+          <Input
+            id="profile-income"
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            label="Expected annual income (₹)"
+            hint="Used for example numbers until you add real figures"
+            placeholder="e.g. 1200000"
+            className="w-full min-w-0"
+            value={income}
+            onChange={(e) => setIncome(e.target.value)}
+          />
         )}
         <div
-          className={`flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center ${showEstimateFields ? "lg:col-span-4" : ""}`}
+          className={`flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center ${showEstimateFields ? "lg:col-span-3" : ""}`}
         >
           <Button type="submit" variant="primary" size="sm" disabled={mutation.isPending}>
             {mutation.isPending ? "Saving…" : "Save profile"}

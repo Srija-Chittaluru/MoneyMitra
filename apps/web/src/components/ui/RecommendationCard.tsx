@@ -10,9 +10,10 @@ interface RecommendationCardProps {
   tag: string;
   /** Optional line saying what the advice is based on. */
   basis?: string;
-  actionLabel: string;
+  /** Omitted for advice with no single next action. */
+  actionLabel?: string | null;
   /** When set, the action button links to this in-app route. */
-  actionHref?: string;
+  actionHref?: string | null;
 }
 
 export function RecommendationCard({
@@ -36,19 +37,21 @@ export function RecommendationCard({
         <span className="font-medium text-foreground">Why: </span>
         {reason}
       </p>
-      <div>
-        {actionHref ? (
-          <Link href={actionHref}>
+      {actionLabel && (
+        <div>
+          {actionHref ? (
+            <Link href={actionHref}>
+              <Button variant="secondary" size="sm">
+                {actionLabel}
+              </Button>
+            </Link>
+          ) : (
             <Button variant="secondary" size="sm">
               {actionLabel}
             </Button>
-          </Link>
-        ) : (
-          <Button variant="secondary" size="sm">
-            {actionLabel}
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

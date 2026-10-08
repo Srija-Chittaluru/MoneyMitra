@@ -8,12 +8,12 @@ from types import SimpleNamespace
 import pytest
 
 from app.core.config import get_settings
-from app.modules.recommendations import document_rules
 from app.modules.recommendations.context import FinancialContext
 from app.modules.recommendations.document_analysis import analyse
 from app.modules.recommendations.facts import Facts
 from app.modules.recommendations.levels import Level
-from app.modules.recommendations.money import format_inr
+from app.modules.recommendations.life_stage import idle_money, income_of, asset_mix, emergency_fund
+from app.modules.recommendations.profile import EmployeeCategory
 from app.modules.recommendations.stages import LifeStage
 
 URL = "/api/v1/recommendations"
@@ -78,10 +78,10 @@ FORM16_FIELDS = {"salary.salary_17_1": 1_500_000}
 FORM16_ROWS = {"salary.employers": [{"name": "Acme", "tan": "BLRA12345B", "tds": 100_000}]}
 
 
-def _facts(analysis, declared=None) -> Facts:
+def _facts(analysis, declared=None, expected_income=None, category=None, age=36, stage=LifeStage.MID_CAREER) -> Facts:
     return Facts(
-        level=Level.DOCUMENTS, today=TODAY, tax_year="2025-26", date_of_birth=date(1990, 1, 1), age=36,
-        stage=LifeStage.MID_CAREER, employee_category=None, expected_income=None, declared=declared,
+        level=Level.DOCUMENTS, today=TODAY, date_of_birth=date(1990, 1, 1), age=age,
+        stage=stage, employee_category=category, expected_income=expected_income, declared=declared,
         documents=analysis,
     )
 
@@ -150,94 +150,91 @@ def test_source_text_joins_labels():
 
 
 # ---------------------------------------------------------------------------
-# Rules, on their own
+# Level 3 advice, built from what the documents say
 # ---------------------------------------------------------------------------
 
 
-def test_tds_vs_tax_refund_balance_and_payslip_only():
-    form16 = analyse([_fake_doc(fields=FORM16_FIELDS, rows=FORM16_ROWS)], None, TODAY)
-    [rec] = document_rules.tds_vs_tax(_facts(form16))
-    assert rec.level == 3 and rec.basis == "From your Form 16" and rec.id == "doc_tds_vs_tax"
-    selected = form16.summary.selected
-    assert format_inr(selected.total_taxes_paid) in rec.description
-    # The sample is filed after the due date, so the estimate includes a late fee; the card must say so.
-    assert ("including interest and late fees" in rec.description) == (
-        selected.total_tax_and_interest > selected.gross_tax_liability
-    )
-    if selected.refund_due:
-        assert rec.title == "You may get a tax refund" and format_inr(selected.refund_due) in rec.description
-    else:
-        assert rec.title == "You may owe more tax" and format_inr(selected.balance_payable) in rec.description
+def test_income_comes_from_documents_first():
+    docs = analyse([_fake_doc(fields=FORM16_FIELDS, rows=FORM16_ROWS)], None, TODAY)
+    income = income_of(_facts(docs, declared=_declared(annual_income=600_000), expected_income=300_000))
+    assert income.level == 3 and income.basis == "From your Form 16" and income.monthly == 125_000
 
-    underpaid = analyse(
-        [_fake_doc(fields=FORM16_FIELDS, rows={"salary.employers": [{"name": "Acme", "tds": 10_000}]})], None, TODAY
-    )
-    assert document_rules.tds_vs_tax(_facts(underpaid))[0].title == "You may owe more tax"
-
-    overpaid = analyse(
-        [_fake_doc(fields=FORM16_FIELDS, rows={"salary.employers": [{"name": "Acme", "tds": 400_000}]})], None, TODAY
-    )
-    assert document_rules.tds_vs_tax(_facts(overpaid))[0].title == "You may get a tax refund"
-
-    payslip = analyse([_fake_doc(category="payslips", fields=FORM16_FIELDS, rows=FORM16_ROWS)], None, TODAY)
-    assert document_rules.tds_vs_tax(_facts(payslip)) == []  # a payslip covers only part of the year
+    no_docs = analyse([], None, TODAY)
+    declared = income_of(_facts(no_docs, declared=_declared(annual_income=600_000), expected_income=300_000))
+    assert declared.level == 2 and declared.monthly == 50_000
+    expected = income_of(_facts(no_docs, expected_income=300_000))
+    assert expected.level == 1 and expected.monthly == 25_000 and not expected.is_example
+    assert income_of(_facts(no_docs)).is_example
 
 
-def test_ais_income_gap_vs_declared():
-    ais = analyse([_fake_doc(category="ais", fields={"other_income.savings_interest": 12_000,
-                                                      "other_income.deposit_interest": 30_000})], None, TODAY)
-    [rec] = document_rules.ais_income_gap(_facts(ais, _declared(other_income_total=12_000)))
-    assert "₹42,000" in rec.description and "₹12,000" in rec.description and rec.basis == "From your AIS"
-
-    assert document_rules.ais_income_gap(_facts(ais, _declared(other_income_total=42_000))) == []
-    assert document_rules.ais_income_gap(_facts(ais, _declared(other_income_total=41_500))) == []  # under the threshold
-    assert "₹42,000" in document_rules.ais_income_gap(_facts(ais, None))[0].description  # nothing declared at all
-
-    [unknown] = document_rules.ais_income_gap(_facts(ais, _declared(source="tax_comparison", other_income_total=None)))
-    assert "included in the income you declare" in unknown.description
-
-    no_income = analyse([_fake_doc(category="ais", fields={"salary.salary_17_1": 100_000})], None, TODAY)
-    assert document_rules.ais_income_gap(_facts(no_income)) == []
-    form16_only = analyse([_fake_doc(fields=FORM16_FIELDS)], None, TODAY)
-    assert document_rules.ais_income_gap(_facts(form16_only)) == []
+def test_a_document_without_salary_does_not_set_the_income():
+    ais_only_interest = analyse([_fake_doc(category="ais", fields={"other_income.savings_interest": 12_000})], None, TODAY)
+    income = income_of(_facts(ais_only_interest, expected_income=1_200_000))
+    assert income.level == 1 and income.monthly == 100_000
 
 
-def test_form16_deductions_variants():
-    none_on_form = analyse([_fake_doc(fields=FORM16_FIELDS)], None, TODAY)
-    [rec] = document_rules.form16_deductions(_facts(none_on_form))
-    assert rec.id == "tax_80c" and "no Section 80C deductions" in rec.description
-
-    rows = {"deductions.section_80c": [{"description": "EPF", "amount": 90_000}]}
-    with_80c = analyse([_fake_doc(fields=FORM16_FIELDS, rows=rows)], None, TODAY)
-    [rec] = document_rules.form16_deductions(_facts(with_80c))
-    assert "₹90,000" in rec.description and "₹60,000" in rec.description
-
-    [mismatch] = document_rules.form16_deductions(_facts(with_80c, _declared(section_80c_total=20_000)))
-    assert "₹90,000" in mismatch.description and "only ₹20,000" in mismatch.description
-
-    [more_in_draft] = document_rules.form16_deductions(_facts(with_80c, _declared(section_80c_total=150_000)))
-    assert "uses your full limit" in more_in_draft.description
-
-    # A tax comparison has no per-item 80C, so it can't be checked against Form 16.
-    [from_comparison] = document_rules.form16_deductions(_facts(with_80c, _declared(source="tax_comparison")))
-    assert "₹60,000" in from_comparison.description
-
-    ais_only = analyse([_fake_doc(category="ais", fields=FORM16_FIELDS)], None, TODAY)
-    assert document_rules.form16_deductions(_facts(ais_only)) == []
+def _ais_form16(interest: dict, deposit: int = 0):
+    fields = {**FORM16_FIELDS, **{f"other_income.{k}": v for k, v in interest.items()}}
+    if deposit:
+        fields["other_income.deposit_interest"] = deposit
+    return analyse([
+        _fake_doc(fields=FORM16_FIELDS, rows=FORM16_ROWS, name="f16.pdf"),
+        _fake_doc(category="ais", fields=fields, name="ais.pdf"),
+    ], None, TODAY)
 
 
-def test_hra_claim_variants():
-    payslip = analyse([_fake_doc(category="payslips", fields={**FORM16_FIELDS, "salary.hra.hra_received": 240_000})],
-                      None, TODAY)
-    [rec] = document_rules.hra_claim(_facts(payslip))
-    assert "₹2,40,000" in rec.description and rec.action_href == "/itr-filing"
+def test_idle_savings_are_estimated_from_ais_interest():
+    facts = _facts(_ais_form16({"savings_interest": 60_000}))
+    rec = idle_money(facts, income_of(facts))
+    # Interest of 60,000 at 3% suggests 20,00,000; income 1,25,000 a month means spending 75,000
+    # and an emergency fund of 4,50,000, leaving 15,50,000, which earns 3.5% more in a deposit.
+    assert rec.level == 3 and rec.basis == "From your AIS"
+    assert "₹15,50,000" in rec.title and "₹54,250" in rec.description
+    lines = {line.label: line.value for line in rec.illustration.lines}
+    assert lines["Savings-account interest in your AIS"] == "₹60,000"
+    assert lines["Money above your emergency fund"] == "₹15,50,000"
+    assert rec.illustration.is_example is False
+    assert "estimate" in rec.illustration.note
 
-    assert document_rules.hra_claim(_facts(payslip, _declared(rent_paid=300_000))) == []
-    with_rent = analyse([_fake_doc(category="payslips", fields={**FORM16_FIELDS, "salary.hra.hra_received": 240_000,
-                                                               "salary.hra.rent_paid": 300_000})], None, TODAY)
-    assert document_rules.hra_claim(_facts(with_rent)) == []
-    no_hra = analyse([_fake_doc(fields=FORM16_FIELDS)], None, TODAY)
-    assert document_rules.hra_claim(_facts(no_hra)) == []
+
+def test_savings_that_are_about_right_say_so():
+    facts = _facts(_ais_form16({"savings_interest": 12_000}))  # about 4,00,000, below the fund
+    rec = idle_money(facts, income_of(facts))
+    assert rec.level == 3 and rec.title == "Your savings balance looks about right"
+
+
+def test_existing_deposits_are_noticed_from_deposit_interest():
+    facts = _facts(_ais_form16({"savings_interest": 60_000}, deposit=65_000))
+    rec = idle_money(facts, income_of(facts))
+    assert any(line.label.startswith("Deposits you already hold") and "₹10,00,000" in line.value
+               for line in rec.illustration.lines)
+
+
+def test_without_an_ais_the_idle_money_advice_stays_general():
+    docs = analyse([_fake_doc(fields=FORM16_FIELDS, rows=FORM16_ROWS)], None, TODAY)
+    facts = _facts(docs)
+    rec = idle_money(facts, income_of(facts))
+    assert rec.level == 1 and rec.basis == "Based on your age" and "Don't leave idle money" in rec.title
+
+    no_interest = analyse([_fake_doc(category="ais", fields=FORM16_FIELDS)], None, TODAY)
+    assert idle_money(_facts(no_interest), income_of(_facts(no_interest))).level == 1
+
+
+def test_dividends_in_the_ais_are_mentioned_in_the_asset_mix():
+    with_dividends = analyse([_fake_doc(category="ais", fields={**FORM16_FIELDS, "other_income.dividends.upto_15_jun": 4_000})],
+                             None, TODAY)
+    facts = _facts(with_dividends)
+    assert "dividend income" in asset_mix(facts, income_of(facts)).description
+    without = _facts(analyse([_fake_doc(category="ais", fields=FORM16_FIELDS)], None, TODAY))
+    assert "dividend income" not in asset_mix(without, income_of(without)).description
+
+
+def test_emergency_fund_uses_document_income_and_job_category():
+    facts = _facts(analyse([_fake_doc(fields=FORM16_FIELDS, rows=FORM16_ROWS)], None, TODAY),
+                   category=EmployeeCategory.GOVERNMENT)
+    rec = emergency_fund(facts, income_of(facts))
+    # 1,25,000 a month: spending 75,000; four months of it is 3,00,000.
+    assert rec.level == 3 and "about 4 months of expenses" in rec.description and "₹3,00,000" in rec.description
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +250,7 @@ def test_no_documents_means_empty_documents_report(client):
 
 
 def test_uploading_documents_reaches_level_3(client):
-    headers = _auth_headers(client)
+    headers = _auth_headers(client, age=25)
     _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
     _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")
     _upload(client, headers, "payslips", "Payslip_Mar_2026_SAMPLE.pdf")
@@ -265,53 +262,26 @@ def test_uploading_documents_reaches_level_3(client):
     assert body["documents"]["skipped"] == []
 
     recs = _by_id(body)
-    assert recs["doc_tds_vs_tax"]["level"] == 3
-    assert recs["doc_tds_vs_tax"]["basis"].startswith("From your ")
-    assert "Form 16" in recs["doc_tds_vs_tax"]["basis"]
-    assert recs["tax_80c"]["basis"] == "From your Form 16"  # the lower-level 80C rule deferred to Form 16
-    assert "no Section 80C deductions" in recs["tax_80c"]["description"]
-    assert "doc_hra_claim" in recs and "₹2,40,000" in recs["doc_hra_claim"]["description"]
-    assert len([r for r in body["recommendations"] if r["id"] == "tax_80c"]) == 1  # topic appears once
+    emergency = recs["emergency_fund"]
+    assert emergency["level"] == 3
+    assert emergency["basis"].startswith("From your ") and "Form 16" in emergency["basis"]
+    # Form 16 salary 15,00,000 is 1,25,000 a month; spending 75,000; a 6-month fund is 4,50,000.
+    assert "₹4,50,000" in emergency["description"]
+    assert emergency["illustration"]["is_example"] is False
+    assert all(r["category"] == "life_stage" for r in body["recommendations"])
 
 
-def test_tds_figures_match_the_itr_summary(client):
-    headers = _auth_headers(client)
+def test_the_sample_ais_savings_look_about_right(client):
+    headers = _auth_headers(client, age=40)
     _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
-    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")
+    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")  # 12,000 of savings interest
 
-    selected = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["selected"]
-    rec = _by_id(_get(client, headers))["doc_tds_vs_tax"]
-    assert format_inr(selected["total_taxes_paid"]) in rec["description"]
-    expected = format_inr(selected["refund_due"] or selected["balance_payable"])
-    assert expected in rec["description"]
+    idle = _by_id(_get(client, headers))["idle_money"]
+    assert idle["level"] == 3 and idle["basis"] == "From your AIS"
+    assert idle["title"] == "Your savings balance looks about right"
 
 
-def test_ais_income_gap_appears_when_draft_misses_it(client):
-    headers = _auth_headers(client)
-    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")
-    assert "doc_ais_income" not in _by_id(_get(client, headers))  # autofill put it in the draft
-
-    draft = client.get(f"/api/v1/itr/filings/{AY}", headers=headers).json()["data"]
-    draft["other_income"]["savings_interest"] = 0
-    draft["other_income"]["deposit_interest"] = 0
-    assert client.put(f"/api/v1/itr/filings/{AY}", headers=headers, json=draft).status_code == 200
-
-    rec = _by_id(_get(client, headers))["doc_ais_income"]
-    assert "₹42,000" in rec["description"] and "₹0" in rec["description"]
-
-
-def test_hra_recommendation_goes_away_once_rent_is_entered(client):
-    headers = _auth_headers(client)
-    _upload(client, headers, "payslips", "Payslip_Mar_2026_SAMPLE.pdf")
-    assert "doc_hra_claim" in _by_id(_get(client, headers))
-
-    draft = client.get(f"/api/v1/itr/filings/{AY}", headers=headers).json()["data"]
-    draft["salary"]["hra"]["rent_paid"] = 300_000
-    assert client.put(f"/api/v1/itr/filings/{AY}", headers=headers, json=draft).status_code == 200
-    assert "doc_hra_claim" not in _by_id(_get(client, headers))
-
-
-def test_unreadable_document_is_reported_not_silently_ignored(client):
+def test_a_document_without_usable_figures_is_reported_not_silently_ignored(client):
     headers = _auth_headers(client)
     _upload(client, headers, "pan", "PAN_Card_SAMPLE.png", "image/png")
 
@@ -322,7 +292,7 @@ def test_unreadable_document_is_reported_not_silently_ignored(client):
     assert skipped["category"] == "pan" and skipped["reason"]
 
 
-def test_deleting_documents_drops_back_to_level_2_or_1(client):
+def test_deleting_documents_drops_back_to_level_2(client):
     headers = _auth_headers(client)
     doc = _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
     assert _get(client, headers)["level"] == 3
@@ -345,20 +315,3 @@ def test_level_3_needs_a_date_of_birth(client):
     _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
     body = _get(client, headers)
     assert body["level"] == 0 and body["recommendations"] == []
-
-
-def test_tax_figures_agree_across_dashboard_and_recommendations(client):
-    """One estimate of the tax, wherever it is shown: the dashboard card, the
-    regime recommendation, and (with interest and fee added) the TDS card."""
-    headers = _auth_headers(client)
-    _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
-    _upload(client, headers, "ais", "AIS_FY2025-26_SAMPLE.pdf")
-
-    tax = client.get("/api/v1/dashboard/summary", headers=headers).json()["estimated_tax"]["amount"]
-    recs = _by_id(_get(client, headers))
-    assert format_inr(tax) in recs["tax_regime_choice"]["description"]
-
-    selected = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["selected"]
-    assert selected["gross_tax_liability"] == tax  # the dashboard shows tax and cess, before interest and fee
-    assert selected["total_tax_and_interest"] >= tax
-    assert format_inr(selected["total_tax_and_interest"]) in recs["doc_tds_vs_tax"]["description"]

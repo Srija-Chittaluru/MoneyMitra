@@ -1,6 +1,5 @@
 from datetime import date
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.modules.recommendations import engine
@@ -9,27 +8,20 @@ from app.modules.recommendations.levels import LEVEL_LABELS
 from app.modules.recommendations.profile import profile_of
 from app.modules.recommendations.schemas import AnalysedDocumentOut, DocumentsOut, RecommendationsOut, SkippedDocumentOut
 from app.modules.recommendations.stages import STAGE_LABELS
-from app.modules.tax.rules.registry import get_supported_tax_years
 from app.modules.users.models import User
 
+DISCLAIMER = (
+    "These are general guidelines and worked examples, not personal investment advice. The rates used are "
+    "illustrative assumptions, investments in the market can lose value, and past returns don't guarantee future "
+    "ones. Consider speaking to a SEBI-registered adviser before you invest."
+)
 
-def get_recommendations(
-    db: Session, user: User, tax_year: str | None = None, today: date | None = None
-) -> RecommendationsOut:
-    supported = get_supported_tax_years()
-    tax_year = tax_year or supported[-1]
-    if tax_year not in supported:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Unsupported tax year '{tax_year}'. Supported years: {', '.join(supported)}",
-        )
 
-    facts = build_facts(db, user, tax_year, today or date.today())
+def get_recommendations(db: Session, user: User, today: date | None = None) -> RecommendationsOut:
+    facts = build_facts(db, user, today or date.today())
     return RecommendationsOut(
         level=int(facts.level),
         level_label=LEVEL_LABELS[facts.level],
-        tax_year=tax_year,
-        available_tax_years=supported,
         profile=profile_of(user),
         age=facts.age,
         stage=facts.stage,
@@ -40,5 +32,6 @@ def get_recommendations(
             analysed=[AnalysedDocumentOut(**vars(doc)) for doc in facts.documents.analysed],
             skipped=[SkippedDocumentOut(**vars(doc)) for doc in facts.documents.skipped],
         ),
+        disclaimer=DISCLAIMER,
         recommendations=engine.run(facts),
     )

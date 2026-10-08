@@ -4,7 +4,7 @@ from app.modules.recommendations.schemas import NextStep, Recommendation
 
 
 def run(facts: Facts) -> list[Recommendation]:
-    """Runs every rule, in registry order (tax-saving first, then life-stage)."""
+    """Runs every rule, in registry order."""
     if facts.age is None:
         return []
     return [rec for rule in RULES for rec in rule(facts)]
@@ -31,8 +31,8 @@ def next_step(facts: Facts) -> NextStep | None:
         return NextStep(
             level=3,
             title="Upload your documents",
-            description="Upload your Form 16, AIS or payslips and we'll check your tax deducted, your income "
-            "and your deductions against what you've declared.",
+            description="Upload your Form 16, AIS or payslips and we'll use your real income, and the interest "
+            "your savings earn, to show how much of your money is sitting idle.",
             action_label="Upload documents",
             action_href="/documents",
         )

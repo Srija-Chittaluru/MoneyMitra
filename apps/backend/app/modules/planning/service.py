@@ -134,7 +134,7 @@ def get_tax_plan(db: Session, user: User, today: date | None = None) -> TaxPlanO
     # Facts is the same context bundle the /recommendations engine builds from —
     # reusing it here (rather than loading FinancialContext a second, separate
     # way) keeps age/stage/declared-figures identical across both features.
-    facts = build_facts(db, user, fy_label, today)
+    facts = build_facts(db, user, today)
     age = facts.age
     stage_label = STAGE_LABELS[facts.stage] if facts.stage else None
 

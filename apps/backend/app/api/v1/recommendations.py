@@ -13,11 +13,10 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 @router.get("", response_model=RecommendationsOut)
 def get_recommendations(
-    tax_year: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RecommendationsOut:
-    return service.get_recommendations(db, current_user, tax_year)
+    return service.get_recommendations(db, current_user)
 
 
 @router.put("/profile", response_model=ProfileOut)
