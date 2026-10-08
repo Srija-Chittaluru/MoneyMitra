@@ -1,150 +1,134 @@
 "use client";
 
-import { useState } from "react";
-import { AppShell } from "@/components/shell/AppShell";
-import { DemoBanner } from "@/components/ui/DemoBanner";
-import { Card } from "@/components/ui/Card";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { TransactionRow } from "@/components/ui/TransactionRow";
-import { formatINR } from "@/lib/format";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { Wallet } from "lucide-react";
+import { EmptyPanel } from "@/components/dashboard/EmptyPanel";
+import { SectionError, SectionSkeleton } from "@/components/dashboard/SectionStatus";
 import {
-  mockFinanceTaxOverview,
-  mockInvestments,
-  mockSavingsInsights,
-  mockSpendingSummary,
-  mockTransactions,
-} from "@/lib/mock";
+  ActionsCard,
+  AlertsCard,
+  DocumentsCard,
+  FilingCard,
+  formatDate,
+  IncomeCard,
+  InvestmentsCard,
+  TaxCard,
+  TaxSavingCard,
+  Tile,
+} from "@/components/finance/OverviewCards";
+import { AppShell } from "@/components/shell/AppShell";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { getFinanceOverview } from "@/lib/finance/api";
+import { formatRupees } from "@/lib/format";
+import type { FinanceOverview } from "@/lib/finance/types";
 
-const TABS = ["Overview", "Expenses", "Investments", "Tax", "Insights"] as const;
-type Tab = (typeof TABS)[number];
+const SOURCE_LABELS = {
+  itr_filing: "your documents and ITR draft",
+  tax_comparison: "your tax comparison",
+} as const;
 
-function OverviewTab() {
-  const totalSpend = mockSpendingSummary.reduce((sum, c) => sum + c.amount, 0);
-  return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <Card>
-        <p className="text-sm text-muted">This month&apos;s spending</p>
-        <p className="mt-2 text-amount-lg">{formatINR(totalSpend)}</p>
-      </Card>
-      <Card>
-        <p className="text-sm text-muted">Estimated annual tax</p>
-        <p className="mt-2 text-amount-lg">
-          {formatINR(mockFinanceTaxOverview.estimatedAnnualTax)}
-        </p>
-      </Card>
-      <Card>
-        <p className="text-sm text-muted">Savings insights</p>
-        <p className="mt-2 text-h2">{mockSavingsInsights.length} new</p>
-      </Card>
-    </div>
-  );
-}
-
-function ExpensesTab() {
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <h3 className="text-h2 mb-3">Spending by category</h3>
-        <div className="divide-y divide-border">
-          {mockSpendingSummary.map((c) => (
-            <div key={c.category} className="flex items-center justify-between py-2">
-              <span className="text-muted">{c.category}</span>
-              <span>{formatINR(c.amount)}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <Card>
-        <h3 className="text-h2 mb-3">Recent transactions</h3>
-        <div className="divide-y divide-border">
-          {mockTransactions.map((tx) => (
-            <TransactionRow key={tx.id} {...tx} />
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function InvestmentsTab() {
-  return (
-    <Card>
-      <h3 className="text-h2 mb-3">Investment overview</h3>
-      <div className="divide-y divide-border">
-        {mockInvestments.map((inv) => {
-          const change = inv.current - inv.invested;
-          const pct = ((change / inv.invested) * 100).toFixed(1);
-          return (
-            <div key={inv.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-foreground">{inv.name}</p>
-                <p className="text-sm text-muted">{inv.type}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-amount-sm">{formatINR(inv.current)}</p>
-                <p className={`text-sm ${change >= 0 ? "text-success" : "text-error"}`}>
-                  {change >= 0 ? "+" : ""}
-                  {pct}%
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function TaxTab() {
-  return (
-    <Card className="max-w-md">
-      <h3 className="text-h2 mb-3">Tax overview</h3>
-      <div className="divide-y divide-border">
-        <div className="flex items-center justify-between py-2">
-          <span className="text-muted">Estimated annual tax</span>
-          <span>{formatINR(mockFinanceTaxOverview.estimatedAnnualTax)}</span>
-        </div>
-        <div className="flex items-center justify-between py-2">
-          <span className="text-muted">Recommended regime</span>
-          <span className="capitalize font-medium">{mockFinanceTaxOverview.regime}</span>
-        </div>
-        <div className="flex items-center justify-between py-2">
-          <span className="text-muted">Next filing deadline</span>
-          <span>{mockFinanceTaxOverview.nextDeadline}</span>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function InsightsTab() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {mockSavingsInsights.map((insight) => (
-        <Card key={insight.id}>
-          <h3 className="text-h2 mb-2">{insight.title}</h3>
-          <p className="text-body text-muted">{insight.description}</p>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
+/**
+ * One overview of the user's money, built from their documents, ITR draft,
+ * tax comparison, tax plan, recommendations and tax calendar. Every figure is
+ * real; a card without data says what to add instead of showing a number.
+ */
 export default function FinancePage() {
-  const [tab, setTab] = useState<Tab>("Overview");
+  const overview = useQuery({ queryKey: ["finance-overview"], queryFn: getFinanceOverview, refetchOnMount: "always" });
 
   return (
     <AppShell title="Finance Management">
-      <DemoBanner />
-      <div className="mb-6">
-        <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+      {overview.isPending ? (
+        <Card>
+          <SectionSkeleton lines={6} />
+        </Card>
+      ) : overview.isError ? (
+        <SectionError message="We couldn't load your finances." onRetry={() => void overview.refetch()} />
+      ) : (
+        <Overview data={overview.data} />
+      )}
+    </AppShell>
+  );
+}
+
+function Overview({ data }: { data: FinanceOverview }) {
+  const { income, tax } = data;
+  return (
+    <div className="flex flex-col gap-6">
+      {data.source ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="success">Live data</Badge>
+          <p className="text-sm text-muted">
+            From {SOURCE_LABELS[data.source]}
+            {data.financial_year && <> · FY {data.financial_year}</>}
+            {data.updated_at && <> · updated {formatDate(data.updated_at)}</>}
+          </p>
+        </div>
+      ) : (
+        <Card>
+          <EmptyPanel
+            icon={Wallet}
+            title="Your finances will appear here"
+            description="Upload your Form 16, AIS, payslips or broker statements — or run a tax comparison — and MoneyMitra builds this overview from them."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link href="/documents">
+                  <Button size="sm">Upload documents</Button>
+                </Link>
+                <Link href="/tax-comparison">
+                  <Button variant="secondary" size="sm">
+                    Compare tax regimes
+                  </Button>
+                </Link>
+              </div>
+            }
+          />
+        </Card>
+      )}
+
+      {income && tax && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Tile label="Gross total income" value={formatRupees(income.total)} hint={`FY ${data.financial_year ?? ""}`} />
+          <Tile label="Estimated tax" value={formatRupees(tax.tax)} hint={`${tax.effective_rate}% of income · ${tax.regime} regime`} />
+          {tax.refund_due ? (
+            <Tile label="Refund due" value={formatRupees(tax.refund_due)} hint="TDS paid is more than your tax" tone="success" />
+          ) : tax.balance_payable ? (
+            <Tile label="Tax still to pay" value={formatRupees(tax.balance_payable)} hint="Including interest and late fee" tone="error" />
+          ) : (
+            <Tile
+              label={tax.savings ? "Saved by the better regime" : "Taxes paid"}
+              value={formatRupees(tax.savings ?? tax.taxes_paid ?? 0)}
+              hint={tax.savings ? `Choosing the ${tax.regime} regime` : undefined}
+            />
+          )}
+          {income.monthly_take_home !== null ? (
+            <Tile label="Monthly take-home" value={formatRupees(income.monthly_take_home)} hint="Salary after TDS & professional tax" />
+          ) : (
+            <Tile label="Monthly income" value={formatRupees(Math.round(income.total / 12))} hint="Gross, before tax" />
+          )}
+        </div>
+      )}
+
+      {(income || tax) && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {income && <IncomeCard income={income} />}
+          {tax && <TaxCard tax={tax} />}
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <InvestmentsCard investments={data.investments} />
+        <TaxSavingCard sections={data.tax_saving} year={data.tax_saving_year} note={data.tax_saving_note} />
       </div>
 
-      {tab === "Overview" && <OverviewTab />}
-      {tab === "Expenses" && <ExpensesTab />}
-      {tab === "Investments" && <InvestmentsTab />}
-      {tab === "Tax" && <TaxTab />}
-      {tab === "Insights" && <InsightsTab />}
-    </AppShell>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <FilingCard filing={data.filing} />
+        <DocumentsCard documents={data.documents} />
+        <ActionsCard actions={data.actions} />
+        <AlertsCard alerts={data.alerts} />
+      </div>
+    </div>
   );
 }
