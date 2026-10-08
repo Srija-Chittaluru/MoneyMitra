@@ -90,6 +90,4 @@ def test_documents_fill_the_overview_with_the_itr_figures(client):
 
     assert body["documents"]["uploaded"] == 3
     assert {d["category"] for d in body["documents"]["by_category"]} == {"form16", "ais", "capital_gains"}
-    # The page already shows tax and refund; recommendations don't repeat them.
-    assert not any("refund" in action["title"].lower() for action in body["actions"])
     assert "old regime" in body["tax_saving_note"]

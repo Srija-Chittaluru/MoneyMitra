@@ -39,9 +39,6 @@ from app.modules.resources.service import get_resources
 from app.modules.users.models import User
 
 MAX_ACTIONS = 3
-# Recommendations restating the tax and refund this page already shows (from a
-# documents-only estimate that can differ from the user's edited ITR draft).
-_DUPLICATE_ACTIONS = {"doc_tds_vs_tax", "tax_regime_choice"}
 MAX_ALERTS = 3
 
 # Documents most people need, shown as missing when there is no ITR draft to
@@ -227,10 +224,7 @@ def get_overview(db: Session, user: User, today: date | None = None) -> FinanceO
         for s in plan.sections
     ] if plan.has_data else []
 
-    recommendations = [
-        r for r in get_recommendations(db, user, today=today).recommendations
-        if not (tax and r.id in _DUPLICATE_ACTIONS)
-    ][:MAX_ACTIONS]
+    recommendations = get_recommendations(db, user, today=today).recommendations[:MAX_ACTIONS]
     alerts = get_resources(today).alerts[:MAX_ALERTS]
 
     return FinanceOverview(

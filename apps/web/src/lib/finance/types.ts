@@ -59,8 +59,8 @@ export interface FinanceDocuments {
 export interface FinanceAction {
   title: string;
   description: string;
-  action_label: string;
-  action_href: string;
+  action_label: string | null;
+  action_href: string | null;
 }
 
 export interface FinanceAlert {

@@ -348,9 +348,11 @@ export function ActionsCard({ actions }: { actions: FinanceAction[] }) {
             <div key={a.title}>
               <p className="font-medium text-foreground">{a.title}</p>
               <p className="mt-0.5 text-sm text-muted">{a.description}</p>
-              <Link href={a.action_href} className="mt-1 inline-block text-sm font-medium text-link hover:underline">
-                {a.action_label} →
-              </Link>
+              {a.action_href && a.action_label && (
+                <Link href={a.action_href} className="mt-1 inline-block text-sm font-medium text-link hover:underline">
+                  {a.action_label} →
+                </Link>
+              )}
             </div>
           ))}
         </div>

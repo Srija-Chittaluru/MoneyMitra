@@ -79,8 +79,8 @@ class DocumentsOut(BaseModel):
 class ActionOut(BaseModel):
     title: str
     description: str
-    action_label: str
-    action_href: str
+    action_label: str | None
+    action_href: str | None
 
 
 class AlertOut(BaseModel):
