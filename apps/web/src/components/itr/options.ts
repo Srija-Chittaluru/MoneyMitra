@@ -1,5 +1,6 @@
 import type {
   BankAccount,
+  CapitalGainTxn,
   Challan,
   EmployerCategory,
   EmployerTds,
@@ -20,6 +21,8 @@ export const STEPS = [
 export const LAST_STEP = STEPS.length;
 
 const FIELD_STEPS: Record<string, number> = {
+  capital_gains: 2,
+  trading: 2,
   personal: 1,
   eligibility: 1,
   bank_accounts: 1,
@@ -108,9 +111,27 @@ export const BANK_ACCOUNT_TYPES = [
   { value: "OTH", label: "Other" },
 ] as const;
 
+export const emptyCapitalGain = (): CapitalGainTxn => ({
+  asset_type: "equity_share",
+  term: "short",
+  name: null,
+  isin: null,
+  quantity: 0,
+  sale_date: null,
+  sale_value: 0,
+  cost: 0,
+  expenses: 0,
+  acquired_before_feb_2018: false,
+  fmv_31_jan_2018: 0,
+});
+
 export const emptyEmployer = (): EmployerTds => ({
   name: null,
   tan: null,
+  address: null,
+  city: null,
+  state_code: null,
+  pin_code: null,
   income_chargeable: 0,
   tds: 0,
 });

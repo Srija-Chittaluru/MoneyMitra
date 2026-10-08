@@ -194,7 +194,9 @@ def test_traces_form16_reads_employee_not_employer_pan():
     assert ex.fields["salary.hra.basic_salary"] == 1020000
     assert ex.rows["salary.employers"] == [
         {"name": "NOVASPIRE TECHNOLOGIES PRIVATE LIMITED", "tan": "PNEN12345B",
-         "income_chargeable": 2085900, "tds": 376400}
+         "income_chargeable": 2085900, "tds": 376400,
+         "address": "LEVEL 6, PANCHSHIL BUSINESS PARK, VIMAN NAGAR", "city": "PUNE", "state_code": "19",
+         "pin_code": "411014"}
     ]
     assert sum(r["amount"] for r in ex.rows["deductions.section_80c"]) == 170400
     assert ex.rows["deductions.health_parents.policies"][0]["premium"] == 32000
@@ -221,11 +223,62 @@ def test_march_payslip_ytd_columns():
     assert ex.rows["salary.employers"][0]["tds"] == 376400
 
 
-def test_capital_gains_in_ais_blocks_itr1(client):
+def test_ais_with_intraday_trades_needs_itr3(client):
     headers = _auth_headers(client)
     _upload(client, headers, "ais", "AIS_TIS_SPECIMEN.pdf")
     summary = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()
-    assert "eligibility.has_capital_gains" in {i["field"] for i in summary["eligibility_issues"]}
+    form = summary["recommended_form"]
+    assert form["form"] == "ITR-3"
+    assert form["supported"] is True
+    assert any("Intraday" in r["reason"] for r in form["reasons"])
+    assert {r["form"] for r in form["other_reasons"]} == {"ITR-2"}
+    checklist = {c["category"]: c for c in form["checklist"]}
+    assert checklist["ais"]["uploaded"] is True
+    assert checklist["capital_gains"]["required"] and not checklist["capital_gains"]["uploaded"]
+    # The sales and intraday trades from the AIS are filled into the return.
+    data = _filing(client, headers)["data"]
+    assert len(data["capital_gains"]) == 9
+    assert data["trading"]["speculative_profit"] == 50
+
+
+def test_ais_capital_gains_breakdown():
+    ex = extract("ais", "application/pdf", _fixture("AIS_TIS_SPECIMEN.pdf"), [])
+    cg = ex.facts["capital_gains"]
+    assert (cg["ltcg_112a"], cg["stcg_111a"], cg["debt_stcg"], cg["speculative"]) == (30700, 1950, 4600, 50)
+    assert ex.facts["intraday"] is True
+
+
+def test_form26as_parser():
+    ex = extract("form26as", "application/pdf", _fixture("Form26AS_SPECIMEN.pdf"), [])
+    assert ex.assessment_year == AY
+    assert ex.fields["personal.pan"] == "BXKPM4821Q"
+    assert [(e["tan"], e["section"], e["tds"]) for e in ex.facts["tds_26as"]] == [
+        ("PNEN12345B", "192", 376400), ("PNES03311F", "194A", 6240), ("CALI00412C", "194", 2166),
+    ]
+    assert sum(e["tds"] for e in ex.facts["tds_26as"]) == 384806
+
+
+def test_tds_cross_check_against_26as(client):
+    headers = _auth_headers(client)
+    _upload(client, headers, "form26as", "Form26AS_SPECIMEN.pdf")
+    draft = _filing(client, headers)["data"]
+    # A claim that isn't in 26AS, and remove the bank's genuine entry.
+    draft["taxes_paid"]["tds_other"] = [
+        t for t in draft["taxes_paid"]["tds_other"] if t["tan"] != "PNES03311F"
+    ] + [{"deductor_name": "Ram", "tan": "CALI00412K", "section": "94A", "amount_paid": 1, "tds_deducted": 500,
+          "tds_claimed": 500, "deducted_year": "2025"}]
+    client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
+    warnings = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["warnings"]
+    assert any("CALI00412K" in w and "not in your Form 26AS" in w for w in warnings)
+    assert any("PNES03311F" in w and "isn't claimed" in w for w in warnings)
+
+
+def test_salary_only_documents_recommend_itr1(client):
+    headers = _auth_headers(client)
+    _upload(client, headers, "form16", "Form16_AY2026-27_SAMPLE.pdf")
+    form = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["recommended_form"]
+    assert form["form"] == "ITR-1" and form["supported"] is True
+    assert "capital_gains" not in {c["category"] for c in form["checklist"]}
 
 
 def test_reread_replaces_autofilled_values_but_keeps_user_edits(client):
@@ -245,3 +298,170 @@ def test_reread_replaces_autofilled_values_but_keeps_user_edits(client):
     assert body["data"]["salary"]["salary_17_1"] == 2501400
     assert len(body["data"]["salary"]["employers"]) == 1
     assert body["field_sources"]["salary.salary_17_1"] == "Form 16"
+
+
+def _complete_itr23_draft(client, headers) -> dict:
+    """Fields no document contains, as the user would type them."""
+    draft = _filing(client, headers)["data"]
+    draft["personal"].update(father_name="VIKRAM SURESH MEHTA", mobile="9876543210", employer_category="OTH")
+    draft["eligibility"]["is_resident"] = True
+    draft["bank_accounts"] = [{"ifsc": "HDFC0001234", "bank_name": "HDFC Bank", "account_no": "50100012344417",
+                               "use_for_refund": True}]
+    draft["verification_place"] = "Pune"
+    return draft
+
+
+def test_documents_decide_and_fill_itr3(client):
+    from app.api.v1.itr import filing_date
+    from app.main import app
+    from app.modules.itr.export_itr23 import itr23_schema_errors
+    from datetime import date
+
+    app.dependency_overrides[filing_date] = lambda: date(2026, 10, 7)
+    try:
+        headers = _auth_headers(client)
+        for category, name in [("form16", "Form16_TRACES_SPECIMEN.pdf"), ("ais", "AIS_TIS_SPECIMEN.pdf"),
+                               ("form26as", "Form26AS_SPECIMEN.pdf")]:
+            _upload(client, headers, category, name)
+        client.put(f"/api/v1/itr/filings/{AY}", json=_complete_itr23_draft(client, headers), headers=headers)
+
+        summary = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()
+        assert summary["recommended_form"]["form"] == "ITR-3"
+        assert summary["can_export"] is True, summary["missing_fields"] + summary["eligibility_issues"]
+        s = summary["selected"]
+        assert (s["stcg_111a"], s["stcg_slab"], s["ltcg_112a"], s["speculative_income"]) == (1950, 4600, 30700, 50)
+        assert s["total_income"] == 2585660
+        assert s["tax_at_special_rates"] == 390  # 20% of 1,950; LTCG under the Rs 1.25 lakh exemption
+        assert s["refund_due"] == 19661
+        assert summary["filing_section"] == "139(4)"  # ITR-3 due 31 Aug 2026
+
+        exported = client.post(f"/api/v1/itr/filings/{AY}/export", headers=headers)
+        assert exported.status_code == 200, exported.text
+        body = exported.json()
+        assert body["form"] == "ITR-3"
+        assert body["file_name"] == "ITR3_AY2026-27_BXKPM4821Q.json"
+        assert itr23_schema_errors(body["itr"], "ITR-3") == []
+        itr3 = body["itr"]["ITR"]["ITR3"]
+        assert itr3["PartB_TTI"]["Refund"]["RefundDue"] == 19661
+        assert itr3["PARTA_PL"]["NetIncomeFrmSpecActivity"] == 50
+        assert [b["Code"] for b in itr3["PartA_GEN2"]["NatOfBus"]["NatureOfBusiness"]] == ["21009"]
+        assert len(itr3["Schedule112A"]["Schedule112ADtls"]) == 3
+
+        pdf = client.get(f"/api/v1/itr/filings/{AY}/export/pdf", headers=headers)
+        assert "ITR3_AY2026-27_BXKPM4821Q.pdf" in pdf.headers["content-disposition"]
+    finally:
+        app.dependency_overrides.pop(filing_date, None)
+
+
+def test_capital_gains_without_trading_files_itr2(client):
+    from app.modules.itr.export_itr23 import itr23_schema_errors
+
+    headers = _auth_headers(client)
+    _upload(client, headers, "form16", "Form16_TRACES_SPECIMEN.pdf")
+    draft = _complete_itr23_draft(client, headers)
+    # Form 16 alone has no name, date of birth or home address — the user types them.
+    draft["personal"].update(first_name="ROHAN", last_name="MEHTA", date_of_birth="1991-08-14")
+    draft["personal"]["address"].update(flat_no="FLAT 1204", locality="KHARADI", city="PUNE",
+                                        state_code="19", pin_code="411014")
+    draft["capital_gains"] = [
+        {"asset_type": "equity_share", "term": "short", "name": "TATA MOTORS", "isin": "INE155A01022",
+         "quantity": 10, "sale_date": "2025-07-21", "sale_value": 50000, "cost": 40000},
+        {"asset_type": "equity_mf", "term": "long", "name": "INDEX FUND", "isin": "INF879O01027",
+         "quantity": 100, "sale_date": "2025-11-10", "sale_value": 300000, "cost": 100000},
+    ]
+    client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
+    summary = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()
+    assert summary["recommended_form"]["form"] == "ITR-2"
+    s = summary["selected"]
+    # 20% of 10,000 + 12.5% of (2,00,000 - 1,25,000)
+    assert s["tax_at_special_rates"] == 2000 + 9375
+    response = client.post(f"/api/v1/itr/filings/{AY}/export", headers=headers)
+    assert response.status_code == 200, response.text
+    exported = response.json()
+    assert exported["form"] == "ITR-2"
+    assert itr23_schema_errors(exported["itr"], "ITR-2") == []
+
+
+# ---------------------------------------------------------------------------
+# Broker tax P&L and the review of the ITR-3 for the specimen taxpayer
+# ---------------------------------------------------------------------------
+
+
+def test_broker_statement_parser():
+    ex = extract("capital_gains", "application/pdf", _fixture("Broker_TaxPnL_SPECIMEN.pdf"), [])
+    assert ex.fields["trading.speculative_profit"] == -165  # 50 gross - 215.13 charges
+    assert ex.fields["trading.fno_profit"] == 6023  # 6,022.50 rounded half-up
+    assert ex.fields["trading.fno_expenses"] == 632
+    assert ex.fields["trading.fno_turnover"] == 45874
+    rows = ex.rows["capital_gains"]
+    assert len(rows) == 9
+    infosys = next(r for r in rows if r["isin"] == "INE009A01021")
+    assert (infosys["purchase_date"], infosys["term"], infosys["cost"]) == ("2023-01-15", "long", 61000)
+    debt = next(r for r in rows if r["isin"] == "INF179KB1HP9")
+    assert debt["asset_type"] == "debt_mf"
+    assert ex.facts["identity"]["bank_accounts"] == ["4417"]
+
+
+def test_broker_statement_replaces_ais_trading_figures_but_not_user_edits(client):
+    headers = _auth_headers(client)
+    _upload(client, headers, "ais", "AIS_TIS_SPECIMEN.pdf")
+    assert _filing(client, headers)["data"]["trading"]["speculative_profit"] == 50  # gross, from AIS
+    _upload(client, headers, "capital_gains", "Broker_TaxPnL_SPECIMEN.pdf")
+    filing = _filing(client, headers)
+    trading = filing["data"]["trading"]
+    assert trading["speculative_profit"] == -165  # net of charges, from the broker statement
+    assert trading["fno_profit"] - trading["fno_expenses"] == 5391
+    assert filing["field_sources"]["trading.speculative_profit"] == "broker statement"
+    assert len(filing["data"]["capital_gains"]) == 9  # matched to the AIS rows, not duplicated
+    assert filing["data"]["capital_gains"][0]["purchase_date"] is not None
+
+    # A value the user typed is never replaced.
+    headers2 = _auth_headers(client)
+    _upload(client, headers2, "ais", "AIS_TIS_SPECIMEN.pdf")
+    draft = _filing(client, headers2)["data"]
+    draft["trading"]["speculative_profit"] = 10
+    client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers2)
+    _upload(client, headers2, "capital_gains", "Broker_TaxPnL_SPECIMEN.pdf")
+    assert _filing(client, headers2)["data"]["trading"]["speculative_profit"] == 10
+
+
+def test_reviewed_itr3_numbers_and_checks(client):
+    from datetime import date
+
+    from app.api.v1.itr import filing_date
+    from app.main import app
+    from app.modules.itr.export_itr23 import itr23_schema_errors
+
+    app.dependency_overrides[filing_date] = lambda: date(2026, 10, 7)
+    try:
+        headers = _auth_headers(client)
+        for category, name in [("form16", "Form16_TRACES_SPECIMEN.pdf"), ("ais", "AIS_TIS_SPECIMEN.pdf"),
+                               ("payslips", "Payslip_YTD_SPECIMEN.pdf"), ("form26as", "Form26AS_SPECIMEN.pdf"),
+                               ("capital_gains", "Broker_TaxPnL_SPECIMEN.pdf")]:
+            _upload(client, headers, category, name)
+        draft = _complete_itr23_draft(client, headers)
+        # Test data like the reviewed return: none of it matches the documents.
+        draft["personal"].update(father_name="dfghj", mobile="9181166543", aadhaar="123456786789",
+                                 email="someone.else@gmail.com")
+        draft["bank_accounts"] = [{"ifsc": "TEST0001234", "bank_name": "Test Bank of India",
+                                   "account_no": "123456789012", "use_for_refund": True}]
+        client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
+        summary = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()
+        s = summary["selected"]
+        assert (s["business_income"], s["speculative_income"]) == (5391, 0)
+        assert s["losses_carried_forward"] == {}  # belated: the speculative loss lapses (section 80)
+        assert s["total_income"] == 2591000
+        assert s["refund_due"] == 17995
+        warnings = " ".join(summary["warnings"])
+        for expected in ("doesn't look like a real name", "AIS shows one ending 6624", "98XXXXXX37",
+                         "rohan.mehta91@examplemail.in", "looks like test data", "ending 4417",
+                         "can't be carried forward"):
+            assert expected in warnings, expected
+
+        exported = client.post(f"/api/v1/itr/filings/{AY}/export", headers=headers).json()
+        assert itr23_schema_errors(exported["itr"], "ITR-3") == []
+        itr3 = exported["itr"]["ITR"]["ITR3"]
+        assert [b["Code"] for b in itr3["PartA_GEN2"]["NatOfBus"]["NatureOfBusiness"]] == ["21009", "21010"]
+        assert itr3["PARTA_PL"]["NoBooksOfAccPL"]["NetProfit"] == 5391
+    finally:
+        app.dependency_overrides.pop(filing_date, None)

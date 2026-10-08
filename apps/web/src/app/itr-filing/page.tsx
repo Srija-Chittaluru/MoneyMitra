@@ -12,6 +12,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AutofillIntro } from "@/components/itr/AutofillIntro";
 import { DeductionsStep } from "@/components/itr/DeductionsStep";
+import { FormDecisionCard } from "@/components/itr/FormDecisionCard";
 import { IncomeStep } from "@/components/itr/IncomeStep";
 import { PersonalStep } from "@/components/itr/PersonalStep";
 import { RegimeSection, VerificationSection } from "@/components/itr/RegimeBankStep";
@@ -300,7 +301,7 @@ export default function ItrFilingPage() {
       case 1:
         return <PersonalStep draft={draft} onChange={handleChange} />;
       case 2:
-        return <IncomeStep draft={draft} onChange={handleChange} />;
+        return <IncomeStep draft={draft} onChange={handleChange} form={summary?.recommended_form?.form} />;
       case 3:
         return <DeductionsStep draft={draft} onChange={handleChange} />;
       default:
@@ -393,6 +394,11 @@ export default function ItrFilingPage() {
       ) : (
         <FieldSourcesProvider value={sources}>
           {currentView === "steps" && <Stepper current={step} onSelect={goTo} issueSteps={issueSteps} />}
+          {currentView === "steps" && summary?.recommended_form && (
+            <div className="mb-6">
+              <FormDecisionCard recommendation={summary.recommended_form} />
+            </div>
+          )}
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
             <div className="flex min-w-0 flex-col gap-4">

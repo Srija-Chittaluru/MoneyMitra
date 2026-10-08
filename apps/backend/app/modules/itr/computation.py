@@ -65,6 +65,79 @@ class HealthComputation:
     deduction: int
 
 
+@dataclass(frozen=True)
+class CapitalGainsComputation:
+    """Gains per tax bucket, before and after set-off of capital losses."""
+
+    gross_stcg_111a: int
+    gross_stcg_slab: int
+    gross_ltcg_112a: int
+    stcg_111a: int
+    stcg_slab: int
+    ltcg_112a: int
+    stcl_set_off_slab: int  # short-term loss at slab-rate set off against 111A/112A gains
+    stcl_set_off_111a: int  # 111A short-term loss set off against slab-rate/112A gains
+    stcl_carried_forward: int
+    ltcl_carried_forward: int
+
+
+def txn_gain(txn) -> int:
+    """Sale value less cost and expenses; for equity bought on or before
+    31 Jan 2018, cost is the higher of actual cost and the lower of FMV on
+    31 Jan 2018 and sale value (section 55(2)(ac))."""
+    cost = txn.cost
+    if txn.asset_type != "debt_mf" and txn.term == "long" and txn.acquired_before_feb_2018:
+        cost = max(cost, min(txn.fmv_31_jan_2018, txn.sale_value))
+    return txn.sale_value - cost - txn.expenses
+
+
+def bucket(txn) -> str:
+    if txn.asset_type == "debt_mf":
+        return "stcg_slab"
+    return "ltcg_112a" if txn.term == "long" else "stcg_111a"
+
+
+def capital_gains(draft: ItrDraftData) -> CapitalGainsComputation:
+    gross = {"stcg_111a": 0, "stcg_slab": 0, "ltcg_112a": 0}
+    for txn in draft.capital_gains:
+        gross[bucket(txn)] += txn_gain(txn)
+    st111, stslab, lt = gross["stcg_111a"], gross["stcg_slab"], gross["ltcg_112a"]
+
+    # Short-term losses can be set off against short- or long-term gains;
+    # long-term losses only against long-term gains (section 74).
+    def absorb(loss: int, targets: list[str], values: dict) -> int:
+        for key in targets:
+            use = min(loss, max(values[key], 0))
+            values[key] -= use
+            loss -= use
+        return loss
+
+    values = {"stcg_111a": st111, "stcg_slab": stslab, "ltcg_112a": lt}
+    stcl_slab_used = stcl_111a_used = 0
+    stcl_cf = 0
+    if values["stcg_slab"] < 0:
+        loss = -values["stcg_slab"]
+        values["stcg_slab"] = 0
+        left = absorb(loss, ["stcg_111a", "ltcg_112a"], values)
+        stcl_slab_used, stcl_cf = loss - left, stcl_cf + left
+    if values["stcg_111a"] < 0:
+        loss = -values["stcg_111a"]
+        values["stcg_111a"] = 0
+        left = absorb(loss, ["stcg_slab", "ltcg_112a"], values)
+        stcl_111a_used, stcl_cf = loss - left, stcl_cf + left
+    ltcl_cf = 0
+    if values["ltcg_112a"] < 0:
+        ltcl_cf = -values["ltcg_112a"]
+        values["ltcg_112a"] = 0
+
+    return CapitalGainsComputation(
+        gross_stcg_111a=st111, gross_stcg_slab=stslab, gross_ltcg_112a=lt,
+        stcg_111a=values["stcg_111a"], stcg_slab=values["stcg_slab"], ltcg_112a=values["ltcg_112a"],
+        stcl_set_off_slab=stcl_slab_used, stcl_set_off_111a=stcl_111a_used,
+        stcl_carried_forward=stcl_cf, ltcl_carried_forward=ltcl_cf,
+    )
+
+
 @dataclass
 class ItrComputation:
     regime: Regime
@@ -76,6 +149,7 @@ class ItrComputation:
     health_self: HealthComputation
     health_parents: HealthComputation
     deductions: dict[str, int]
+    capital_gains: CapitalGainsComputation
     advance_tax_payments: list[interest.Payment]
     self_assessment_payments: list[interest.Payment]
     summary: RegimeComputation
@@ -219,7 +293,63 @@ def compute(draft: ItrDraftData, regime: Regime, rules: ItrYearRules, filing_dat
     family_pension_deduction = rupees(min(Decimal(o.family_pension) / 3, fp_cap))
     income_from_other_sources = other_gross - family_pension_deduction
 
-    gross_total_income = income_from_salary + hp_for_gti + income_from_other_sources
+    # ---- Capital gains ----------------------------------------------------
+    cg = capital_gains(draft)
+    stcg_111a, stcg_slab, ltcg_112a = Decimal(cg.stcg_111a), Decimal(cg.stcg_slab), Decimal(cg.ltcg_112a)
+    losses_cf: dict[str, int] = {}
+    if cg.stcl_carried_forward:
+        losses_cf["short_term_capital_loss"] = cg.stcl_carried_forward
+    if cg.ltcl_carried_forward:
+        losses_cf["long_term_capital_loss"] = cg.ltcl_carried_forward
+
+    # ---- Business: intraday (speculative) and F&O (non-speculative) ---------
+    t = draft.trading
+    speculative = Decimal(t.speculative_profit)
+    business = Decimal(t.fno_profit - t.fno_expenses)
+    if business < 0:
+        # A non-speculative loss is set off against speculative income, then
+        # other heads except salary (section 71(2A)); the rest carries forward.
+        loss = -business
+        business = ZERO
+        for head in ("speculative", "other_sources", "stcg_slab", "stcg_111a", "ltcg_112a"):
+            current = {"speculative": speculative, "other_sources": income_from_other_sources,
+                       "stcg_slab": stcg_slab, "stcg_111a": stcg_111a, "ltcg_112a": ltcg_112a}[head]
+            use = min(loss, max(current, ZERO))
+            loss -= use
+            if head == "speculative":
+                speculative -= use
+            elif head == "other_sources":
+                income_from_other_sources -= use
+            elif head == "stcg_slab":
+                stcg_slab -= use
+            elif head == "stcg_111a":
+                stcg_111a -= use
+            else:
+                ltcg_112a -= use
+        if loss:
+            losses_cf["business_loss"] = int(loss)
+    if speculative < 0:
+        # A speculative loss can only be set off against speculative income (section 73).
+        losses_cf["speculative_loss"] = int(-speculative)
+        speculative = ZERO
+    if losses_cf:
+        listed = ", ".join(f"{k.replace('_', ' ')} Rs {v:,}" for k, v in losses_cf.items())
+        if filing_date > rules.due_date:
+            # Section 80: these losses can be carried forward only in a return
+            # filed by the due date u/s 139(1).
+            notes.append(
+                f"Losses that can't be set off this year ({listed}) can't be carried forward, because this "
+                "return is filed after the due date (section 80)."
+            )
+            losses_cf = {}
+        else:
+            notes.append(f"Losses that can't be set off this year are carried forward: {listed}.")
+
+    special_income = stcg_111a + ltcg_112a
+    gross_total_income = (
+        income_from_salary + hp_for_gti + income_from_other_sources + stcg_slab + speculative + business
+        + special_income
+    )
 
     # ---- Chapter VI-A -----------------------------------------------------
     d = draft.deductions
@@ -255,18 +385,41 @@ def compute(draft: ItrDraftData, regime: Regime, rules: ItrYearRules, filing_dat
     else:
         raw["80CCD(2)"] = ccd2
 
-    deductions = _restrict_to_gti({k: v for k, v in raw.items() if v > 0}, gross_total_income)
+    # Chapter VI-A deductions can't reduce gains taxed at special rates (111A/112A).
+    deductions = _restrict_to_gti({k: v for k, v in raw.items() if v > 0}, gross_total_income - special_income)
     chapter_via = Decimal(sum(deductions.values()))
 
     total_income = round_to_nearest_10(max(ZERO, gross_total_income - chapter_via))
 
     # ---- Tax --------------------------------------------------------------
     slabs = regime_rules.slabs_by_age[age_category]
-    tax = rupees(calculate_slab_tax(total_income, slabs))
-    rebate = rupees(apply_rebate(total_income, tax, regime_rules))
+    normal_income = max(ZERO, total_income - special_income)
+    normal_tax = rupees(calculate_slab_tax(normal_income, slabs))
+
+    # Unused basic exemption is adjusted against 111A, then 112A gains (resident individuals).
+    shortfall = max(ZERO, _basic_exemption_limit(slabs) - normal_income)
+    stcg_taxable = stcg_111a - min(shortfall, stcg_111a)
+    shortfall -= stcg_111a - stcg_taxable
+    ltcg_over_exemption = max(ZERO, ltcg_112a - rules.ltcg_112a_exemption)
+    ltcg_taxable = ltcg_over_exemption - min(shortfall, ltcg_over_exemption)
+    tax_111a = rupees(stcg_taxable * rules.stcg_111a_rate)
+    special_tax = tax_111a + rupees(ltcg_taxable * rules.ltcg_112a_rate)
+    tax = normal_tax + special_tax
+
+    # 87A: under the new regime the rebate is not available against tax on
+    # special-rate gains; under the old regime it covers 111A but not 112A.
+    rebate_base = normal_tax if regime == "new" else normal_tax + tax_111a
+    rebate = rupees(apply_rebate(total_income, rebate_base, regime_rules))
     tax_after_rebate = tax - rebate
     surcharge_cap = tax_rules.new_regime_surcharge_cap if regime == "new" else None
-    surcharge = rupees(calculate_surcharge(total_income, tax_after_rebate, tax_rules.surcharge_bands, surcharge_cap))
+    surcharge_rate = calculate_surcharge(total_income, Decimal(1), tax_rules.surcharge_bands, surcharge_cap)
+    special_after_rebate = max(ZERO, special_tax - max(ZERO, rebate - normal_tax))
+    normal_after_rebate = tax_after_rebate - special_after_rebate
+    # Surcharge on 111A/112A tax is capped at 15%.
+    surcharge = rupees(
+        normal_after_rebate * surcharge_rate
+        + special_after_rebate * min(surcharge_rate, rules.special_rate_surcharge_cap)
+    )
     cess = rupees((tax_after_rebate + surcharge) * tax_rules.cess_rate)
     gross_tax_liability = tax_after_rebate + surcharge + cess
 
@@ -308,11 +461,21 @@ def compute(draft: ItrDraftData, regime: Regime, rules: ItrYearRules, filing_dat
         income_from_house_property=int(hp_for_gti),
         income_from_other_sources=int(income_from_other_sources),
         family_pension_deduction=int(family_pension_deduction),
+        stcg_111a=int(stcg_111a),
+        stcg_slab=int(stcg_slab),
+        ltcg_112a=int(ltcg_112a),
+        income_from_capital_gains=int(stcg_111a + stcg_slab + ltcg_112a),
+        speculative_income=int(speculative),
+        business_income=int(business),
+        income_from_business=int(speculative + business),
+        losses_carried_forward=losses_cf,
         gross_total_income=int(gross_total_income),
         chapter_via_deductions=int(chapter_via),
         deduction_breakup=deductions,
         total_income=int(total_income),
         tax_on_total_income=int(tax),
+        tax_at_normal_rates=int(normal_tax),
+        tax_at_special_rates=int(special_tax),
         rebate_87a=int(rebate),
         tax_after_rebate=int(tax_after_rebate),
         surcharge=int(surcharge),
@@ -342,6 +505,7 @@ def compute(draft: ItrDraftData, regime: Regime, rules: ItrYearRules, filing_dat
         health_self=health_self,
         health_parents=health_parents,
         deductions=deductions,
+        capital_gains=cg,
         advance_tax_payments=advance_payments,
         self_assessment_payments=sat_payments,
         summary=summary,

@@ -39,6 +39,16 @@ _EMPLOYER_CATEGORIES = {
 }
 
 
+# ITR schema TDS codes -> section numbers as people know them (the JSON keeps the schema codes).
+_TDS_SECTION_NAMES = {"94A": "194A", "193": "193", "194": "194", "4-IB": "194I(b)", "94J-B": "194J(b)",
+                      "192A": "192A", "94B": "194B", "94D": "194D", "4DA": "194DA", "4EE": "194EE", "4H": "194H",
+                      "4IB": "194IB", "94K": "194K"}
+
+
+def _section_name(code: str) -> str:
+    return _TDS_SECTION_NAMES.get(code, code)
+
+
 def _rs(amount: int) -> str:
     """Indian digit grouping, e.g. Rs 24,26,430."""
     sign = "-" if amount < 0 else ""
@@ -125,7 +135,9 @@ def build_itr_pdf(draft: ItrDraftData, summary: ItrSummary, rules: ItrYearRules)
     ready = summary.can_export
 
     name = " ".join(x for x in (p.first_name, p.middle_name, p.last_name) if x) or "—"
-    b.story.append(Paragraph(f"ITR-1 (Sahaj) — Assessment Year {rules.assessment_year}", b.h1))
+    form = summary.recommended_form.form if summary.recommended_form else "ITR-1"
+    title = {"ITR-1": "ITR-1 (Sahaj)", "ITR-2": "ITR-2", "ITR-3": "ITR-3"}[form]
+    b.story.append(Paragraph(f"{title} — Assessment Year {rules.assessment_year}", b.h1))
     b.para(
         f"Financial Year {rules.financial_year} &nbsp;·&nbsp; "
         f"{'Belated return u/s 139(4)' if summary.is_belated else 'Original return u/s 139(1)'} &nbsp;·&nbsp; "
@@ -176,9 +188,37 @@ def build_itr_pdf(draft: ItrDraftData, summary: ItrSummary, rules: ItrYearRules)
         ("Income from salary", s.income_from_salary),
         ("Income from house property", s.income_from_house_property),
         ("Income from other sources", s.income_from_other_sources),
-        ("Gross total income", s.gross_total_income),
     ]
+    if s.income_from_capital_gains or draft.capital_gains:
+        rows += [
+            ("Short-term capital gains u/s 111A (20%)", s.stcg_111a),
+            ("Short-term capital gains at slab rates (incl. debt funds u/s 50AA)", s.stcg_slab),
+            ("Long-term capital gains u/s 112A (12.5% above Rs 1.25 lakh)", s.ltcg_112a),
+        ]
+    if s.income_from_business or draft.trading.speculative_turnover or draft.trading.fno_turnover:
+        rows += [
+            ("Speculative business income (intraday)", s.speculative_income),
+            ("Business income (F&O)", s.business_income),
+        ]
+    rows.append(("Gross total income", s.gross_total_income))
     b.amounts(rows, total_last=True)
+
+    if draft.capital_gains:
+        from app.modules.itr.computation import txn_gain
+
+        b.para("Capital gains — sales during the year", b.muted)
+        kinds = {"equity_share": "Shares", "equity_mf": "Equity MF", "debt_mf": "Debt MF"}
+        cg_rows = [["Security", "Type / term", "Sold on", "Sale value", "Cost", "Gain"]]
+        for t in draft.capital_gains:
+            cg_rows.append([
+                _text(t.name), f"{kinds[t.asset_type]} · {'Long' if t.term == 'long' else 'Short'}",
+                t.sale_date.strftime("%d %b %Y") if t.sale_date else "—",
+                _rs(t.sale_value), _rs(t.cost), _rs(txn_gain(t)),
+            ])
+        b.table(cg_rows, [52, 30, 24, 24, 22, 22], header=True, amount_cols=(3, 4, 5))
+    if s.losses_carried_forward:
+        b.para("Losses carried forward: " + ", ".join(
+            f"{k.replace('_', ' ')} {_rs(v)}" for k, v in s.losses_carried_forward.items()), b.muted)
 
     o = draft.other_income
     other_rows = [(label, amount) for label, amount in [
@@ -202,6 +242,8 @@ def build_itr_pdf(draft: ItrDraftData, summary: ItrSummary, rules: ItrYearRules)
 
     b.heading("Tax computation")
     b.amounts([
+        ("Tax at normal (slab) rates", s.tax_at_normal_rates),
+        ("Tax at special rates (capital gains)", s.tax_at_special_rates),
         ("Tax on total income", s.tax_on_total_income),
         ("Less: rebate u/s 87A", s.rebate_87a),
         ("Tax after rebate", s.tax_after_rebate),
@@ -219,7 +261,8 @@ def build_itr_pdf(draft: ItrDraftData, summary: ItrSummary, rules: ItrYearRules)
     for e in draft.salary.employers:
         paid_rows.append([_text(e.name), _text(e.tan), "192 (salary)", _rs(e.income_chargeable), _rs(e.tds)])
     for t in draft.taxes_paid.tds_other:
-        paid_rows.append([_text(t.deductor_name), _text(t.tan), t.section, _rs(t.amount_paid), _rs(t.tds_claimed)])
+        paid_rows.append([_text(t.deductor_name), _text(t.tan), _section_name(t.section), _rs(t.amount_paid),
+                          _rs(t.tds_claimed)])
     for t in draft.taxes_paid.tcs:
         paid_rows.append([_text(t.collector_name), _text(t.tan), "TCS", _rs(t.amount_collected),
                           _rs(t.amount_claimed)])

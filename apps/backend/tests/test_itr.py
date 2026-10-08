@@ -341,7 +341,9 @@ def test_ineligible_answers_block_export(client, as_of_belated):
     draft = _complete_draft(eligibility={"is_resident": True, "has_capital_gains": True})
     client.put(f"/api/v1/itr/filings/{AY}", json=draft, headers=headers)
     summary = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()
-    assert [i["field"] for i in summary["eligibility_issues"]] == ["eligibility.has_capital_gains"]
+    assert summary["recommended_form"]["form"] == "ITR-2"
+    # The form is decided, but the sales themselves still have to be entered.
+    assert summary["missing_fields"][0]["field"] == "capital_gains"
     assert summary["can_export"] is False
 
 
@@ -383,3 +385,60 @@ def test_smart_checks(client, as_of_belated):
     client.put(f"/api/v1/itr/filings/{AY}", json=empty, headers=headers)
     warnings = client.get(f"/api/v1/itr/filings/{AY}/summary", headers=headers).json()["warnings"]
     assert any("total income in this return is zero" in w for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# Capital gains tax rules
+# ---------------------------------------------------------------------------
+
+
+def _cg_draft(txns, salary=0):
+    raw = _complete_draft()
+    raw["salary"] = {"salary_17_1": salary, "employers": []}
+    raw["other_income"] = {}
+    raw["capital_gains"] = txns
+    return ItrDraftData.model_validate(raw)
+
+
+def test_short_term_loss_sets_off_long_term_gain_but_not_reverse():
+    from app.modules.itr.computation import capital_gains
+
+    cg = capital_gains(_cg_draft([
+        {"asset_type": "equity_share", "term": "short", "sale_value": 10000, "cost": 30000},
+        {"asset_type": "equity_share", "term": "long", "sale_value": 100000, "cost": 50000},
+    ]))
+    assert (cg.stcg_111a, cg.ltcg_112a, cg.stcl_carried_forward) == (0, 30000, 0)
+
+    cg = capital_gains(_cg_draft([
+        {"asset_type": "equity_share", "term": "short", "sale_value": 30000, "cost": 10000},
+        {"asset_type": "equity_share", "term": "long", "sale_value": 50000, "cost": 100000},
+    ]))
+    assert (cg.stcg_111a, cg.ltcg_112a, cg.ltcl_carried_forward) == (20000, 0, 50000)
+
+
+def test_unused_basic_exemption_absorbs_special_rate_gains():
+    # No other income: 3 lakh of 111A gains fall within the Rs 4 lakh new-regime exemption.
+    comp = compute(_cg_draft([
+        {"asset_type": "equity_share", "term": "short", "sale_value": 400000, "cost": 100000},
+    ]), "new", AY_2026_27, ON_TIME)
+    assert comp.summary.stcg_111a == 300000
+    assert comp.summary.tax_at_special_rates == 0
+
+
+def test_new_regime_rebate_not_available_on_special_rate_tax():
+    # Salary keeps normal income under Rs 12 lakh (slab tax fully rebated), but 111A tax stays.
+    comp = compute(_cg_draft([
+        {"asset_type": "equity_share", "term": "short", "sale_value": 150000, "cost": 50000},
+    ], salary=900000), "new", AY_2026_27, ON_TIME)
+    s = comp.summary
+    assert s.rebate_87a == s.tax_at_normal_rates
+    assert s.tax_at_special_rates == 20000
+    assert s.tax_after_rebate == 20000
+
+
+def test_debt_fund_gains_are_taxed_at_slab_rates():
+    comp = compute(_cg_draft([
+        {"asset_type": "debt_mf", "term": "long", "sale_value": 200000, "cost": 100000},
+    ], salary=1500000), "new", AY_2026_27, ON_TIME)
+    assert comp.summary.stcg_slab == 100000
+    assert comp.summary.tax_at_special_rates == 0

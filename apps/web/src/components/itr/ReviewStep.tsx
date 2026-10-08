@@ -170,7 +170,8 @@ export function ReviewStep({
   });
   const pdfMutation = useMutation<Blob, ApiError, void>({
     mutationFn: () => exportItrPdf(ay),
-    onSuccess: (blob) => downloadBlob(`ITR1_AY${ay}_summary.pdf`, blob),
+    onSuccess: (blob) =>
+      downloadBlob(`${(summary?.recommended_form?.form ?? "ITR-1").replace("-", "")}_AY${ay}_summary.pdf`, blob),
   });
 
   if (isLoading || (saving && !summary)) {
@@ -300,7 +301,7 @@ export function ReviewStep({
             onClick={() => exportMutation.mutate()}
           >
             <Download className="h-4 w-4" />
-            {exportMutation.isPending ? "Preparing…" : "Download ITR-1 JSON"}
+            {exportMutation.isPending ? "Preparing…" : `Download ${summary.recommended_form?.form ?? "ITR-1"} JSON`}
           </Button>
           <Button
             variant="secondary"
@@ -325,7 +326,9 @@ export function ReviewStep({
               <li>Log in at incometax.gov.in.</li>
               <li>Go to e-File → Income Tax Returns → File Income Tax Return.</li>
               <li>Select AY {summary.assessment_year} and choose the Offline mode (&quot;Upload JSON&quot;).</li>
-              <li>Select ITR-1, upload the downloaded file and review the pre-filled details.</li>
+              <li>
+                Select {exportMutation.data.form}, upload the downloaded file and review the pre-filled details.
+              </li>
               <li>Proceed to verification and submit.</li>
               <li>E-verify within 30 days using Aadhaar OTP or net banking.</li>
             </ol>

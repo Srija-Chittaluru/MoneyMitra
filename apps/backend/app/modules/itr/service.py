@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import replace
 from datetime import UTC, date, datetime
 
 from fastapi import HTTPException, status
@@ -8,10 +9,11 @@ from sqlalchemy.orm import Session
 from app.modules.documents.models import Document
 from app.modules.extraction.autofill import SOURCE_LABELS, apply_extraction, prune_sources
 from app.modules.extraction.parsers import Extraction
-from app.modules.itr import computation, export, validation
+from app.modules.itr import computation, export, export_itr23, form_selector, validation
+from app.modules.itr.form_selector import DocumentFacts
 from app.modules.itr.models import ItrFiling
 from app.modules.itr.rules import ItrYearRules, get_itr_rules, get_supported_assessment_years
-from app.modules.itr.schemas import ItrDraftData, ItrExport, ItrFilingOut, ItrSummary
+from app.modules.itr.schemas import Issue, ItrDraftData, ItrExport, ItrFilingOut, ItrSummary
 from app.modules.users.models import User
 
 
@@ -128,7 +130,28 @@ def save_draft(db: Session, filing: ItrFiling, draft: ItrDraftData) -> ItrFiling
     return filing
 
 
-def build_summary(draft: ItrDraftData, rules: ItrYearRules, filing_date: date) -> ItrSummary:
+def document_facts(db: Session, user: User) -> DocumentFacts:
+    rows = db.execute(select(Document.category, Document.extracted).where(Document.user_id == user.id)).all()
+    return DocumentFacts.from_documents([(category, extracted) for category, extracted in rows])
+
+
+def rules_for_form(rules: ItrYearRules, form: str) -> ItrYearRules:
+    """ITR-3 (business, no tax audit) has a later due date than ITR-1/ITR-2."""
+    if form == "ITR-3" and rules.due_date_business:
+        return replace(rules, due_date=rules.due_date_business)
+    return rules
+
+
+def build_summary(
+    draft: ItrDraftData, rules: ItrYearRules, filing_date: date, facts: DocumentFacts | None = None
+) -> ItrSummary:
+    facts = facts or DocumentFacts()
+    # The form decides the due date, which decides belated status and the
+    # regime; decide it on a first pass, then compute with that form's rules.
+    first = computation.compute(draft, "new", rules, filing_date)
+    recommendation = form_selector.recommend_form(draft, first.summary, facts, rules)
+    rules = rules_for_form(rules, recommendation.form)
+
     allowed_old = validation.old_regime_allowed(filing_date, rules)
     regime = draft.regime if (draft.regime == "new" or allowed_old) else "new"
     selected = computation.compute(draft, regime, rules, filing_date)
@@ -138,8 +161,28 @@ def build_summary(draft: ItrDraftData, rules: ItrYearRules, filing_date: date) -
         other = "old" if regime == "new" else "new"
         alternative = computation.compute(draft, other, rules, filing_date).summary
 
-    eligibility = validation.eligibility_issues(draft, selected, rules)
-    missing = validation.missing_fields(draft, selected, rules)
+    eligibility = validation.eligibility_issues(draft, selected, rules, form_checked=True)
+    if not recommendation.supported:
+        why = " ".join(r.reason for r in recommendation.reasons)
+        blockers = " ".join(recommendation.blockers)
+        eligibility.insert(0, Issue(
+            field=None,
+            message=f"You need to file {recommendation.form}. {why} MoneyMitra can't prepare it yet: {blockers} "
+            f"File {recommendation.form} on the Income Tax portal.",
+        ))
+    missing = validation.missing_fields(draft, selected, rules, form=recommendation.form)
+    if recommendation.form != "ITR-1" and not draft.capital_gains and (
+        facts.capital_gains or draft.eligibility.has_capital_gains
+    ):
+        missing.insert(0, Issue(
+            field="capital_gains",
+            message="Add the shares and mutual funds you sold (from your AIS or broker statement).",
+        ))
+    warnings = (
+        validation.warnings(draft, selected, rules)
+        + form_selector.tds_cross_check(draft, facts)
+        + form_selector.identity_checks(draft, facts)
+    )
     return ItrSummary(
         assessment_year=rules.assessment_year,
         filing_date=filing_date,
@@ -150,30 +193,40 @@ def build_summary(draft: ItrDraftData, rules: ItrYearRules, filing_date: date) -
         alternative=alternative,
         eligibility_issues=eligibility,
         missing_fields=missing,
-        warnings=validation.warnings(draft, selected, rules),
+        warnings=warnings,
         can_export=not eligibility and not missing,
+        recommended_form=recommendation,
     )
 
 
-def export_filing(db: Session, filing: ItrFiling, rules: ItrYearRules, filing_date: date) -> ItrExport:
+def export_filing(
+    db: Session, filing: ItrFiling, rules: ItrYearRules, filing_date: date, facts: DocumentFacts | None = None
+) -> ItrExport:
     draft = ItrDraftData.model_validate(filing.data)
-    summary = build_summary(draft, rules, filing_date)
+    summary = build_summary(draft, rules, filing_date, facts)
     blocking = summary.eligibility_issues + summary.missing_fields
     if blocking:
         details = "; ".join(issue.message for issue in blocking[:5])
         more = f" (and {len(blocking) - 5} more)" if len(blocking) > 5 else ""
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Return is not ready: {details}{more}")
 
-    comp = computation.compute(draft, summary.selected.regime, rules, filing_date)
-    itr = export.build_itr_json(draft, comp, rules)
-    errors = export.schema_errors(itr, rules)
+    form = summary.recommended_form.form if summary.recommended_form else "ITR-1"
+    form_rules = rules_for_form(rules, form)
+    comp = computation.compute(draft, summary.selected.regime, form_rules, filing_date)
+    if form == "ITR-1":
+        itr = export.build_itr_json(draft, comp, form_rules)
+        errors = export.schema_errors(itr, form_rules)
+    else:
+        itr = export_itr23.build_itr23_json(draft, comp, form_rules, form)
+        errors = export_itr23.itr23_schema_errors(itr, form)
     if errors:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "The generated return does not match the official ITR-1 schema: " + "; ".join(errors[:5]),
+            f"The generated return does not match the official {form} schema: " + "; ".join(errors[:5]),
         )
 
     filing.status = "exported"
     filing.last_exported_at = datetime.now(UTC)
     db.commit()
-    return ItrExport(file_name=export.file_name(draft, rules), itr=itr)
+    file_name = f"{form.replace('-', '')}_AY{rules.assessment_year}_{draft.personal.pan.strip().upper()}.json"
+    return ItrExport(file_name=file_name, form=form, itr=itr)

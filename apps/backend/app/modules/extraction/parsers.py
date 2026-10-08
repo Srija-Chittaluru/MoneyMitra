@@ -17,6 +17,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
 
 from pypdf import PdfReader
@@ -75,6 +76,9 @@ class Extraction:
     # list path -> rows; each row is a partial dict of that list's item model
     rows: dict[str, list[dict]] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    # Facts used to decide the ITR form and cross-check the return, not to
+    # fill fields: e.g. {"capital_gains": {...}, "tds_26as": [...]}.
+    facts: dict = field(default_factory=dict)
 
     def set(self, path: str, value) -> None:
         if value not in (None, "", 0, False):
@@ -94,11 +98,23 @@ class Extraction:
         return not self.fields and not any(self.rows.values())
 
     def to_json(self) -> dict:
-        return {"assessment_year": self.assessment_year, "fields": self.fields, "rows": self.rows, "notes": self.notes}
+        return {
+            "assessment_year": self.assessment_year,
+            "fields": self.fields,
+            "rows": self.rows,
+            "notes": self.notes,
+            "facts": self.facts,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> "Extraction":
-        return cls(data.get("assessment_year"), data.get("fields", {}), data.get("rows", {}), data.get("notes", []))
+        return cls(
+            data.get("assessment_year"),
+            data.get("fields", {}),
+            data.get("rows", {}),
+            data.get("notes", []),
+            data.get("facts", {}),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +265,45 @@ def set_address(ex: Extraction, address: str | None) -> None:
         ex.set("personal.address.building", ", ".join(parts[1:-2])[:50])
 
 
+def address_parts(address: str) -> dict:
+    """Splits "FLAT 1, TOWER B, AREA, CITY, STATE - 411014" into fields."""
+    out: dict = {}
+    if m := re.search(r"\b([1-9]\d{5})\b", address):
+        out["pin_code"] = m.group(1)
+    lowered = address.lower()
+    for name, code in STATE_CODES.items():
+        if name in lowered:
+            out["state_code"] = code
+            break
+    parts = [p.strip(" -") for p in re.sub(r"\b[1-9]\d{5}\b", "", address).split(",")]
+    parts = [p for p in parts if p and not any(name in p.lower() for name in STATE_CODES)]
+    if parts:
+        out["street"] = ", ".join(parts[:-1])[:50] if len(parts) > 1 else parts[0][:50]
+        out["city"] = parts[-1][:50] if len(parts) > 1 else None
+    return out
+
+
+def employer_address(lines: list[str], employer: str | None) -> dict:
+    """Address lines that follow the employer's name, up to the PIN code."""
+    if not employer:
+        return {}
+    for i, line in enumerate(lines):
+        if line.startswith(employer[:20]):
+            collected = []
+            for nxt in lines[i + 1 : i + 6]:
+                if re.search(r"\+?\(?91\)?|@|^PAN|^TAN|^CIN", nxt):
+                    break
+                collected.append(nxt)
+                if re.search(r"\b[1-9]\d{5}\b", nxt):
+                    break
+            text = " ".join(collected)
+            parts = address_parts(text) if re.search(r"\b[1-9]\d{5}\b", text) else {}
+            # Two-column layouts can interleave the employee's address; only
+            # trust a block that ends in "STATE - PIN" like TRACES prints it.
+            return parts if parts.get("state_code") and parts.get("city") else {}
+    return {}
+
+
 def employee_pan(lines: list[str]) -> str | None:
     """The individual's PAN, never the employer's/deductor's."""
     text = "\n".join(lines)
@@ -330,9 +385,12 @@ def parse_form16(lines: list[str]) -> Extraction:
         tds = amount_after(lines, re.compile(r"^\d*\.?\s*Tax deducted at source", re.IGNORECASE))
 
     if employer or tan or chargeable or tds:
+        addr = employer_address(lines, employer)
         ex.add_row(
             "salary.employers",
-            {"name": employer, "tan": tan, "income_chargeable": chargeable or 0, "tds": tds or 0},
+            {"name": employer, "tan": tan, "income_chargeable": chargeable or 0, "tds": tds or 0,
+             "address": addr.get("street"), "city": addr.get("city"), "state_code": addr.get("state_code"),
+             "pin_code": addr.get("pin_code")},
         )
 
     _form16_deductions(ex, lines)
@@ -557,6 +615,63 @@ def _ais_summary_rows(ex: Extraction, lines: list[str], has_details: bool, has_t
         ex.set(path, amount)
 
 
+ISIN_RE = re.compile(r"^IN[EF][0-9A-Z]{9}$")
+_DERIVATIVES_RE = re.compile(r"\b(?:futures?|options?|F&O|derivative)\b", re.IGNORECASE)
+
+
+def _ais_capital_gains(ex: Extraction, lines: list[str]) -> None:
+    """Classifies each security sale in the AIS (SFT-018 detail rows) so the
+    right ITR form can be chosen. Gains are sale consideration minus cost as
+    reported in the AIS — indicative only; the broker statement is final."""
+    gains = {"ltcg_112a": 0, "stcg_111a": 0, "debt_stcg": 0, "speculative": 0, "sales": 0, "trades": 0}
+    anchors = [i for i, line in enumerate(lines) if ISIN_RE.match(line)]
+    for n, i in enumerate(anchors):
+        end = anchors[n + 1] if n + 1 < len(anchors) else min(len(lines), i + 25)
+        window = lines[i:end]
+        before = " ".join(lines[max(0, i - 3) : i]).lower()
+        text = " ".join(window).lower()
+        amounts = [a for a in (line_amount(w) for w in window) if a is not None]
+        if len(amounts) < 2:
+            continue
+        sale, cost = amounts[-2], amounts[-1]
+        gain = sale - cost
+        gains["sales"] += sale
+        gains["trades"] += 1
+        date_index = next((j for j, w in enumerate(window) if DATE_RE.fullmatch(w.strip())), None)
+        name = " ".join(window[1:date_index]) if date_index else ""
+        sale_date = parse_date(window[date_index]) if date_index is not None else None
+        quantity = next(
+            (float(w) for w in window[(date_index or 0) + 1 :] if re.fullmatch(r"\d+(?:\.\d+)?", w.strip())), 0.0
+        )
+        if "intraday" in text:
+            gains["speculative"] += gain
+            turnover = ex.fields.get("trading.speculative_turnover", 0) + abs(gain)
+            ex.fields["trading.speculative_turnover"] = turnover
+            ex.fields["trading.speculative_profit"] = ex.fields.get("trading.speculative_profit", 0) + gain
+            continue
+        if "debt" in before or "50aa" in before:
+            gains["debt_stcg"] += gain
+            asset_type, term = "debt_mf", "short"
+        else:
+            asset_type = "equity_mf" if re.search(r"\bmf\b|fund", before) else "equity_share"
+            term = "long" if "long term" in text else "short"
+            gains["ltcg_112a" if term == "long" else "stcg_111a"] += gain
+        ex.add_row("capital_gains", {
+            "asset_type": asset_type, "term": term, "name": name[:125] or None, "isin": window[0],
+            "quantity": quantity, "sale_date": sale_date, "sale_value": sale, "cost": cost,
+        })
+
+    text_all = " ".join(lines)
+    if gains["trades"]:
+        ex.facts["capital_gains"] = gains
+    elif _SALE_RE.search(text_all):
+        ex.facts["capital_gains"] = {"detail_missing": True}
+    if gains["speculative"] or "intraday" in text_all.lower():
+        ex.facts["intraday"] = True
+    if _DERIVATIVES_RE.search(text_all):
+        ex.facts["derivatives"] = True
+
+
 def parse_ais_pdf(lines: list[str]) -> Extraction:
     ex = Extraction(assessment_year=assessment_year_from(lines))
     ex.set("personal.pan", employee_pan(lines))
@@ -567,10 +682,23 @@ def parse_ais_pdf(lines: list[str]) -> Extraction:
     if email and (m := re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", email)):
         ex.set("personal.email", m.group(0))
 
+    identity = ex.facts.setdefault("identity", {})
+    aadhaar = value_after(lines, re.compile(r"Aadhaar(?: Number| No\.?)?$", re.IGNORECASE))
+    if aadhaar and (m := re.search(r"(\d{4})\s*$", aadhaar)):
+        identity["aadhaar_last4"] = m.group(1)
+    mobile = value_after(lines, re.compile(r"Mobile(?: Number| No\.?)?$", re.IGNORECASE))
+    if mobile and (m := re.search(r"([0-9X]{10})\s*$", mobile.replace(" ", ""))):
+        identity["mobile_mask"] = m.group(1)
+    if email and (m := re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", email)):
+        identity["email"] = m.group(0)
+    if not identity:
+        ex.facts.pop("identity")
+
     has_tis = _ais_tis(ex, lines)
     has_details = _ais_tds_sections(ex, lines)
     _ais_summary_rows(ex, lines, has_details, has_tis)
     _ais_dividends(ex, lines)
+    _ais_capital_gains(ex, lines)
     return ex
 
 
@@ -618,6 +746,7 @@ def parse_ais_json(data: bytes) -> Extraction:
         if _SALE_RE.search(code) or _SALE_RE.search(description):
             ex.set("eligibility.has_capital_gains", True)
             ex.note(CAPITAL_GAINS_NOTE)
+            ex.facts.setdefault("capital_gains", {"detail_missing": True})
             continue
         tds = _get(d, "TaxDeducted", "TDS", "TDSDeducted")
         tds = round(tds) if isinstance(tds, (int, float)) else 0
@@ -687,6 +816,9 @@ def parse_payslip(lines: list[str]) -> Extraction:
     tan = first_tan(lines)
     if employer or tan:
         ex.add_row("salary.employers", {"name": employer, "tan": tan, "tds": tds_ytd if is_march else None})
+    bank = value_after(lines, re.compile(r"Bank\s*/?\s*A/?c(?: No\.?)?$", re.IGNORECASE))
+    if bank and (m := re.search(r"(\d{4})\s*$", bank)):
+        ex.facts["identity"] = {"bank_accounts": [m.group(1)]}
     return ex
 
 
@@ -704,7 +836,164 @@ def parse_pan(lines: list[str]) -> Extraction:
     return ex
 
 
-_PDF_PARSERS = {"form16": parse_form16, "ais": parse_ais_pdf, "payslips": parse_payslip, "pan": parse_pan}
+def parse_form26as(lines: list[str]) -> Extraction:
+    """Form 26AS Part-I: one block per deductor — name, TAN, total paid,
+    total deducted, total deposited — followed by rows with the section."""
+    ex = Extraction(assessment_year=assessment_year_from(lines))
+    ex.set("personal.pan", employee_pan(lines))
+    set_name(ex, value_after(lines, re.compile(r"Name of Assessee$", re.IGNORECASE)))
+    set_address(ex, value_after(lines, re.compile(r"Address of$|Address of Assessee$", re.IGNORECASE)))
+
+    end = _index(lines, r"^PART-?\s*II\b") or len(lines)
+    entries = []
+    tan_lines = [i for i in range(end) if re.fullmatch(r"[A-Z]{4}\d{5}[A-Z]", lines[i])]
+    for n, i in enumerate(tan_lines):
+        block_end = tan_lines[n + 1] if n + 1 < len(tan_lines) else end
+        amounts = []
+        for line in lines[i + 1 : block_end]:
+            amount = line_amount(line)
+            if amount is None:
+                if amounts:
+                    break
+                continue
+            amounts.append(amount)
+        section = next(
+            (m.group(1) for line in lines[i + 1 : block_end] if (m := re.fullmatch(r"(19\d[A-Z]{0,3})", line))),
+            None,
+        )
+        if len(amounts) < 2 or section is None:
+            continue
+        name = lines[i - 1].strip()[:125]
+        entries.append({"tan": lines[i], "name": name, "section": section, "paid": amounts[0], "tds": amounts[1]})
+
+    for e in entries:
+        if e["section"] == "192":
+            ex.add_row("salary.employers", {"name": e["name"], "tan": e["tan"], "tds": e["tds"]})
+        elif e["tds"] > 0:
+            ex.add_row("taxes_paid.tds_other", {
+                "deductor_name": e["name"], "tan": e["tan"],
+                "section": TDS_SECTION_CODES.get(e["section"], "94A"),
+                "amount_paid": e["paid"], "tds_deducted": e["tds"], "tds_claimed": e["tds"],
+            })
+    if entries:
+        ex.facts["tds_26as"] = entries
+    return ex
+
+
+def _section(lines: list[str], start_pattern: str, end_pattern: str) -> list[str]:
+    start = _index(lines, start_pattern)
+    if start is None:
+        return []
+    end = _index(lines, end_pattern, start + 1) or len(lines)
+    return lines[start:end]
+
+
+def _broker_capital_rows(ex: Extraction, rows_text: list[str], mutual_funds: bool) -> None:
+    """Delivery / mutual-fund sale rows anchored on the ISIN."""
+    anchors = [i for i, line in enumerate(rows_text) if ISIN_RE.match(line)]
+    for n, i in enumerate(anchors):
+        end = anchors[n + 1] if n + 1 < len(anchors) else len(rows_text)
+        window = rows_text[i:end]
+        name_lines = []
+        j = i - 1
+        while j >= 0 and not re.fullmatch(r"\d+", rows_text[j].strip()) and not ISIN_RE.match(rows_text[j]):
+            name_lines.insert(0, rows_text[j])
+            j -= 1
+        name = " ".join(name_lines).strip()
+        text = " ".join(window)
+        dates = [parse_date(w) for w in window if DATE_RE.fullmatch(w.strip())]
+        amounts = [a for a in (line_amount(w) for w in window) if a is not None]
+        qty = next((float(w) for w in window[1:] if re.fullmatch(r"\d+(?:\.\d+)?", w.strip())), 0.0)
+        if len(dates) < 2:
+            continue
+        lowered = text.lower()
+        if mutual_funds:
+            debt = "debt" in lowered or "50aa" in lowered
+            # Units, purchase NAV and redemption NAV have 3-4 decimals: not money lines.
+            cost, sale = amounts[0], amounts[1]
+            asset_type = "debt_mf" if debt else "equity_mf"
+            term = "short" if debt else ("long" if re.search(r"\bLT\b", text) else "short")
+        else:
+            # buy rate, buy value, sell rate, sell value, [days], P&L, charges
+            cost, sale = amounts[1], amounts[3]
+            asset_type = "equity_share"
+            term = "long" if re.search(r"\bLT\b", text) else "short"
+        purchase = dates[0]
+        ex.add_row("capital_gains", {
+            "asset_type": asset_type, "term": term, "name": name[:125] or None, "isin": window[0],
+            "quantity": qty, "purchase_date": purchase, "sale_date": dates[1], "sale_value": sale, "cost": cost,
+            "acquired_before_feb_2018": bool(purchase and purchase <= "2018-01-31"),
+        })
+
+
+def parse_broker_pnl(lines: list[str]) -> Extraction:
+    """Broker capital gains & trading statement (tax P&L): delivery and
+    mutual-fund sales with purchase dates, intraday and F&O net of charges,
+    and turnover for the tax-audit limit."""
+    ex = Extraction(assessment_year=assessment_year_from(lines))
+    ex.set("personal.pan", employee_pan(lines))
+    email = value_after(lines, re.compile(r"E-?mail$", re.IGNORECASE))
+    if email and (m := re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", email)):
+        ex.facts.setdefault("identity", {})["email"] = m.group(0)
+    bank = value_after(lines, re.compile(r"Bank A/?c", re.IGNORECASE))
+    if bank and (m := re.search(r"(\d{4})\s*$", bank)):
+        ex.facts.setdefault("identity", {})["bank_accounts"] = [m.group(1)]
+
+    delivery = _section(lines, r"EQUITY\s*-\s*DELIVERY", r"EQUITY\s*-\s*INTRADAY|DERIVATIVES|MUTUAL FUNDS")
+    _broker_capital_rows(ex, delivery, mutual_funds=False)
+    funds = _section(lines, r"^\d+\.\s*MUTUAL FUNDS", r"DIVIDENDS|CHARGES")
+    _broker_capital_rows(ex, funds, mutual_funds=True)
+
+    def totals(section: list[str]) -> list[int]:
+        """Amounts on the section's "Total" row (gross P&L, charges, net P&L are the last three)."""
+        i = next((k for k in range(len(section) - 1, -1, -1) if section[k].strip() == "Total"), None)
+        if i is None:
+            return []
+        out = []
+        for line in section[i + 1 :]:
+            raw = line.strip()
+            m = re.fullmatch(r"(-)?\s*(" + _GROUPED + r"|\d+)", raw)
+            if not m:
+                break
+            amount = Decimal(m.group(2).replace(",", "")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            out.append(int(amount) * (-1 if m.group(1) else 1))
+        return out
+
+    turnover = {}
+    if m := re.search(r"F&O Rs\.?\s*([\d,]+(?:\.\d+)?)", " ".join(lines)):
+        turnover["fno"] = round(float(m.group(1).replace(",", "")))
+    if m := re.search(r"Intraday Rs\.?\s*([\d,]+(?:\.\d+)?)", " ".join(lines)):
+        turnover["intraday"] = round(float(m.group(1).replace(",", "")))
+
+    intraday = _section(lines, r"EQUITY\s*-\s*INTRADAY", r"DERIVATIVES|FUTURES|MUTUAL FUNDS")
+    t = totals(intraday)
+    if len(t) >= 3:
+        # Net of charges: brokerage, STT etc. are business expenses for trading income.
+        ex.fields["trading.speculative_profit"] = t[-1]
+        ex.set("trading.speculative_turnover", turnover.get("intraday"))
+        ex.facts["intraday"] = True
+    fno = _section(lines, r"FUTURES\s*&\s*OPTIONS|DERIVATIVES\s*-\s*F", r"MUTUAL FUNDS|DIVIDENDS")
+    t = totals(fno)
+    if len(t) >= 3:
+        gross, charges = t[-3], t[-2]
+        ex.fields["trading.fno_profit"] = gross
+        ex.set("trading.fno_expenses", charges)
+        ex.set("trading.fno_turnover", turnover.get("fno"))
+        ex.facts["derivatives"] = True
+    if ex.rows.get("capital_gains"):
+        ex.set("eligibility.has_capital_gains", True)
+        ex.facts.setdefault("capital_gains", {"from_statement": True})
+    return ex
+
+
+_PDF_PARSERS = {
+    "form16": parse_form16,
+    "ais": parse_ais_pdf,
+    "payslips": parse_payslip,
+    "pan": parse_pan,
+    "form26as": parse_form26as,
+    "capital_gains": parse_broker_pnl,
+}
 EXTRACTABLE_CATEGORIES = set(_PDF_PARSERS)
 
 

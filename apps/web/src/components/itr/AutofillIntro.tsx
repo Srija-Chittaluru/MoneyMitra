@@ -15,6 +15,7 @@ const AUTOFILL_DOCS: { category: DocumentCategory; name: string; fills: string }
   { category: "form16", name: "Form 16", fills: "Salary, exemptions, employer TDS, deductions" },
   { category: "ais", name: "AIS", fills: "Personal details, address, interest, dividends, other TDS" },
   { category: "payslips", name: "Payslips (March)", fills: "Full-year salary, HRA inputs" },
+  { category: "form26as", name: "Form 26AS", fills: "TDS from every deductor — and a check of your TDS claims" },
   { category: "pan", name: "PAN card (PDF)", fills: "Name, father's name, date of birth" },
 ];
 

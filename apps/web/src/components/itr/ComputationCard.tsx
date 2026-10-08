@@ -49,6 +49,21 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
         {data.family_pension_deduction > 0 && (
           <Row label="Less: family pension deduction u/s 57(iia)" amount={data.family_pension_deduction} indent />
         )}
+        {(data.income_from_capital_gains !== 0 || data.ltcg_112a !== 0) && (
+          <>
+            <Row label="Capital gains" amount={data.income_from_capital_gains} isOutput />
+            <Row label="Short-term u/s 111A (20%)" amount={data.stcg_111a} indent />
+            <Row label="Short-term at slab rates (incl. debt funds)" amount={data.stcg_slab} indent />
+            <Row label="Long-term u/s 112A (12.5% above ₹1.25 lakh)" amount={data.ltcg_112a} indent />
+          </>
+        )}
+        {data.income_from_business !== 0 && (
+          <>
+            <Row label="Business income (share trading)" amount={data.income_from_business} isOutput />
+            <Row label="Intraday (speculative)" amount={data.speculative_income} indent />
+            <Row label="Futures & options" amount={data.business_income} indent />
+          </>
+        )}
         <Row label="Gross total income" amount={data.gross_total_income} isOutput />
         <Row label="Deductions (Chapter VI-A)" amount={data.chapter_via_deductions} />
         {breakup.map(([key, amount]) => (
@@ -59,6 +74,12 @@ export function ComputationCard({ data }: { data: RegimeComputation }) {
 
       <p className="mb-2 mt-4 text-xs uppercase tracking-wide text-muted">Tax</p>
       <div className="divide-y divide-border">
+        {data.tax_at_special_rates > 0 && (
+          <>
+            <Row label="Tax at slab rates" amount={data.tax_at_normal_rates} indent />
+            <Row label="Tax on capital gains at special rates" amount={data.tax_at_special_rates} indent />
+          </>
+        )}
         <Row label="Tax on total income" amount={data.tax_on_total_income} isOutput />
         <Row label="Rebate (Section 87A)" amount={data.rebate_87a} />
         <Row label="Tax after rebate" amount={data.tax_after_rebate} isOutput />

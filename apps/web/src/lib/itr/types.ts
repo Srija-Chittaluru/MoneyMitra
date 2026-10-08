@@ -69,6 +69,11 @@ export interface HraInputs {
 export interface EmployerTds {
   name: string | null;
   tan: string | null;
+  /** Employer address — required in ITR-2 / ITR-3. */
+  address: string | null;
+  city: string | null;
+  state_code: string | null;
+  pin_code: string | null;
   income_chargeable: number;
   tds: number;
 }
@@ -192,6 +197,30 @@ export interface BankAccount {
   use_for_refund: boolean;
 }
 
+export type CapitalAssetType = "equity_share" | "equity_mf" | "debt_mf";
+
+export interface CapitalGainTxn {
+  asset_type: CapitalAssetType;
+  term: "short" | "long";
+  name: string | null;
+  isin: string | null;
+  quantity: number;
+  sale_date: string | null;
+  sale_value: number;
+  cost: number;
+  expenses: number;
+  acquired_before_feb_2018: boolean;
+  fmv_31_jan_2018: number;
+}
+
+export interface Trading {
+  speculative_turnover: number;
+  speculative_profit: number;
+  fno_turnover: number;
+  fno_profit: number;
+  fno_expenses: number;
+}
+
 export interface ItrDraftData {
   regime: Regime;
   personal: PersonalInfo;
@@ -201,6 +230,8 @@ export interface ItrDraftData {
   other_income: OtherIncome;
   deductions: Deductions;
   taxes_paid: TaxesPaid;
+  capital_gains: CapitalGainTxn[];
+  trading: Trading;
   bank_accounts: BankAccount[];
   verification_place: string | null;
 }
@@ -226,11 +257,21 @@ export interface RegimeComputation {
   income_from_house_property: number;
   income_from_other_sources: number;
   family_pension_deduction: number;
+  stcg_111a: number;
+  stcg_slab: number;
+  ltcg_112a: number;
+  income_from_capital_gains: number;
+  speculative_income: number;
+  business_income: number;
+  income_from_business: number;
+  losses_carried_forward: Record<string, number>;
   gross_total_income: number;
   chapter_via_deductions: number;
   deduction_breakup: Record<string, number>;
   total_income: number;
   tax_on_total_income: number;
+  tax_at_normal_rates: number;
+  tax_at_special_rates: number;
   rebate_87a: number;
   tax_after_rebate: number;
   surcharge: number;
@@ -267,9 +308,36 @@ export interface ItrSummary {
   missing_fields: Issue[];
   warnings: string[];
   can_export: boolean;
+  recommended_form: FormRecommendation | null;
 }
 
 export interface ItrExport {
   file_name: string;
+  form: ItrForm;
   itr: object;
+}
+
+export type ItrForm = "ITR-1" | "ITR-2" | "ITR-3";
+
+export interface FormReason {
+  form: ItrForm;
+  reason: string;
+  source: string;
+}
+
+export interface DocumentCheck {
+  category: string;
+  title: string;
+  why: string;
+  required: boolean;
+  uploaded: boolean;
+}
+
+export interface FormRecommendation {
+  form: ItrForm;
+  supported: boolean;
+  blockers: string[];
+  reasons: FormReason[];
+  other_reasons: FormReason[];
+  checklist: DocumentCheck[];
 }

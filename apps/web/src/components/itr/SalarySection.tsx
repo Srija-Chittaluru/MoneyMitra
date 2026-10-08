@@ -1,16 +1,18 @@
 import { Briefcase } from "lucide-react";
 import type { HraInputs, Regime, SalaryInfo } from "@/lib/itr/types";
-import { AmountInput, GRID, ListSection, Notice, SectionCard, SwitchField, TextInput } from "./fields";
-import { emptyEmployer } from "./options";
+import { AmountInput, GRID, ListSection, Notice, SectionCard, SelectField, SwitchField, TextInput } from "./fields";
+import { STATES, emptyEmployer } from "./options";
 
 export function SalarySection({
   salary,
   regime,
   onChange,
+  employerAddressRequired = false,
 }: {
   salary: SalaryInfo;
   regime: Regime;
   onChange: (salary: SalaryInfo) => void;
+  employerAddressRequired?: boolean;
 }) {
   const set = (patch: Partial<SalaryInfo>) => onChange({ ...salary, ...patch });
   const setHra = (patch: Partial<HraInputs>) => set({ hra: { ...salary.hra, ...patch } });
@@ -142,6 +144,37 @@ export function SalarySection({
               onChange={(v) => update({ income_chargeable: v })}
             />
             <AmountInput label="TDS deducted" path={`salary.employers.${i}.tds`} value={employer.tds} onChange={(v) => update({ tds: v })} />
+            <TextInput
+              label="Employer address"
+              path={`salary.employers.${i}.address`}
+              required={employerAddressRequired && i === 0}
+              value={employer.address}
+              onChange={(v) => update({ address: v })}
+            />
+            <TextInput
+              label="City"
+              path={`salary.employers.${i}.city`}
+              required={employerAddressRequired && i === 0}
+              value={employer.city}
+              onChange={(v) => update({ city: v })}
+            />
+            <SelectField
+              label="State"
+              path={`salary.employers.${i}.state_code`}
+              required={employerAddressRequired && i === 0}
+              placeholder="Select…"
+              value={employer.state_code}
+              options={STATES.map((st) => ({ value: st.code, label: st.name }))}
+              onChange={(v) => update({ state_code: v })}
+            />
+            <TextInput
+              label="PIN code"
+              path={`salary.employers.${i}.pin_code`}
+              inputMode="numeric"
+              maxLength={6}
+              value={employer.pin_code}
+              onChange={(v) => update({ pin_code: v })}
+            />
           </div>
         )}
       />
