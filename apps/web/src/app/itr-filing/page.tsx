@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { goalKeys } from "@/lib/goals/queries";
 import { ArrowLeft, ArrowRight, Bot, RefreshCw, UserRoundSearch } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { Button } from "@/components/ui/Button";
@@ -216,6 +217,8 @@ export default function ItrFilingPage() {
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ["itr-summary", ay] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      // Re-read documents change the draft that goal affordability can estimate income from.
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
     },
   });
 

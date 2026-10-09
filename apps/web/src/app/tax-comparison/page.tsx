@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { TaxChatWidget } from "@/components/tax/TaxChatWidget";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ApiError } from "@/lib/api-client";
 import { compareTaxRegimes, explainTaxComparison, getSupportedTaxYears } from "@/lib/tax/api";
+import { goalKeys } from "@/lib/goals/queries";
 import type { ExplanationResult, RegimeResult, TaxComparisonResult } from "@/lib/tax/types";
 
 function Row({ label, amount, isOutput }: { label: string; amount: number; isOutput?: boolean }) {
@@ -136,6 +137,7 @@ export default function TaxComparisonPage() {
   // Falls back to the first supported year until the user picks one explicitly.
   const selectedTaxYear = taxYear || yearsQuery.data?.[0] || "";
 
+  const queryClient = useQueryClient();
   const explainMutation = useMutation<ExplanationResult, ApiError, TaxComparisonResult>({
     mutationFn: (comparison) => explainTaxComparison(comparison),
   });
@@ -158,6 +160,8 @@ export default function TaxComparisonPage() {
     onSuccess: (result) => {
       setSelectedRegime(result.recommended_regime === "old" ? "old" : "new");
       explainMutation.mutate(result);
+      // A comparison is saved as the user's income, which goal affordability can estimate from.
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
     },
   });
 

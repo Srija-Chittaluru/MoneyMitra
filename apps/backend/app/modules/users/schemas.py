@@ -3,8 +3,9 @@ from datetime import date, datetime
 
 from datetime import timezone
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
 
+from app.modules.users.models import MAX_MONTHLY_AMOUNT
 from app.modules.users.pii import is_valid_pan, normalize_pan
 
 
@@ -46,3 +47,18 @@ class TaxProfileRequest(BaseModel):
         if value.year < today.year - MAX_AGE_YEARS:
             raise ValueError("Enter a valid date of birth")
         return value
+
+
+class FinancialProfile(BaseModel):
+    """Monthly figures used to check whether goals fit, in whole rupees.
+
+    Replaced as a whole: send null to clear a figure. Null means "not given",
+    never zero. `monthly_expenses` is regular spending (rent, EMIs, bills,
+    insurance, investments not tracked as goals) and excludes MoneyMitra goal
+    contributions, which are counted separately."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    # Strict: true, "5" and 5.5 are rejected rather than coerced.
+    monthly_take_home: StrictInt | None = Field(default=None, ge=1, le=MAX_MONTHLY_AMOUNT)
+    monthly_expenses: StrictInt | None = Field(default=None, ge=0, le=MAX_MONTHLY_AMOUNT)
