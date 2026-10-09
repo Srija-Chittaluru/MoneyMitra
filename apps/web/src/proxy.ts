@@ -9,7 +9,6 @@ const PROTECTED_PREFIXES = [
   "/resources",
   "/itr-filing",
   "/recommendations",
-  "/finance",
   "/profile",
   "/onboarding",
 ];
@@ -48,7 +47,6 @@ export const config = {
     "/resources/:path*",
     "/itr-filing/:path*",
     "/recommendations/:path*",
-    "/finance/:path*",
     "/profile/:path*",
     "/onboarding/:path*",
   ],

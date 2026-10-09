@@ -7,7 +7,6 @@ import {
   Scale,
   Settings,
   Sparkles,
-  Wallet,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -17,7 +16,6 @@ export const NAV_ITEMS = [
   { href: "/tax-planning", label: "Tax Planning", icon: CalendarRange },
   { href: "/itr-filing", label: "ITR Filing", icon: FileCheck2 },
   { href: "/recommendations", label: "Recommendations", icon: Sparkles },
-  { href: "/finance", label: "Finance Management", icon: Wallet },
   { href: "/resources", label: "Resources & Alerts", icon: Megaphone },
 ] as const;
 

@@ -115,6 +115,7 @@ export default function DocumentsPage() {
                     icon={FolderOpen}
                     title="No documents yet"
                     description={`Upload your ${category.name} to see it here.`}
+                    onClick={() => openUpload(category.id)}
                   />
                 ) : (
                   <div className="divide-y divide-line">

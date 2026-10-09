@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { exportItr, exportItrPdf } from "@/lib/itr/api";
 import type { Issue, ItrExport, ItrSummary } from "@/lib/itr/types";
 import { ComputationCard } from "./ComputationCard";
+import { ExpertFilingPlans } from "./ExpertFilingPlans";
 import { Notice } from "./fields";
 import { STEPS, stepForField } from "./options";
 
@@ -335,6 +336,8 @@ export function ReviewStep({
           </div>
         )}
       </Card>
+
+      <ExpertFilingPlans ay={ay} />
     </div>
   );
 }

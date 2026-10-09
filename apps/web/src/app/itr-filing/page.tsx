@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Bot, RefreshCw, UserRoundSearch } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -102,13 +101,11 @@ function HelpCards() {
       <Card className="flex items-start gap-3 bg-card border-line p-4">
         <UserRoundSearch className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         <div>
-          <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
-            Expert filing
-            <Badge variant="neutral" className="px-2 py-0.5 text-xs">
-              Coming soon
-            </Badge>
+          <p className="font-semibold text-foreground">Expert filing</p>
+          <p className="text-sm text-muted">
+            Let a CA review and file your return for you — pick a plan once your return is ready, at the end of the
+            review step.
           </p>
-          <p className="text-sm text-muted">Let a tax expert review and file your return for you.</p>
         </div>
       </Card>
     </div>
