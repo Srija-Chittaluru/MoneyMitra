@@ -7,24 +7,28 @@ interface NavItemProps {
   label: string;
   icon: LucideIcon;
   active?: boolean;
+  /** Always show the label, bypassing group-hover — for the mobile drawer, which has no hover. */
+  forceExpanded?: boolean;
 }
 
-export function NavItem({ href, label, icon: Icon, active }: NavItemProps) {
+// Pill-shaped rail item: icon always visible, label only takes space once the
+// rail expands (driven by the parent's `group` hover — see Sidebar.tsx). The
+// label is always in the DOM (not conditionally rendered) so it's available
+// to assistive tech and search-in-page regardless of the rail's width.
+export function NavItem({ href, label, icon: Icon, active, forceExpanded = false }: NavItemProps) {
   return (
     <Link
       href={href}
+      title={label}
       className={cn(
-        "relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-        active
-          ? "bg-surface-muted text-foreground font-semibold"
-          : "text-muted hover:bg-surface-muted hover:text-foreground",
+        "flex h-12 shrink-0 items-center gap-3.5 overflow-hidden rounded-full px-3 text-sm transition-colors",
+        active ? "bg-rail-active text-foreground font-semibold" : "text-rail-fg hover:bg-hover hover:text-foreground",
       )}
     >
-      {active && (
-        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-accent" />
-      )}
-      <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-      {label}
+      <Icon className="h-6 w-6 shrink-0" strokeWidth={1.75} />
+      <span className={cn("whitespace-nowrap", forceExpanded ? "inline" : "hidden group-hover:inline")}>
+        {label}
+      </span>
     </Link>
   );
 }

@@ -72,7 +72,7 @@ export default function SignupPage() {
     <div className="flex min-h-dvh flex-col bg-background">
       <PublicHeader />
       <main className="flex flex-1 items-center justify-center p-4">
-        <Card className="w-full max-w-sm">
+        <Card className="w-full max-w-sm bg-card border-line">
           <h1 className="text-h1 mb-1">Create your account</h1>
           <p className="mb-6 text-sm text-muted">Start understanding your taxes and money.</p>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -84,6 +84,7 @@ export default function SignupPage() {
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
               required
+              className="bg-field border-line"
             />
             <Input
               id="email"
@@ -94,6 +95,7 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               required
+              className="bg-field border-line"
             />
             <Input
               id="password"
@@ -105,6 +107,7 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               required
+              className="bg-field border-line"
             />
             <Input
               id="confirm-password"
@@ -115,6 +118,7 @@ export default function SignupPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
               required
+              className="bg-field border-line"
             />
             <Input
               id="dob"
@@ -123,6 +127,7 @@ export default function SignupPage() {
               hint="Used once to power life-stage guidance later"
               value={dob}
               onChange={(e) => setDob(e.target.value)}
+              className="bg-field border-line"
             />
             {(fieldError || apiError) && (
               <p className="text-sm text-error">{fieldError ?? apiError}</p>

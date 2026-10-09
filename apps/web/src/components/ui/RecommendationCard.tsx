@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
+import { cn } from "@/lib/cn";
 
 interface RecommendationCardProps {
   title: string;
@@ -14,6 +15,7 @@ interface RecommendationCardProps {
   actionLabel?: string | null;
   /** When set, the action button links to this in-app route. */
   actionHref?: string | null;
+  className?: string;
 }
 
 export function RecommendationCard({
@@ -24,9 +26,10 @@ export function RecommendationCard({
   basis,
   actionLabel,
   actionHref,
+  className,
 }: RecommendationCardProps) {
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-h2">{title}</h3>
         <Badge variant="neutral">{tag}</Badge>

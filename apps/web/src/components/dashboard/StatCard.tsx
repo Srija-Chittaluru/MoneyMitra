@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatTile } from "@/components/ui/StatTile";
+import { cn } from "@/lib/cn";
 
 interface StatCardProps {
   label: string;
@@ -10,16 +11,17 @@ interface StatCardProps {
   helpText?: string;
   emptyValue: string;
   emptyHint: string;
+  className?: string;
 }
 
 /** The existing stat tile when there is a real number; the same card, with an honest empty state, when there isn't. */
-export function StatCard({ label, status, amount, helpText, emptyValue, emptyHint }: StatCardProps) {
+export function StatCard({ label, status, amount, helpText, emptyValue, emptyHint, className }: StatCardProps) {
   if (status === "ready" && amount !== null) {
-    return <StatTile label={label} amount={amount} helpText={helpText} />;
+    return <StatTile label={label} amount={amount} helpText={helpText} className={cn("border-line", className)} />;
   }
 
   return (
-    <Card>
+    <Card className={cn("border-line", className)}>
       <p className="text-sm text-muted">{label}</p>
       {status === "loading" ? (
         <div className="mt-2 flex flex-col gap-2" aria-busy="true" aria-label="Loading">

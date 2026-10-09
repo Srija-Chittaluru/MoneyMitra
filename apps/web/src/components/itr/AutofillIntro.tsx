@@ -38,23 +38,23 @@ export function AutofillIntro({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-        <Card className="flex flex-col gap-4 bg-primary text-primary-foreground">
+        <Card className="flex flex-col gap-4 bg-card border-line">
           <p className="text-h2">Why auto-fill?</p>
           <ul className="flex flex-col gap-3 text-sm">
             {BENEFITS.map((b) => (
               <li key={b} className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0" /> {b}
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" /> {b}
               </li>
             ))}
           </ul>
-          <p className="mt-auto text-sm opacity-80">
+          <p className="mt-auto text-sm text-muted">
             Values are only filled into empty fields and are tagged with their source, so you can check them.
           </p>
         </Card>
 
-        <Card className="flex flex-col gap-4">
+        <Card className="flex flex-col gap-4 bg-card border-line">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-field">
               <FileUp className="h-4 w-4" />
             </span>
             <div>
@@ -62,7 +62,7 @@ export function AutofillIntro({ onContinue }: { onContinue: () => void }) {
               <p className="text-sm text-muted">Each document fills these parts of your return:</p>
             </div>
           </div>
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-line">
             {AUTOFILL_DOCS.map((doc) => {
               const done = uploaded.has(doc.category);
               return (
@@ -96,7 +96,7 @@ export function AutofillIntro({ onContinue }: { onContinue: () => void }) {
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-md bg-surface-muted px-3 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-md bg-field px-3 py-3">
             <span className="flex items-center gap-2 text-sm text-foreground">
               <Landmark className="h-4 w-4" /> Fetch from Income Tax Department
             </span>

@@ -8,7 +8,7 @@ export function DocumentsPanel({ documents }: { documents: DocumentsReport }) {
   if (documents.analysed.length === 0 && documents.skipped.length === 0) return null;
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 bg-card border-line">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-h2">Your documents</h3>
         <Link href="/documents" className="text-sm text-link">

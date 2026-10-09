@@ -52,7 +52,7 @@ function IconButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
         danger ? "hover:text-error" : "hover:text-foreground",
       )}
     >

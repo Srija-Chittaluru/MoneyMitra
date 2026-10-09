@@ -17,7 +17,7 @@ function HealthBucket({
   const set = (patch: Partial<HealthInsurance>) => onChange({ ...health, ...patch });
 
   return (
-    <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <div className="flex flex-col gap-4 rounded-md border border-line p-4">
       <SwitchField
         label={title}
         description={description}

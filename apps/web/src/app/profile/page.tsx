@@ -37,7 +37,7 @@ export default function ProfilePage() {
   return (
     <AppShell title="Profile / Settings">
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="flex flex-col items-center gap-3 text-center lg:col-span-1">
+        <Card className="flex flex-col items-center gap-3 bg-card border-line text-center lg:col-span-1">
           <Avatar initial={user.name.charAt(0).toUpperCase()} size="lg" />
           <div>
             <p className="font-semibold text-foreground">{user.name}</p>
@@ -46,17 +46,18 @@ export default function ProfilePage() {
           <p className="text-xs text-muted">Member since {memberSince}</p>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-card border-line">
           <h3 className="text-h2 mb-4">Profile information</h3>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="name" label="Full name" defaultValue={user.name} readOnly />
-            <Input id="email" type="email" label="Email" defaultValue={user.email} readOnly />
+            <Input id="name" label="Full name" defaultValue={user.name} readOnly className="bg-field border-line" />
+            <Input id="email" type="email" label="Email" defaultValue={user.email} readOnly className="bg-field border-line" />
             <Input
               id="dob"
               type="date"
               label="Date of birth"
               defaultValue={user.date_of_birth ?? ""}
               readOnly
+              className="bg-field border-line"
             />
           </div>
           <p className="mt-4 text-sm text-muted">
@@ -65,7 +66,7 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-6 bg-card border-line">
         <h3 className="text-h2 mb-4">Tax details</h3>
         {user.tax_onboarding_status === "completed" && !editingTax ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -93,7 +94,7 @@ export default function ProfilePage() {
         )}
       </Card>
 
-      <Card className="mt-6">
+      <Card className="mt-6 bg-card border-line">
         <h3 className="text-h2 mb-4">Appearance</h3>
         <p className="mb-3 text-sm text-muted">Theme</p>
         <SegmentedControl
@@ -103,7 +104,7 @@ export default function ProfilePage() {
         />
       </Card>
 
-      <Card className="mt-6">
+      <Card className="mt-6 bg-card border-line">
         <h3 className="text-h2 mb-4">Account settings</h3>
         <div className="flex flex-wrap gap-3">
           <Button

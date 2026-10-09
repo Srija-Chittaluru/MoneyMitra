@@ -40,7 +40,7 @@ interface LinkButtonProps {
 const linkButtonVariants = {
   primary: "bg-primary text-primary-foreground hover:opacity-90",
   secondary:
-    "border border-border bg-transparent text-foreground hover:bg-surface-muted",
+    "border border-line bg-transparent text-foreground hover:bg-hover",
   ghost: "bg-transparent text-muted hover:text-foreground",
 };
 
@@ -89,19 +89,19 @@ export function WindowFrame({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-border bg-surface",
+        "overflow-hidden rounded-lg border border-line bg-card",
         WINDOW_SHADOW,
         className,
       )}
     >
-      <div className="flex items-center gap-3 border-b border-border bg-surface-muted px-4 py-2.5">
+      <div className="flex items-center gap-3 border-b border-line bg-field px-4 py-2.5">
         <span aria-hidden className="flex gap-1.5">
           {[0, 1, 2].map((i) => (
-            <span key={i} className="h-2.5 w-2.5 rounded-full bg-border" />
+            <span key={i} className="h-2.5 w-2.5 rounded-full bg-line" />
           ))}
         </span>
         <span className="text-[11px] font-medium text-muted">{title}</span>
-        <span className="ml-auto rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted">
+        <span className="ml-auto rounded-full border border-line bg-card px-2 py-0.5 text-[10px] font-medium text-muted">
           Demo data
         </span>
       </div>
@@ -116,7 +116,7 @@ const pillTones: Record<PillTone, string> = {
   success: "bg-success-bg text-success",
   warning: "bg-warning-bg text-warning",
   error: "bg-error-bg text-error",
-  neutral: "bg-surface-muted text-muted",
+  neutral: "bg-field text-muted",
   accent: "bg-accent text-accent-foreground",
 };
 
@@ -156,42 +156,38 @@ export function Amount({
   );
 }
 
-/** Old vs. new regime, as two proportional bars. Shared by the hero mockup and feature card. */
+/**
+ * Old vs. new regime, as two proportional bars, with the actually-cheaper one
+ * badged "Recommended" — derived from the figures, not hardcoded to either
+ * side, so this stays correct however TAX's example numbers change.
+ */
 export function RegimeBars({ className }: { className?: string }) {
-  const newWidth = Math.round(
-    (TAX.newRegime.total / TAX.oldRegime.total) * 100,
+  const { oldRegime, newRegime } = TAX;
+  const larger = Math.max(oldRegime.total, newRegime.total);
+  const oldBetter = oldRegime.total <= newRegime.total;
+
+  const Row = ({ label, total, recommended }: { label: string; total: number; recommended: boolean }) => (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-xs">
+        <span className={cn("flex items-center gap-2", recommended ? "text-foreground" : "text-muted")}>
+          {label}
+          {recommended && <Pill tone="accent">Recommended</Pill>}
+        </span>
+        <Amount className="text-foreground">{inr(total)}</Amount>
+      </div>
+      <div className="h-2.5 rounded-full bg-field">
+        <div
+          className={cn("h-full rounded-full", recommended ? "bg-link" : "bg-foreground/20")}
+          style={{ width: `${Math.round((total / larger) * 100)}%` }}
+        />
+      </div>
+    </div>
   );
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div>
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="text-muted">Old regime</span>
-          <Amount className="text-foreground">
-            {inr(TAX.oldRegime.total)}
-          </Amount>
-        </div>
-        <div className="h-2.5 rounded-full bg-surface-muted">
-          <div className="h-full w-full rounded-full bg-foreground/20" />
-        </div>
-      </div>
-      <div>
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="flex items-center gap-2 text-foreground">
-            New regime
-            <Pill tone="accent">Recommended</Pill>
-          </span>
-          <Amount className="text-foreground">
-            {inr(TAX.newRegime.total)}
-          </Amount>
-        </div>
-        <div className="h-2.5 rounded-full bg-surface-muted">
-          <div
-            className="h-full rounded-full bg-link"
-            style={{ width: `${newWidth}%` }}
-          />
-        </div>
-      </div>
+      <Row label="Old regime" total={oldRegime.total} recommended={oldBetter} />
+      <Row label="New regime" total={newRegime.total} recommended={!oldBetter} />
     </div>
   );
 }

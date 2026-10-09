@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import type { DocumentStatus, Form16Status } from "@/lib/dashboard/state";
 import { SectionError, SectionSkeleton } from "./SectionStatus";
 
@@ -9,6 +10,7 @@ interface DocumentsCardProps {
   status: "loading" | "error" | "ready";
   documents: DocumentStatus | undefined;
   onRetry: () => void;
+  className?: string;
 }
 
 const FORM16_BADGES: Record<Form16Status, { variant: "success" | "warning" | "neutral"; label: string }> = {
@@ -26,9 +28,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function DocumentsCard({ status, documents, onRetry }: DocumentsCardProps) {
+export function DocumentsCard({ status, documents, onRetry, className }: DocumentsCardProps) {
   return (
-    <Card>
+    <Card className={cn("border-line", className)}>
       <h3 className="text-h2 mb-4">Document status</h3>
 
       {status === "loading" || !documents ? (

@@ -20,7 +20,7 @@ export function Stepper({
           const done = step.id < current && !issueSteps?.has(step.id);
           return (
             <li key={step.id} className="flex items-center">
-              {index > 0 && <span aria-hidden className="h-px w-6 bg-border sm:w-10" />}
+              {index > 0 && <span aria-hidden className="h-px w-6 bg-line sm:w-10" />}
               <button
                 type="button"
                 onClick={() => onSelect(step.id)}
@@ -29,7 +29,7 @@ export function Stepper({
                   "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                   active
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface text-foreground hover:bg-surface-muted",
+                    : "border-line bg-card text-foreground hover:bg-hover",
                 )}
               >
                 {done && <Check className="h-4 w-4 text-success" />}

@@ -68,7 +68,7 @@ export default function DocumentsPage() {
       {documentsQuery.isLoading ? (
         <div className="flex flex-col gap-6">
           {[0, 1, 2].map((i) => (
-            <Card key={i} className="flex flex-col gap-3">
+            <Card key={i} className="flex flex-col gap-3 bg-card border-line">
               <Skeleton className="h-6 w-40" />
               <Skeleton className="h-4 w-64 max-w-full" />
               <Skeleton className="h-10 w-full" />
@@ -90,7 +90,7 @@ export default function DocumentsPage() {
           {DOCUMENT_CATEGORIES.map((category) => {
             const items = documents.filter((d) => d.category === category.id);
             return (
-              <Card key={category.id} className="min-w-0 p-4 sm:p-6">
+              <Card key={category.id} className="min-w-0 bg-card border-line p-4 sm:p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -115,9 +115,10 @@ export default function DocumentsPage() {
                     icon={FolderOpen}
                     title="No documents yet"
                     description={`Upload your ${category.name} to see it here.`}
+                    onClick={() => openUpload(category.id)}
                   />
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-line">
                     {items.map((doc) => (
                       <DocumentItem key={doc.id} document={doc} onDelete={setPendingDelete} />
                     ))}

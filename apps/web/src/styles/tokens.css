@@ -56,12 +56,34 @@
   --focus-ring: color-mix(in srgb, var(--palette-signal-blue) 35%, transparent);
 }
 
+/* Shell tokens — the app frame, rail nav, and cards that sit on top of the
+   page background. Values taken directly from the designer's App prototype
+   (THEMES.light / THEMES.dark in "MoneyMitra App.dc.html"), not re-derived,
+   so the shell matches the mockup exactly. Kept separate from the semantic
+   tokens above because they're shell-specific (rail, card chrome) rather than
+   general-purpose page tokens. */
+:root {
+  --frame: #ffffff;
+  --rail-active: #f2f4f7;
+  --rail-fg: #667085;
+  --card-bg: rgba(255, 255, 255, 0.86);
+  --card-bg-strong: rgba(255, 255, 255, 0.92);
+  --chip-bg: #0b0f14;
+  --chip-fg: #f7f8fa;
+  --field-bg: #f2f4f7;
+  --hover-bg: rgba(11, 15, 20, 0.05);
+  --seg-bg: #f2f4f7;
+  --seg-on: #ffffff;
+  --line: rgba(11, 15, 20, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.66);
+}
+
 /* Semantic theme tokens — dark.
    Plain `.dark` (not `:root.dark`) so this can scope either the whole
    document (next-themes puts the class on <html>) or a local subtree, e.g.
    an always-dark card shown inside an otherwise light page. */
 .dark {
-  --bg: var(--palette-ink-navy);
+  --bg: #05070a;
   --surface: var(--palette-neutral-800);
   --surface-muted: color-mix(in srgb, var(--palette-neutral-800) 70%, var(--palette-ink-navy));
   --text-primary: var(--palette-cloud);
@@ -85,4 +107,19 @@
   --error-bg: color-mix(in srgb, var(--palette-error) 25%, transparent);
 
   --focus-ring: color-mix(in srgb, var(--palette-lime-500) 40%, transparent);
+
+  /* Shell tokens — dark, from THEMES.dark in the App prototype. */
+  --frame: #080808;
+  --rail-active: rgba(255, 255, 255, 0.1);
+  --rail-fg: #8a8a8a;
+  --card-bg: rgba(24, 24, 24, 0.94);
+  --card-bg-strong: rgba(28, 28, 28, 0.96);
+  --chip-bg: #242424;
+  --chip-fg: #f7f8fa;
+  --field-bg: #1c1c1c;
+  --hover-bg: rgba(255, 255, 255, 0.07);
+  --seg-bg: rgba(255, 255, 255, 0.06);
+  --seg-on: #2c2c2c;
+  --line: rgba(255, 255, 255, 0.09);
+  --glass-bg: rgba(28, 28, 28, 0.85);
 }

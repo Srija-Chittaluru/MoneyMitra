@@ -63,6 +63,7 @@ export function UploadDialog({ open, initialCategory, onClose }: UploadDialogPro
           label="Document type"
           value={category}
           onChange={(e) => setCategory(e.target.value as DocumentCategory)}
+          className="bg-field border-line"
         >
           {DOCUMENT_CATEGORIES.map((c) => (
             <option key={c.id} value={c.id}>
@@ -80,7 +81,7 @@ export function UploadDialog({ open, initialCategory, onClose }: UploadDialogPro
             type="file"
             accept={ACCEPT}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full rounded-md border border-border bg-surface text-sm text-foreground file:mr-3 file:h-11 file:border-0 file:bg-surface-muted file:px-4 file:font-semibold file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="block w-full rounded-md border border-line bg-field text-sm text-foreground file:mr-3 file:h-11 file:border-0 file:bg-hover file:px-4 file:font-semibold file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           />
           <p className="text-sm text-muted">
             PDF, JPG or PNG up to 10 MB (photos and scans are read with OCR). AIS can also be the JSON download.

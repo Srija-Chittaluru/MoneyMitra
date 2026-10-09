@@ -65,9 +65,9 @@ function RegimeCard({
         }
       }}
       className={cn(
-        "cursor-pointer transition-shadow",
+        "cursor-pointer bg-card border-line transition-shadow",
         recommended && "ring-2 ring-success",
-        !recommended && isSelected && "ring-2 ring-border",
+        !recommended && isSelected && "ring-2 ring-line",
       )}
     >
       <div className="mb-2 flex items-center justify-between">
@@ -75,12 +75,12 @@ function RegimeCard({
         {recommended && <Badge variant="success">Lower estimated tax</Badge>}
       </div>
       <p className="mb-2 text-xs uppercase tracking-wide text-muted">Inputs</p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <Row label="Gross total income" amount={data.gross_total_income} />
         <Row label="Total deductions" amount={data.total_deductions} />
       </div>
       <p className="mb-2 mt-4 text-xs uppercase tracking-wide text-muted">Calculated</p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <Row label="Taxable income" amount={data.taxable_income} isOutput />
         <Row label="Tax before rebate" amount={data.tax_before_rebate} isOutput />
         <Row label="Rebate (Section 87A)" amount={data.rebate} isOutput />
@@ -88,7 +88,7 @@ function RegimeCard({
         <Row label="Surcharge" amount={data.surcharge} isOutput />
         <Row label="Cess" amount={data.cess} isOutput />
       </div>
-      <div className="mt-4 flex items-center justify-between rounded-md bg-surface-muted px-3 py-3">
+      <div className="mt-4 flex items-center justify-between rounded-md bg-field px-3 py-3">
         <span className="font-semibold text-foreground">Estimated tax payable</span>
         <span className="text-amount-lg text-foreground">
           {formatINR(data.total_tax_payable)}
@@ -200,7 +200,7 @@ export default function TaxComparisonPage() {
         Estimated tax based on the information you entered. This is not personalized financial advice.
       </p>
 
-      <Card className="mb-6">
+      <Card className="mb-6 bg-card border-line">
         <h3 className="text-h2 mb-4">Your details</h3>
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
@@ -209,6 +209,7 @@ export default function TaxComparisonPage() {
             value={selectedTaxYear}
             onChange={(e) => setTaxYear(e.target.value)}
             disabled={yearsQuery.isLoading}
+            className="bg-field border-line"
           >
             {(yearsQuery.data ?? []).map((year) => (
               <option key={year} value={year}>
@@ -225,6 +226,7 @@ export default function TaxComparisonPage() {
             value={grossIncome}
             onChange={(e) => setGrossIncome(e.target.value)}
             required
+            className="bg-field border-line"
           />
           <Input
             id="dob"
@@ -233,6 +235,7 @@ export default function TaxComparisonPage() {
             hint="Used for old-regime age-based slabs"
             value={dob}
             onChange={(e) => setDob(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="section-80c"
@@ -242,6 +245,7 @@ export default function TaxComparisonPage() {
             placeholder="PF, ELSS, life insurance…"
             value={section80c}
             onChange={(e) => setSection80c(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="section-80d"
@@ -251,6 +255,7 @@ export default function TaxComparisonPage() {
             placeholder="Health insurance premium"
             value={section80d}
             onChange={(e) => setSection80d(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="hra-exemption"
@@ -259,6 +264,7 @@ export default function TaxComparisonPage() {
             label="HRA exemption (optional)"
             value={hraExemption}
             onChange={(e) => setHraExemption(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="home-loan-interest"
@@ -268,6 +274,7 @@ export default function TaxComparisonPage() {
             hint="Section 24(b) — capped at ₹2,00,000"
             value={homeLoanInterest}
             onChange={(e) => setHomeLoanInterest(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="nps-contribution"
@@ -277,6 +284,7 @@ export default function TaxComparisonPage() {
             hint="Section 80CCD(1B) — capped at ₹50,000"
             value={npsContribution}
             onChange={(e) => setNpsContribution(e.target.value)}
+            className="bg-field border-line"
           />
           <Input
             id="other-deductions"
@@ -285,6 +293,7 @@ export default function TaxComparisonPage() {
             label="Other deductions (optional)"
             value={otherDeductions}
             onChange={(e) => setOtherDeductions(e.target.value)}
+            className="bg-field border-line"
           />
 
           <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
@@ -304,7 +313,7 @@ export default function TaxComparisonPage() {
         <>
           <div className="mb-6 flex items-center justify-between">
             <p className="text-body text-muted">Tax year {result.tax_year}</p>
-            <Card className="px-4 py-2">
+            <Card className="bg-card border-line px-4 py-2">
               <span className="text-sm text-muted">Difference: </span>
               <span className="font-semibold text-foreground">
                 {formatINR(result.difference)}

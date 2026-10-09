@@ -6,11 +6,12 @@ interface StatTileProps {
   label: string;
   amount: number;
   helpText?: ReactNode;
+  className?: string;
 }
 
-export function StatTile({ label, amount, helpText }: StatTileProps) {
+export function StatTile({ label, amount, helpText, className }: StatTileProps) {
   return (
-    <Card>
+    <Card className={className}>
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-2 text-amount-lg text-foreground">{formatINR(amount)}</p>
       {helpText && <p className="mt-1 text-sm text-muted">{helpText}</p>}

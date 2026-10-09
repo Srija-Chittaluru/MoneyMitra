@@ -3,6 +3,7 @@ import { Scale } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import { formatINR } from "@/lib/format";
 import type { RegimeComparison } from "@/lib/dashboard/state";
 import { EmptyPanel } from "./EmptyPanel";
@@ -16,11 +17,12 @@ interface RegimeCardProps {
   /** The return was filed after the due date, so only the new regime is allowed. */
   oldRegimeClosed?: boolean;
   onRetry: () => void;
+  className?: string;
 }
 
-export function RegimeCard({ status, tax, hasIncome, oldRegimeClosed = false, onRetry }: RegimeCardProps) {
+export function RegimeCard({ status, tax, hasIncome, oldRegimeClosed = false, onRetry, className }: RegimeCardProps) {
   return (
-    <Card className="lg:col-span-2">
+    <Card className={cn("lg:col-span-2 border-line", className)}>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-h2">Old vs. new regime</h3>
         <Link href="/tax-comparison">
@@ -36,14 +38,14 @@ export function RegimeCard({ status, tax, hasIncome, oldRegimeClosed = false, on
         <SectionError message="We couldn't load your tax comparison." onRetry={onRetry} />
       ) : tax ? (
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-md border border-border p-4">
+          <div className="rounded-md border border-line p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted">Old regime</p>
               {tax.better === "old" && <Badge variant="accent">Recommended</Badge>}
             </div>
             <p className="mt-1 text-amount-lg">{formatINR(tax.oldTax)}</p>
           </div>
-          <div className="rounded-md border border-border p-4">
+          <div className="rounded-md border border-line p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted">New regime</p>
               {tax.better === "new" && <Badge variant="accent">Recommended</Badge>}

@@ -16,7 +16,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        "inline-flex rounded-full bg-surface-muted p-1",
+        "inline-flex rounded-full bg-seg p-1",
         className,
       )}
     >
@@ -29,7 +29,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option)}
             className={cn(
               "rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-              active ? "bg-surface text-foreground shadow-sm" : "text-muted",
+              active ? "bg-seg-on text-foreground shadow-sm" : "text-muted",
             )}
           >
             {option}

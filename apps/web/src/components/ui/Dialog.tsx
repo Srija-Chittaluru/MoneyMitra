@@ -25,9 +25,9 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
     <dialog
       ref={ref}
       onClose={onClose}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-border bg-surface p-0 text-foreground backdrop:bg-black/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-line bg-card p-0 text-foreground backdrop:bg-black/50"
     >
-      <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="flex items-center justify-between border-b border-line p-4">
         <h2 className="text-h2">{title}</h2>
         <button
           type="button"

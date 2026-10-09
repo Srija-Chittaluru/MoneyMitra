@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { exportItr, exportItrPdf } from "@/lib/itr/api";
 import type { Issue, ItrExport, ItrSummary } from "@/lib/itr/types";
 import { ComputationCard } from "./ComputationCard";
+import { ExpertFilingPlans } from "./ExpertFilingPlans";
 import { Notice } from "./fields";
 import { STEPS, stepForField } from "./options";
 
@@ -47,7 +48,7 @@ function IssueGroup({
   const visible = expanded ? issues : issues.slice(0, COLLAPSED_COUNT);
   const hidden = issues.length - visible.length;
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-surface p-4">
+    <div className="flex min-w-0 flex-col gap-2 rounded-md border border-line bg-field p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold text-foreground">
           {title} <span className="font-normal text-muted">· {issues.length}</span>
@@ -131,7 +132,7 @@ function SummaryTile({
   return (
     <Card
       className={cn(
-        "flex min-w-0 flex-col gap-1 p-4 sm:p-5",
+        "flex min-w-0 flex-col gap-1 bg-card border-line p-4 sm:p-5",
         tone === "accent" && "ring-2 ring-accent",
         tone === "success" && "ring-2 ring-success",
       )}
@@ -286,7 +287,7 @@ export function ReviewStep({
 
       <ComputationCard data={selected} />
 
-      <Card>
+      <Card className="bg-card border-line">
         <h3 className="text-h2 mb-2">Download your return</h3>
         <p className="mb-4 text-sm text-muted">
           MoneyMitra prepares the return from what you entered; you are responsible for checking it against Form 16,
@@ -335,6 +336,8 @@ export function ReviewStep({
           </div>
         )}
       </Card>
+
+      <ExpertFilingPlans ay={ay} />
     </div>
   );
 }
