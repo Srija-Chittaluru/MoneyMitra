@@ -4,7 +4,10 @@ import { useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { ChartCandlestick, ChartPie, Clock, Landmark, Repeat, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { EtfComparison } from "@/components/etf/EtfComparison";
 import { FdComparison } from "@/components/fd/FdComparison";
+import { MutualFundComparison } from "@/components/mutual-funds/MutualFundComparison";
+import { RdComparison } from "@/components/rd/RdComparison";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -16,7 +19,7 @@ interface Category {
   id: CategoryId;
   label: string;
   icon: LucideIcon;
-  /** Only FDs have a comparison so far; the rest describe what is coming, with no data. */
+  /** A category without a comparison yet describes what is coming, with no data. */
   comingSoon?: { title: string; description: string };
 }
 
@@ -27,31 +30,16 @@ const CATEGORIES: readonly Category[] = [
     id: "rd",
     label: "Recurring Deposits (RDs)",
     icon: Repeat,
-    comingSoon: {
-      title: "RD comparisons are coming soon",
-      description:
-        "You'll be able to compare recurring deposit rates across banks for different tenures, in the same way as fixed deposits.",
-    },
   },
   {
     id: "mutual-funds",
     label: "Mutual Funds",
     icon: ChartPie,
-    comingSoon: {
-      title: "Mutual fund comparisons are coming soon",
-      description:
-        "You'll be able to compare types of mutual funds by risk, costs and how long you might stay invested.",
-    },
   },
   {
     id: "etf",
     label: "Exchange-Traded Funds (ETFs)",
     icon: ChartCandlestick,
-    comingSoon: {
-      title: "ETF comparisons are coming soon",
-      description:
-        "You'll be able to compare types of exchange-traded funds by what they track and what they cost to hold.",
-    },
   },
 ];
 
@@ -68,7 +56,7 @@ function ComingSoon({ category }: { category: Category & { comingSoon: NonNullab
       </Badge>
       <h3 className="text-h2">{category.comingSoon.title}</h3>
       <p className="max-w-md text-sm text-muted">{category.comingSoon.description}</p>
-      <p className="text-xs text-muted">For now, Fixed Deposits is the only comparison available.</p>
+      <p className="text-xs text-muted">Other categories already have comparisons.</p>
     </Card>
   );
 }
@@ -81,11 +69,13 @@ function ComingSoon({ category }: { category: Category & { comingSoon: NonNullab
  */
 export function ProductCategories() {
   // Personalized Recommendations opens by default; `#fd` (where the old /fd-comparison
-  // route redirects) opens the FD comparison. Read once on mount: AppShell renders this
+  // route redirects) opens the FD comparison and `#mutual-funds` the mutual funds. Read once on mount: AppShell renders this
   // only in the browser, after the session is known, so there's no server render to mismatch.
-  const [active, setActive] = useState<CategoryId>(() =>
-    typeof window !== "undefined" && window.location.hash === "#fd" ? "fd" : "personalized",
-  );
+  const [active, setActive] = useState<CategoryId>(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const byHash: Record<string, CategoryId> = { "#fd": "fd", "#rd": "rd", "#mutual-funds": "mutual-funds", "#etf": "etf" };
+    return byHash[hash] ?? "personalized";
+  });
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function select(index: number) {
@@ -167,6 +157,12 @@ export function ProductCategories() {
             <RecommendationsView />
           ) : category.comingSoon ? (
             <ComingSoon category={category as Category & { comingSoon: NonNullable<Category["comingSoon"]> }} />
+          ) : category.id === "rd" ? (
+            <RdComparison />
+          ) : category.id === "etf" ? (
+            <EtfComparison />
+          ) : category.id === "mutual-funds" ? (
+            <MutualFundComparison />
           ) : (
             <FdComparison />
           )}

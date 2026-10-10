@@ -2,7 +2,9 @@ from fastapi import APIRouter
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.deposits import router as deposits_router
 from app.api.v1.documents import router as documents_router
+from app.api.v1.funds import router as funds_router
 from app.api.v1.expert_filing import router as expert_filing_router
 from app.api.v1.goals import router as goals_router
 from app.api.v1.health import router as health_router
@@ -24,5 +26,7 @@ api_router.include_router(planning_router)
 api_router.include_router(resources_router)
 api_router.include_router(users_router)
 api_router.include_router(dashboard_router)
+api_router.include_router(funds_router)
+api_router.include_router(deposits_router)
 api_router.include_router(expert_filing_router)
 api_router.include_router(goals_router)
