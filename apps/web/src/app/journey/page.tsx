@@ -108,6 +108,7 @@ function JourneyView() {
     taxDeadlineFyLabel,
     items: state.items,
     goals: journey.goals,
+    monthlyTakeHome: journey.financialProfile?.monthly_take_home,
   });
   const undatedEntries = buildUndatedEntries(state.items, journey.goals);
 

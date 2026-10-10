@@ -32,6 +32,7 @@ function normalizeState(raw: unknown): JourneyState | null {
     draftGoals: Array.isArray(r.draftGoals) ? (r.draftGoals as DraftGoal[]) : [],
     onbActive: r.onbActive ?? false,
     onbStep: typeof r.onbStep === "number" ? r.onbStep : 0,
+    completedStepCount: typeof r.completedStepCount === "number" ? r.completedStepCount : 0,
     built: r.built ?? false,
   };
 }
@@ -177,6 +178,7 @@ export function useJourneyState() {
       return;
     }
     let completedGoalId: string | null = null;
+    let completedGoalStepCount = 0;
     if (current.id) {
       const goal = state.draftGoals.find((g) => g.id === current.id);
       if (goal && isDraftGoalLastQuestion(current, goal)) {
@@ -195,6 +197,10 @@ export function useJourneyState() {
           return;
         }
         completedGoalId = goal.id;
+        // Steps belonging to this goal are about to drop out of the rebuilt array —
+        // bank them in completedStepCount so the displayed total/progress never
+        // regresses just because a goal finished (see JourneyState.completedStepCount).
+        completedGoalStepCount = steps.filter((s) => s.id === completedGoalId).length;
       }
     }
     // The step the user should land on next, identified by (kind, goal id) rather than
@@ -204,8 +210,14 @@ export function useJourneyState() {
     upd((draft) => {
       if (completedGoalId) {
         draft.draftGoals = draft.draftGoals.filter((g) => g.id !== completedGoalId);
+        draft.completedStepCount += completedGoalStepCount;
       }
-      const newSteps = buildSteps(draft.draftGoals, goalsApi.goals.filter((g) => g.status === "active").length);
+      // +1 when a goal just completed: `goalsApi.goals` is this callback's stale closure,
+      // captured before `createGoal`'s query invalidation lands, so it doesn't yet include
+      // the goal we just created — without the correction, steps like "rank" that depend
+      // on the active-goal count can wrongly disappear from this one-off recomputation.
+      const activeCount = goalsApi.goals.filter((g) => g.status === "active").length + (completedGoalId ? 1 : 0);
+      const newSteps = buildSteps(draft.draftGoals, activeCount);
       let newIndex = nextStepTemplate
         ? newSteps.findIndex((s) => s.k === nextStepTemplate.k && s.id === nextStepTemplate.id)
         : -1;
@@ -412,10 +424,19 @@ export function useJourneyState() {
     [upd],
   );
 
+  // Display-only: unlike `steps.length`/`state.onbStep` (which track only the
+  // *remaining* array and can shrink as goals complete), these fold in
+  // `completedStepCount` so the "X of Y" shown to the user is monotonic while
+  // moving forward.
+  const totalSteps = (state?.completedStepCount ?? 0) + steps.length;
+  const stepNumber = (state?.completedStepCount ?? 0) + (state?.onbStep ?? 0) + 1;
+
   return {
     state,
     phase: journeyPhase(state),
     steps,
+    totalSteps,
+    stepNumber,
     nowStep: state?.onbStep ?? 0,
     goals: goalsApi.goals,
     goalsLoading: goalsApi.isLoading,

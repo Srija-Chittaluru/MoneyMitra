@@ -67,7 +67,7 @@ export function JourneyOnboarding({ journey }: { journey: JourneyStateHook }) {
 
   const steps = journey.steps;
   const step = steps[state.onbStep] ?? steps[steps.length - 1];
-  const progress = Math.round(((state.onbStep + 1) / steps.length) * 100);
+  const progress = Math.round((journey.stepNumber / journey.totalSteps) * 100);
   const goal = step.id ? state.draftGoals.find((g) => g.id === step.id) : undefined;
   const goalDef = goal ? goalTypeDef(goal) : undefined;
 
@@ -301,7 +301,7 @@ export function JourneyOnboarding({ journey }: { journey: JourneyStateHook }) {
         </Button>
         <div className="flex-1" />
         <p className="font-mono text-xs text-muted">
-          {state.onbStep + 1} of {steps.length}
+          {journey.stepNumber} of {journey.totalSteps}
         </p>
         <Button variant="primary" size="md" className="rounded-full" onClick={journey.next}>
           {isReveal ? "Enter My Journey" : "Continue"}

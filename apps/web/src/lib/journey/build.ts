@@ -102,8 +102,12 @@ export function buildMilestones(input: {
   taxDeadlineFyLabel: string;
   items?: JourneyItem[];
   goals?: GoalOut[];
+  /** The take-home figure the My Journey wizard itself collected — a different source from
+   * `summary.annual_income` (which only comes from a filed/drafted ITR), so without this the
+   * "You are here" card can wrongly claim income is missing right after the wizard collected it. */
+  monthlyTakeHome?: number | null;
 }): JourneyMilestone[] {
-  const { user, documents, summary, taxDeadlineDays, taxDeadlineFyLabel, items = [], goals = [] } = input;
+  const { user, documents, summary, taxDeadlineDays, taxDeadlineFyLabel, items = [], goals = [], monthlyTakeHome } = input;
   const milestones: JourneyMilestone[] = [];
   const now = new Date();
 
@@ -141,6 +145,7 @@ export function buildMilestones(input: {
   const nowDetail: { label: string; value: string }[] = [];
   if (summary?.annual_income != null) nowDetail.push({ label: "Annual income", value: formatRupees(summary.annual_income) });
   if (summary?.estimated_tax) nowDetail.push({ label: "Estimated tax", value: formatRupees(summary.estimated_tax.amount) });
+  if (monthlyTakeHome != null) nowDetail.push({ label: "Monthly take-home", value: formatRupees(monthlyTakeHome) });
   milestones.push({
     id: "now",
     when: "now",
