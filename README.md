@@ -81,9 +81,12 @@ MoneyMitra keeps those pieces together and keeps them current:
 | **ITR Filing** | Four-step ITR-1, ITR-2 and ITR-3 preparation for AY 2026-27, with the right form chosen from your documents; JSON and PDF export | Live |
 | **Goals Planner** | Plan milestones such as a car, home or trip: inflation-adjusted cost, monthly savings needed, a budget check with alternatives, and progress from recorded contributions | Live |
 | **Recommendations** | Life-stage guidance on making your existing money work harder, with worked numbers, steps and options, that gets more specific as data is added | Live |
+| **My Journey** | A visual timeline over your real activity and goals, with an onboarding wizard (character pick, life-event chips, goal ranking) built on the same Goals Planner backend | Live |
+| **Fixed and Recurring Deposits** | Compare real, sourced bank FD/RD rates by tenure; RD maturity calculator | Live |
+| **Mutual Funds and ETFs** | Index-fund and ETF comparison from AMFI's public NAV data | Live |
+| **CA expert-filing escalation** | From the ITR review step, request a CA call — Free self-file / Assisted ₹499 / Premium ₹1,999 — records a lead for the team to call and bill separately | Live |
 | **Resources and Alerts** | Government deadlines, deduction limits, slab explorer | Live |
-| **Landing page** | Product-led marketing page with light and dark themes | Live |
-| **Finance Management** | Spending, investments and savings views | Prototype (demo data only) |
+| **Landing page** | Product-led marketing page with pricing, light and dark themes | Live |
 
 ---
 
@@ -339,6 +342,12 @@ put aside each month, and whether that fits your budget. Pages: `/goals` (all
 goals and your monthly budget) and `/goals/{id}` (the plan, the budget check,
 alternatives and contributions); the dashboard shows the next milestone.
 
+**My Journey** (`/journey`) is a second, visual front end over this exact same
+backend — a game-like timeline over your real activity and goals, with a
+pixel-art character and a first-run onboarding wizard (pick a character, add
+life events, rank your goals by priority). Goals can be added, edited and
+ranked from either page; there is one Goals Planner, not two.
+
 **Goal types:** car, house, vacation, education, emergency fund, wedding,
 retirement, other.
 
@@ -420,17 +429,44 @@ instalments, last date for tax-saving investments), a deduction-limits lookup,
 and a slab explorer by tax year and age category. The deadline list is
 **maintained by hand** because the official feeds are not publicly consumable.
 
+### Fixed and Recurring Deposits
+
+Shown under Recommendations → Fixed Deposits / Recurring Deposits. Rates are
+**entered by hand** from each bank's own published rate table (`price`,
+`effective_date` and `source_url` per bank — see
+`apps/backend/app/modules/deposits/rates.py`), not invented or AI-generated,
+the same sourcing discipline as the tax rules. Fixed deposits compare annual
+rate by tenure across banks; recurring deposits add a maturity calculator
+(monthly deposit → amount at maturity, compounded quarterly as Indian banks
+do). `GET /api/v1/deposits/rd-rates`.
+
+### Mutual Funds and ETFs
+
+Shown under Recommendations → Mutual Funds / ETFs. Pulled live from **AMFI's**
+(Association of Mutual Funds in India) public NAV data — no API key needed —
+covering three index-fund market-cap categories (large/mid/small) and five ETF
+groups (Nifty 50, bank, IT, gold, silver). See
+`apps/backend/app/modules/funds/amfi.py`, `catalogue.py` and
+`etf_catalogue.py`. `GET /api/v1/funds/mutual-funds`, `GET /api/v1/funds/etfs`.
+
+### CA expert-filing escalation
+
+From the ITR review step, a user can ask a CA to take it from here: **Free**
+(self-file with the JSON/PDF download), **Assisted** (₹499, one CA call
+reviewing the return) or **Premium** (₹1,999, one CA call covering the return,
+the regime comparison and the recommendations). This only **records a
+request** — price and call count are snapshotted server-side from
+`PLAN_DETAILS` so the client can't set its own price — there is no CA
+login/portal and no payment capture; the team calls to confirm and bills
+separately. See `apps/backend/app/modules/expert_filing/`.
+
 ### Landing page
 
 A product-led page: hero with a live-looking product mockup, value strip,
-feature cards, how-it-works, product showcase and call to action. Includes
-subtle scroll animations that replay on re-entry and respect
+feature cards, how-it-works, product showcase, a pricing comparison (Free /
+₹499 / ₹1,999, mirroring the ITR escalation plans above) and a call to action.
+Includes subtle scroll animations that replay on re-entry and respect
 `prefers-reduced-motion`, and supports light and dark themes.
-
-### Finance Management (prototype)
-
-Overview, expenses, investments, tax and insights views built on demo data and
-clearly marked as such. No backend exists for it yet.
 
 ---
 
@@ -446,7 +482,7 @@ flowchart TB
 
     subgraph API["Backend: FastAPI (apps/backend)"]
         R[Versioned REST API /api/v1<br/>thin route handlers]
-        M[Domain modules<br/>auth, users, tax, itr, documents,<br/>extraction, recommendations,<br/>planning, resources, dashboard]
+        M[Domain modules<br/>auth, users, tax, itr, documents,<br/>extraction, recommendations, goals,<br/>planning, resources, dashboard,<br/>deposits, funds, expert_filing]
     end
 
     DB[(PostgreSQL)]
@@ -502,6 +538,11 @@ Design decisions:
 | `tax_comparison_snapshots` | The user's latest comparison inputs, reused by other modules |
 | `goals` | A user's savings goals: name, type, target date, cost today, savings allocated at setup, status (active, completed, archived) and completion time. Calculated figures are never stored. |
 | `goal_contributions` | Money actually put towards a goal (amount, date, optional note). A goal with contributions can't be deleted; deleting a user removes both. |
+| `expert_filing_requests` | A CA-escalation request: assessment year, plan, price and calls included (snapshotted at request time from `PLAN_DETAILS`), contact phone, preferred time, status. |
+
+FD/RD rates and the mutual fund/ETF catalogue have no tables of their own —
+they're computed from a hand-maintained rates file and fetched live from AMFI
+on each request, not stored.
 
 Schema changes are managed by Alembic migrations in `apps/backend/alembic/versions/`.
 The Goals Planner adds `4c763833cf15` (goals and contributions tables) and
@@ -527,9 +568,12 @@ Interactive docs: `http://localhost:8000/docs`.
 | ITR | `GET /itr/assessment-years`; `GET`/`PUT /itr/filings/{ay}`; `GET /itr/filings/{ay}/summary`; `POST .../export`; `POST .../reread-documents`; `GET .../export/pdf` |
 | Recommendations | `GET /recommendations` (level, life-stage advice, next step, documents analysed, disclaimer); `PUT /recommendations/profile` |
 | Resources | `GET /resources` |
-| Goals | `GET /goals?include_archived=false`; `POST /goals`; `GET`/`PUT`/`DELETE /goals/{id}`; `POST /goals/{id}/archive`, `/complete`, `/reopen` |
+| Goals | `GET /goals?include_archived=false`; `POST /goals`; `GET`/`PUT`/`DELETE /goals/{id}`; `POST /goals/{id}/archive`, `/complete`, `/reopen`; `POST /goals/reorder` (ranking, used by My Journey) |
 | Goal contributions | `GET`/`POST /goals/{id}/contributions`; `PUT`/`DELETE /goals/{id}/contributions/{contribution_id}` |
 | Monthly budget | `GET`/`PUT /users/me/financial-profile` (`monthly_take_home`, `monthly_expenses`; the PUT replaces both, `null` clears one) |
+| Deposits | `GET /deposits/rd-rates` (fixed and recurring deposit rates by tenure) |
+| Funds | `GET /funds/mutual-funds`; `GET /funds/etfs` (live from AMFI) |
+| Expert filing | `POST /expert-filing/requests`; `GET /expert-filing/requests/latest` |
 
 ---
 
@@ -609,11 +653,12 @@ apps/
   web/                         # Next.js frontend
     src/app/                   # routes: landing, login, signup, onboarding, dashboard,
                                #   documents, tax-comparison, tax-planning, itr-filing,
-                               #   recommendations, goals, resources, finance, profile
+                               #   recommendations, goals, journey, resources, profile
     src/components/            # ui/ design system, shell/ (sidebar, header), landing/,
-                               #   dashboard/, itr/, tax/, documents/, recommendations/, goals/, onboarding/
+                               #   dashboard/, itr/, tax/, documents/, recommendations/,
+                               #   goals/, journey/, fd/, rd/, mutual-funds/, etf/, onboarding/
     src/lib/                   # API clients per module, auth, dashboard state, validation
-      lib/mock/                # demo data (used only by the Finance prototype)
+      lib/mock/                # fixture data for a few UI components (document previews, etc.)
     src/proxy.ts               # route protection (redirect when there is no session)
   backend/
     app/
@@ -630,6 +675,9 @@ apps/
         recommendations/       # life-stage advice, worked examples, levels, facts, document analysis (level 3)
         planning/              # financial-year headroom and monthly targets
         goals/                 # goal planner, take-home estimate, affordability and alternatives, goals API
+        deposits/              # FD/RD rates (hand-entered, sourced), RD maturity calculator
+        funds/                 # mutual fund + ETF data from AMFI's public NAV feeds
+        expert_filing/         # CA-escalation request flow (lead capture, no payment)
         resources/             # deadlines and deduction-limit reference data
         dashboard/             # data-driven summary
     alembic/                   # database migrations
@@ -744,7 +792,7 @@ Generate a `PII_ENCRYPTION_KEY` with:
 
 ## 15. Testing and quality
 
-**Backend** (565 tests in 24 files, in an isolated `moneymitra_test` database):
+**Backend** (613 tests in 28 files, in an isolated `moneymitra_test` database):
 
 ```bash
 cd apps/backend && source .venv/bin/activate
@@ -755,7 +803,7 @@ ruff check app tests
 The suite covers authentication and sessions, onboarding and PAN handling,
 tax calculation and rules, AI explanation and chat fallbacks, document upload,
 extraction and auto-fill, ITR computation, form selection, validation and export,
-recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources, the dashboard summary, and the Goals Planner (the month-based maths, planner, take-home estimate, affordability and alternatives, database rules, the goals API with per-user access checks, and the monthly budget).
+recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources, the dashboard summary, the Goals Planner (the month-based maths, planner, take-home estimate, affordability and alternatives, database rules, the goals API with per-user access checks, and the monthly budget), FD/RD rates, the AMFI-backed mutual fund and ETF data, and the CA expert-filing escalation request flow.
 
 **Frontend:**
 
@@ -775,7 +823,10 @@ type-checking, linting and the production build.
 
 **Limitations (stated openly)**
 
-- **Finance Management** is a prototype on demo data, with no backend.
+- **FD/RD rates and the fund/ETF catalogue are curated, not a full live market
+  feed:** bank deposit rates are entered by hand from each bank's published
+  page; the mutual fund and ETF comparison covers a fixed set of index funds
+  and ETF groups pulled from AMFI, not every scheme on the market.
 - **ITR scope:** ITR-1, ITR-2 and ITR-3 for AY 2026-27 only. Not supported:
   ITR-4 to ITR-7, the cases listed as blockers above, deductions such as
   80E/80G/80GG/80DD/80U, relief u/s 89, and co-owned properties. These users
@@ -818,7 +869,8 @@ type-checking, linting and the production build.
 
 **Natural next steps**
 
-- Backend for Finance Management (spending, investments, savings tracking).
+- Real payment capture for the CA expert-filing escalation plans (today it's a
+  lead-capture request; the team bills separately).
 - Analyse more document types (tax proofs, home-loan certificates).
 - Encrypt ITR drafts at rest; direct filing via ERI registration.
 - More assessment years, the remaining ITR forms and schedules; live tax-rule updates.
@@ -847,12 +899,12 @@ A ready-to-adapt kit for the slide deck and the demo.
 | 5 | Product tour (1/3) | Dashboard that never invents numbers; progressive empty states |
 | 6 | Product tour (2/3) | Documents with automatic extraction feeding the ITR draft and Level 3 advice |
 | 7 | Product tour (3/3) | Tax comparison with plain-language explanation |
-| 8 | Year-round value | Tax planning: headroom and monthly targets; recommendations with reasons |
-| 9 | Filing | Four-step flow; the right form (ITR-1/2/3) chosen from your documents; official JSON and PDF export |
+| 8 | Year-round value | Tax planning: headroom and monthly targets; recommendations with reasons; My Journey's visual timeline over your goals and activity |
+| 9 | Filing | Four-step flow; the right form (ITR-1/2/3) chosen from your documents; official JSON and PDF export; optional CA expert-filing escalation |
 | 10 | Architecture | Diagram from section 5; API-first modular monolith |
 | 11 | Trust and security | Rotating sessions, sign-in lockout and rate limits, encrypted PAN and sensitive ITR fields, local OCR, user-scoped data |
 | 12 | Responsible AI | Deterministic maths; AI only for explanation, with fallbacks |
-| 13 | Quality | 302 backend tests; typed, linted, built frontend |
+| 13 | Quality | 613 backend tests; typed, linted, built frontend |
 | 14 | Limitations and roadmap | Honest scope and next steps (section 16) |
 | 15 | Demo / Q&A | Live walkthrough |
 
@@ -892,13 +944,13 @@ backup, and keep `OPENAI_API_KEY` set so the explanation and chat work on stage.
   and assessment year; adding a year is a new rules entry.
 - **Why trust the recommendations?** Each one states its reason and what data it
   is based on, and nothing personalised appears without the data to justify it.
-- **What is not finished?** Finance Management is a prototype, and only ITR-1,
-  ITR-2 and ITR-3 are supported; cases needing other schedules are shown as
-  blockers, never guessed at.
+- **What is not finished?** Only ITR-1, ITR-2 and ITR-3 are supported; cases
+  needing other schedules are shown as blockers, never guessed at. The CA
+  expert-filing escalation records a request but doesn't take payment yet.
 
 ### Key numbers to quote
 
-- 11 live features end to end; 1 prototype (Finance Management)
+- 16 live features end to end
 - 2 supported tax years (FY 2025-26, FY 2026-27); 3 ITR forms (ITR-1, ITR-2, ITR-3, AY 2026-27)
 - 10 document categories; 6 document types read automatically (Form 16, AIS, Form 26AS, payslips, broker statements, PAN)
 - 4-step ITR flow; 5 life-stage recommendations per stage across 3 levels; 4 deduction sections planned

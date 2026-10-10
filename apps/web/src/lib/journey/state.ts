@@ -48,6 +48,14 @@ export interface JourneyState {
   draftGoals: DraftGoal[];
   onbActive: boolean;
   onbStep: number;
+  /**
+   * Count of wizard steps already answered for goals that have since been
+   * completed (converted to a real backend goal) and dropped from
+   * `draftGoals` — `buildSteps()` only knows about *remaining* draft goals,
+   * so without this the displayed "X of Y" would shrink every time a goal
+   * finishes, even on forward navigation.
+   */
+  completedStepCount: number;
   built: boolean;
 }
 
@@ -59,6 +67,7 @@ export function freshJourneyState(character: CharacterId = "biker"): JourneyStat
     draftGoals: [],
     onbActive: true,
     onbStep: 0,
+    completedStepCount: 0,
     built: false,
   };
 }
