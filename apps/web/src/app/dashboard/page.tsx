@@ -4,6 +4,7 @@ import { Sparkles, Wallet, Scale } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { ActivityCard } from "@/components/dashboard/ActivityCard";
 import { DocumentsCard } from "@/components/dashboard/DocumentsCard";
+import { NextMilestoneCard } from "@/components/dashboard/NextMilestoneCard";
 import { RecommendationsCard } from "@/components/dashboard/RecommendationsCard";
 import { RegimeCard } from "@/components/dashboard/RegimeCard";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -18,6 +19,8 @@ import {
 } from "@/lib/dashboard/state";
 import { useDashboardData } from "@/lib/dashboard/useDashboardData";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { listGoals } from "@/lib/goals/api";
+import { goalKeys } from "@/lib/goals/queries";
 
 type SectionStatus = "loading" | "error" | "ready";
 
@@ -31,8 +34,14 @@ function statusOf(query: { isPending: boolean; isError: boolean }): SectionStatu
  * says what is missing and how to add it.
  */
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
   const { summary, documents, recommendations } = useDashboardData();
+  // The same list the Goals page shows (archived excluded), so both share one cache entry.
+  const goals = useQuery({
+    queryKey: goalKeys.list(false),
+    queryFn: () => listGoals(false),
+    enabled: authStatus === "authenticated",
+  });
 
   const summaryStatus = statusOf(summary);
   const documentsStatus = statusOf(documents);
@@ -129,6 +138,13 @@ export default function DashboardPage() {
           className={cardStyle}
         />
       </div>
+
+      <NextMilestoneCard
+        status={statusOf(goals)}
+        goals={goals.data}
+        onRetry={() => void goals.refetch()}
+        className={`mt-6 ${cardStyle}`}
+      />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <RecommendationsCard

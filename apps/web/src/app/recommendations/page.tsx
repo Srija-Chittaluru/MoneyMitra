@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/AppShell";
-import { RecommendationsView } from "@/components/recommendations/RecommendationsView";
+import { ProductCategories } from "@/components/recommendations/ProductCategories";
 
 export default function RecommendationsPage() {
   return (
     <AppShell title="Recommendations">
-      <RecommendationsView />
+      <ProductCategories />
     </AppShell>
   );
 }
