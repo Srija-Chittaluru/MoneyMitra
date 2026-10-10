@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles, Wallet, Scale } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { ActivityCard } from "@/components/dashboard/ActivityCard";
 import { DocumentsCard } from "@/components/dashboard/DocumentsCard";
@@ -59,16 +60,6 @@ export default function DashboardPage() {
         ? "error"
         : "ready";
 
-  const firstName = user?.name.split(" ")[0] ?? "";
-  const now = new Date();
-  const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
-  const eyebrow = now
-    .toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })
-    .toUpperCase();
-  const subtitle = flags.hasRecommendations
-    ? "Here's what needs your attention."
-    : "Here's where things stand today.";
-
   // Background only — each card component owns its own border color (plain
   // string-join `cn` has no class-conflict resolution, so a border color
   // passed in here could unpredictably clash with a component's own
@@ -77,15 +68,9 @@ export default function DashboardPage() {
 
   return (
     <AppShell title="Dashboard">
-      <div className="mb-6 flex flex-col gap-1">
-        <p className="font-mono text-xs tracking-wide text-muted">{eyebrow}</p>
-        <h2 className="text-display">
-          {greeting}, {firstName}
-        </h2>
-        <p className="text-muted">{subtitle}</p>
-      </div>
+      <h2 className="text-h1 mb-6">Welcome back, {user?.name.split(" ")[0]}</h2>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Annual income"
           status={summaryStatus}
@@ -93,6 +78,7 @@ export default function DashboardPage() {
           helpText={income ? `From ${income.sourceLabel}` : undefined}
           emptyValue="Not available yet"
           emptyHint="Upload your latest payslip to calculate"
+          icon={Wallet}
           className={cardStyle}
         />
         <StatCard
@@ -106,6 +92,7 @@ export default function DashboardPage() {
               ? "We couldn't estimate your tax from your latest details yet"
               : "Add your income details to estimate your tax"
           }
+          icon={Scale}
           className={cardStyle}
         />
         <StatCard
@@ -121,6 +108,24 @@ export default function DashboardPage() {
                 ? "Both regimes can't be compared for your latest details yet"
                 : "Complete your tax profile to compare your options"
           }
+          icon={Sparkles}
+          className={cardStyle}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <RegimeCard
+          status={summaryStatus}
+          tax={comparison}
+          hasIncome={flags.hasIncomeData}
+          oldRegimeClosed={oldRegimeClosed}
+          onRetry={() => void summary.refetch()}
+          className={cardStyle}
+        />
+        <DocumentsCard
+          status={documentsStatus}
+          documents={documentStatus}
+          onRetry={() => void documents.refetch()}
           className={cardStyle}
         />
       </div>
@@ -141,23 +146,6 @@ export default function DashboardPage() {
             void summary.refetch();
             void documents.refetch();
           }}
-          className={cardStyle}
-        />
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <RegimeCard
-          status={summaryStatus}
-          tax={comparison}
-          hasIncome={flags.hasIncomeData}
-          oldRegimeClosed={oldRegimeClosed}
-          onRetry={() => void summary.refetch()}
-          className={cardStyle}
-        />
-        <DocumentsCard
-          status={documentsStatus}
-          documents={documentStatus}
-          onRetry={() => void documents.refetch()}
           className={cardStyle}
         />
       </div>

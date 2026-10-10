@@ -1,9 +1,40 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { TAX, inr } from "./demo-data";
 
 /* ---------- Layout primitives ---------- */
+
+/** Full-bleed background photo with a slow ambient zoom (`[data-kb]`, see motion.css). Decorative only. */
+export function PhotoBackground({
+  src,
+  objectPosition = "50% 50%",
+  sizes = "100vw",
+  priority = false,
+  className,
+}: {
+  src: string;
+  objectPosition?: string;
+  sizes?: string;
+  priority?: boolean;
+  className?: string;
+}) {
+  return (
+    <div aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}>
+      <Image
+        data-kb="1"
+        src={src}
+        alt=""
+        fill
+        sizes={sizes}
+        priority={priority}
+        className="object-cover"
+        style={{ objectPosition }}
+      />
+    </div>
+  );
+}
 
 export function Container({
   className,
@@ -177,7 +208,7 @@ export function RegimeBars({ className }: { className?: string }) {
       </div>
       <div className="h-2.5 rounded-full bg-field">
         <div
-          className={cn("h-full rounded-full", recommended ? "bg-link" : "bg-foreground/20")}
+          className={cn("h-full rounded-full", recommended ? "bg-accent" : "bg-foreground/20")}
           style={{ width: `${Math.round((total / larger) * 100)}%` }}
         />
       </div>

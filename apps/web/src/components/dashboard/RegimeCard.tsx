@@ -37,7 +37,7 @@ export function RegimeCard({ status, tax, hasIncome, oldRegimeClosed = false, on
       ) : status === "error" ? (
         <SectionError message="We couldn't load your tax comparison." onRetry={onRetry} />
       ) : tax ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2">
           <div className="rounded-md border border-line p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted">Old regime</p>

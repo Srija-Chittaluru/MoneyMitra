@@ -7,6 +7,16 @@ from app.modules.recommendations.stages import LifeStage
 
 
 Category = Literal["tax_saving", "life_stage"]
+RecommendationStatusValue = Literal["open", "done", "dismissed"]
+
+
+class RecommendationStatusIn(BaseModel):
+    status: Literal["done", "dismissed"]
+
+
+class RecommendationStatusOut(BaseModel):
+    recommendation_id: str
+    status: RecommendationStatusValue
 
 
 class Option(BaseModel):
@@ -51,6 +61,7 @@ class Recommendation(BaseModel):
     options: list[Option] = []
     action_label: str | None = None
     action_href: str | None = None
+    status: RecommendationStatusValue = "open"
 
 
 class NextStep(BaseModel):

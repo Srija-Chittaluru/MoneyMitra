@@ -1,14 +1,17 @@
+"use client";
+
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useTaxDeadline } from "@/lib/useTaxDeadline";
 import { DEDUCTION_CHIPS, TAX, TAX_ACTIONS, inr } from "./demo-data";
-import { Amount, Container, Eyebrow, RegimeBars } from "./parts";
+import { Amount, Container, Eyebrow, PhotoBackground, RegimeBars } from "./parts";
 
 function TaxBreakdown() {
   const bars = [
-    { label: "Income", value: TAX.gross, height: 100, accent: false },
-    { label: "Deductions", value: TAX.deductions, height: 41, accent: false },
-    { label: "Taxable", value: TAX.taxable, height: 59, accent: false },
-    { label: "Tax", value: TAX.oldRegime.total, height: 18, accent: true },
+    { label: "Income", value: TAX.gross, height: 100, tone: "bg-surface-muted dark:bg-[#283548]" },
+    { label: "Deductions", value: TAX.deductions, height: 41, tone: "bg-surface-muted dark:bg-[#344054]" },
+    { label: "Taxable", value: TAX.taxable, height: 59, tone: "bg-surface-muted dark:bg-[#283548]" },
+    { label: "Tax", value: TAX.oldRegime.total, height: 18, tone: "bg-accent", accent: true },
   ];
   return (
     <div className="rounded-lg border border-line bg-card p-5">
@@ -20,17 +23,14 @@ function TaxBreakdown() {
         {bars.map((bar) => (
           <div key={bar.label}>
             <p className={cn("mb-2 text-xs", bar.accent ? "text-accent-text" : "text-muted")}>{bar.label}</p>
-            <div
-              className={cn("rounded-md", bar.accent ? "bg-accent" : "bg-field")}
-              style={{ height: `${Math.max(bar.height, 12)}px` }}
-            />
+            <div className={cn("rounded-md", bar.tone)} style={{ height: `${Math.max(bar.height, 12)}px` }} />
             <Amount className={cn("mt-2 block text-xs", bar.accent && "text-accent-text")}>{inr(bar.value)}</Amount>
           </div>
         ))}
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         {DEDUCTION_CHIPS.map((chip) => (
-          <span key={chip.label} className="rounded-md bg-field px-2.5 py-1.5 text-xs text-muted">
+          <span key={chip.label} className="rounded-md bg-surface-muted px-2.5 py-1.5 text-xs text-muted dark:bg-[#283548]">
             {chip.label} {chip.value}
           </span>
         ))}
@@ -40,11 +40,12 @@ function TaxBreakdown() {
 }
 
 function WaysToPayLess() {
+  const { days: daysToDeadline } = useTaxDeadline();
   return (
     <div className="flex h-full flex-col rounded-lg border border-line bg-card p-5">
       <div className="mb-4 flex items-center justify-between text-sm">
         <span className="text-foreground">Ways to pay less this year</span>
-        <span className="font-mono text-[11px] text-muted">176 days to 31 March</span>
+        <span className="font-mono text-[11px] text-muted">{daysToDeadline} days to 31 March</span>
       </div>
       <div className="flex flex-col gap-2.5">
         {TAX_ACTIONS.map((action) =>
@@ -112,19 +113,30 @@ export function Features() {
           </p>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div data-reveal className="flex flex-col gap-5">
-            <TaxBreakdown />
-            <div className="rounded-lg border border-line bg-card p-5">
-              <p className="mb-4 text-sm text-foreground">Old vs new regime</p>
-              <RegimeBars />
-              <p className="mt-4 text-sm text-muted">
-                Your HRA and home loan interest make the old regime{" "}
-                <span className="text-foreground">{inr(TAX.regimeDifference)} cheaper</span> this year.
-              </p>
+        <div
+          data-reveal
+          className="relative isolate overflow-hidden rounded-[28px] border-[6px] border-line bg-field p-4 shadow-[0_60px_120px_-50px_rgba(0,0,0,0.9)] dark:border-black sm:p-6"
+        >
+          <PhotoBackground
+            src="/landing/pixel-sky.png"
+            objectPosition="50% 100%"
+            sizes="(max-width: 1024px) 100vw, 1360px"
+            className="hidden -z-10 dark:block"
+          />
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-background/60 to-background/30" />
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="flex flex-col gap-5">
+              <TaxBreakdown />
+              <div className="rounded-lg border border-line bg-card p-5">
+                <p className="mb-4 text-sm text-foreground">Old vs new regime</p>
+                <RegimeBars />
+                <p className="mt-4 text-sm text-muted">
+                  Your HRA and home loan interest make the old regime{" "}
+                  <span className="text-foreground">{inr(TAX.regimeDifference)} cheaper</span> this year.
+                </p>
+              </div>
             </div>
-          </div>
-          <div data-reveal>
             <WaysToPayLess />
           </div>
         </div>

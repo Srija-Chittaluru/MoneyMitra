@@ -1,21 +1,29 @@
 import { ArrowRight } from "lucide-react";
 import { ProductMockup } from "./ProductMockup";
-import { Container, LinkButton } from "./parts";
+import { Container, LinkButton, PhotoBackground } from "./parts";
 
 export function Hero() {
   return (
-    <section id="top" className="relative overflow-hidden">
-      {/* Faint dot grid, faded out toward the edges */}
+    <section id="top" className="relative isolate overflow-hidden">
+      {/* Dark mode: the mockup's night-sky photo. Light mode has no equivalent photography, so it gets a plain dot-grid instead. */}
+      <PhotoBackground
+        src="/landing/sky-moon.jpg"
+        objectPosition="62% 45%"
+        className="hidden -z-20 opacity-50 dark:block"
+        priority
+      />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 opacity-60"
+        className="pointer-events-none absolute inset-0 -z-10 hidden bg-gradient-to-b from-background/55 via-background/10 to-background dark:block"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-60 dark:hidden"
         style={{
           backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
-          maskImage:
-            "radial-gradient(ellipse 70% 60% at 65% 35%, black, transparent 75%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 70% 60% at 65% 35%, black, transparent 75%)",
+          maskImage: "radial-gradient(ellipse 70% 60% at 65% 35%, black, transparent 75%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 65% 35%, black, transparent 75%)",
         }}
       />
 

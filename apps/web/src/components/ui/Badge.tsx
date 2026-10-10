@@ -11,7 +11,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   success: "bg-success-bg text-success",
   warning: "bg-warning-bg text-warning",
   error: "bg-error-bg text-error",
-  neutral: "bg-surface-muted text-muted",
+  neutral: "bg-field text-muted",
   accent: "bg-accent text-accent-foreground",
 };
 

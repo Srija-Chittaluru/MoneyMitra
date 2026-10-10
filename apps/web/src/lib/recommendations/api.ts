@@ -11,3 +11,14 @@ export function updateRecommendationProfile(profile: RecommendationProfile) {
     body: JSON.stringify(profile),
   });
 }
+
+export function setRecommendationStatus(id: string, status: "done" | "dismissed") {
+  return apiFetch<{ recommendation_id: string; status: string }>(`/api/v1/recommendations/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function clearRecommendationStatus(id: string) {
+  return apiFetch<void>(`/api/v1/recommendations/${id}/status`, { method: "DELETE" });
+}

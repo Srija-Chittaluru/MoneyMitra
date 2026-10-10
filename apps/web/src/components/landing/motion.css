@@ -83,6 +83,19 @@
     animation-delay: -2.5s;
   }
 
+  /* ---------- Slow ambient zoom on hero/CTA background photos ---------- */
+  @keyframes mm-kb {
+    from {
+      transform: scale(1.02) translate(0, 0);
+    }
+    to {
+      transform: scale(1.12) translate(-1.5%, -1%);
+    }
+  }
+  [data-kb] {
+    animation: mm-kb 28s ease-in-out infinite alternate;
+  }
+
   /* ---------- Hover transitions ---------- */
   [data-btn] {
     transition:

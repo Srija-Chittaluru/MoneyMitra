@@ -19,7 +19,9 @@ export function EmptyState({ icon: Icon, title, description, action, onClick }: 
 
   const content = (
     <>
-      <Icon className="h-8 w-8 text-muted" strokeWidth={1.5} />
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
+        <Icon className="h-7 w-7 text-accent-text" strokeWidth={1.75} />
+      </span>
       <p className="font-semibold text-foreground">{title}</p>
       {description && <p className="max-w-sm text-sm text-muted">{description}</p>}
       {action}
