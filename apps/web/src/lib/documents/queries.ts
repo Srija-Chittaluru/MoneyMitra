@@ -8,4 +8,6 @@ export const DOCUMENT_DEPENDENT_QUERIES = [
   "dashboard-recommendations",
   "recommendations",
   "tax-plan",
+  // Goal affordability estimates take-home pay from documents when none is entered.
+  "goals",
 ] as const;
