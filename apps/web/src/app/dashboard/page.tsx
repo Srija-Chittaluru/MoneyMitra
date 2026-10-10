@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Sparkles, Wallet, Scale } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { ActivityCard } from "@/components/dashboard/ActivityCard";
