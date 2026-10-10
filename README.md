@@ -79,7 +79,6 @@ MoneyMitra keeps those pieces together and keeps them current:
 | **AI tax explanation and chat** | Plain-language "why" and a tax Q&A assistant (requires an OpenAI key) | Live, optional |
 | **Tax Planning** | Remaining deduction headroom and monthly targets for the current financial year | Live |
 | **ITR Filing** | Four-step ITR-1, ITR-2 and ITR-3 preparation for AY 2026-27, with the right form chosen from your documents; JSON and PDF export | Live |
-| **Goals Planner** | Plan milestones such as a car, home or trip: inflation-adjusted cost, monthly savings needed, a budget check with alternatives, and progress from recorded contributions | Live |
 | **Recommendations** | Life-stage guidance on making your existing money work harder, with worked numbers, steps and options, that gets more specific as data is added | Live |
 | **Resources and Alerts** | Government deadlines, deduction limits, slab explorer | Live |
 | **Landing page** | Product-led marketing page with light and dark themes | Live |
@@ -151,11 +150,6 @@ The dashboard renders only what the user's data supports:
 | Income entered | Real annual income, estimated tax, both regime totals, savings, and income-based recommendations |
 | Payslip uploaded | Income and tax derived from the payslip via the ITR draft |
 | Form 16 uploaded | Form 16 shown as processed; income and tax from the document |
-
-A **Next milestone** card shows the active goal due soonest (name, target date,
-estimated cost by then, money saved so far and progress) and links to it and to
-all goals. With no active goals it offers to create one; completed and archived
-goals are never picked.
 
 Recent activity lists only real events (uploads, saved tax details). When two
 regimes cannot be compared (for example, a belated return where only the new
@@ -332,87 +326,6 @@ profile.py            # employee category, expected income, date of birth
 To add or change advice, edit a builder in `life_stage.py` and list it for its
 stage in `BUILDERS`.
 
-### Goals Planner
-
-Plan for a milestone and see, from your own figures, what it will cost, what to
-put aside each month, and whether that fits your budget. Pages: `/goals` (all
-goals and your monthly budget) and `/goals/{id}` (the plan, the budget check,
-alternatives and contributions); the dashboard shows the next milestone.
-
-**Goal types:** car, house, vacation, education, emergency fund, wedding,
-retirement, other.
-
-**How the plan is worked out** (recalculated on every request from the goal's
-current figures; nothing calculated is stored):
-
-| Step | Rule |
-|---|---|
-| Time to go | Calendar months from this month to the target month, ignoring the day. Must be 1 to 480 months (40 years). |
-| Estimated cost then | `cost today × (1 + 6%) ^ (months ÷ 12)`: yearly inflation over fractional years, rounded up to the rupee |
-| Saved so far (funding) | Savings allocated when the goal was set up **plus** every contribution recorded since, at face value: no growth is assumed on money already saved |
-| Still to save | Estimated cost then − funding, never below zero |
-| Where the money could sit | By time to go: up to 35 months, deposits or liquid/debt funds at an assumed 6.5% (low risk); 36 to 60 months, a mix such as a hybrid fund at 8% (medium risk); over 60 months, equity SIPs at 10% (higher risk). No specific product is recommended. |
-| Needed each month | The fixed monthly amount, invested at the end of each month starting this month and compounded monthly at the assumed rate, that reaches "still to save" by the target month (a plain division at 0%). Rounded **up** to the nearest Rs 100, so it is never understated. Zero once funding covers the estimated cost. |
-| Progress | Funding ÷ estimated cost then, capped at 100% (the same figure on the Goals page and the dashboard) |
-
-**Contributions** record money you have actually put aside: an amount, a date
-(not in the future) and an optional note. They are not investment gains, and a
-planned monthly amount is never counted as saved. Contributions can be added,
-edited or deleted while a goal is active. Completed and archived goals are
-locked until reopened; archiving keeps the history. A goal with recorded
-contributions can't be deleted (the API answers 409), only archived.
-
-**Budget check (affordability).** Your monthly take-home pay comes from, in order:
-
-1. the take-home pay you enter in **Your monthly budget** (treated as confirmed);
-2. otherwise an estimate from your ITR draft, uploaded documents, tax comparison
-   or expected income: `(gross salary − income tax − professional tax) ÷ 12`,
-   rounded down. Income tax comes from the existing ITR computation or tax
-   comparison (whichever regime the return uses, or the cheaper one in a
-   comparison); professional tax is taken from the ITR draft when present,
-   otherwise assumed to be Rs 2,500 a year (the most a state can charge) and
-   said so. Employee PF, NPS and other payroll deductions aren't known, so the
-   estimate is usually higher than real take-home.
-
-Then: `left each month = take-home − monthly expenses − other active goals'
-monthly amounts`, and `comfortable = left each month − 10% of take-home` (a
-cushion for irregular costs; a MoneyMitra rule of thumb, not a financial rule).
-Monthly expenses come only from the budget you enter and should leave out
-MoneyMitra goals, which are counted separately.
-
-| Status | When |
-|---|---|
-| Fits your budget (`affordable`) | The monthly amount fits within the comfortable figure, or savings already cover the goal |
-| Tight fit (`tight`) | It fits what's left each month, but not with the 10% cushion |
-| Over budget (`unaffordable`) | It needs more than is left each month |
-| Can't check yet (`unknown`) | Take-home isn't entered and can't be estimated from this financial year's figures (it's missing, from an earlier year, only the profile's expected income, or the tax couldn't be worked out); monthly expenses aren't entered; or another active goal has no plan (for example, its target month has arrived) |
-
-An unknown status is never presented as a verdict. Where take-home can be
-estimated, the screen shows the figures as an indication only, with any
-missing expenses illustrated at 60% of take-home and labelled as such.
-
-**Ways to make it fit** (for tight or over-budget goals, aiming at the
-comfortable amount):
-
-- **A later date:** the soonest target month, within 40 years, whose monthly
-  amount fits, re-planned in full (prices keep rising, and a goal more than 3
-  or 5 years away moves to a higher-risk approach, which the screen points out).
-- **A lower cost:** the most a goal could cost today (rounded down to Rs 1,000)
-  and still fit by the same date; with nothing to spare each month, what
-  existing savings already cover.
-- **A loan, for car and house goals only:** save the comfortable amount each
-  month for a down payment, borrow the rest at an assumed 9% over 5 years
-  (car) or 20 years (house), and see the EMI, total interest and whether the
-  EMI fits. Clearly labelled as an illustration, not a recommendation.
-
-Where these assumptions live: rates and formulas in
-`apps/backend/app/modules/recommendations/wealth.py`; the cushion and loan terms
-in `goals/affordability.py`; the professional-tax assumption in
-`goals/take_home.py`. Every figure is illustrative and comes with the API's
-assumptions and disclosure: real inflation and returns vary, returns are shown
-before tax, market-linked investments can lose value, and MoneyMitra does not
-invest money or give personal investment advice.
-
 ### Resources and Alerts
 
 A curated reference page: government deadlines (ITR filing, advance tax
@@ -495,18 +408,13 @@ Design decisions:
 
 | Table | Purpose |
 |---|---|
-| `users` | Identity, date of birth, encrypted PAN, tax-onboarding status, recommendation profile (employee category, expected income), monthly budget for goals (take-home pay and expenses, both optional) |
+| `users` | Identity, date of birth, encrypted PAN, tax-onboarding status, recommendation profile (employee category, expected income) |
 | `refresh_tokens` | Hashed, rotating session tokens |
 | `documents` | Uploaded file metadata and extraction status (files are on disk) |
 | `itr_filings` | One ITR draft per user and assessment year, with auto-fill sources |
 | `tax_comparison_snapshots` | The user's latest comparison inputs, reused by other modules |
-| `goals` | A user's savings goals: name, type, target date, cost today, savings allocated at setup, status (active, completed, archived) and completion time. Calculated figures are never stored. |
-| `goal_contributions` | Money actually put towards a goal (amount, date, optional note). A goal with contributions can't be deleted; deleting a user removes both. |
 
 Schema changes are managed by Alembic migrations in `apps/backend/alembic/versions/`.
-The Goals Planner adds `4c763833cf15` (goals and contributions tables) and
-`08a49b5da325` (goal completion time and the user's monthly budget). Amounts are
-whole rupees, with database checks matching the API's limits.
 
 ---
 
@@ -527,9 +435,6 @@ Interactive docs: `http://localhost:8000/docs`.
 | ITR | `GET /itr/assessment-years`; `GET`/`PUT /itr/filings/{ay}`; `GET /itr/filings/{ay}/summary`; `POST .../export`; `POST .../reread-documents`; `GET .../export/pdf` |
 | Recommendations | `GET /recommendations` (level, life-stage advice, next step, documents analysed, disclaimer); `PUT /recommendations/profile` |
 | Resources | `GET /resources` |
-| Goals | `GET /goals?include_archived=false`; `POST /goals`; `GET`/`PUT`/`DELETE /goals/{id}`; `POST /goals/{id}/archive`, `/complete`, `/reopen` |
-| Goal contributions | `GET`/`POST /goals/{id}/contributions`; `PUT`/`DELETE /goals/{id}/contributions/{contribution_id}` |
-| Monthly budget | `GET`/`PUT /users/me/financial-profile` (`monthly_take_home`, `monthly_expenses`; the PUT replaces both, `null` clears one) |
 
 ---
 
@@ -609,9 +514,9 @@ apps/
   web/                         # Next.js frontend
     src/app/                   # routes: landing, login, signup, onboarding, dashboard,
                                #   documents, tax-comparison, tax-planning, itr-filing,
-                               #   recommendations, goals, resources, finance, profile
+                               #   recommendations, resources, finance, profile
     src/components/            # ui/ design system, shell/ (sidebar, header), landing/,
-                               #   dashboard/, itr/, tax/, documents/, recommendations/, goals/, onboarding/
+                               #   dashboard/, itr/, tax/, documents/, recommendations/, onboarding/
     src/lib/                   # API clients per module, auth, dashboard state, validation
       lib/mock/                # demo data (used only by the Finance prototype)
     src/proxy.ts               # route protection (redirect when there is no session)
@@ -629,7 +534,6 @@ apps/
                                #   JSON export per form against the official schemas, PDF summary
         recommendations/       # life-stage advice, worked examples, levels, facts, document analysis (level 3)
         planning/              # financial-year headroom and monthly targets
-        goals/                 # goal planner, take-home estimate, affordability and alternatives, goals API
         resources/             # deadlines and deduction-limit reference data
         dashboard/             # data-driven summary
     alembic/                   # database migrations
@@ -714,9 +618,6 @@ npm run dev -- --port 3000
 
 Open http://localhost:3000, sign up, and follow the onboarding step.
 
-The Goals Planner needs no extra setup beyond `alembic upgrade head`. To see a
-budget check, add your monthly take-home pay and expenses on the Goals page.
-
 ---
 
 ## 14. Configuration
@@ -744,7 +645,7 @@ Generate a `PII_ENCRYPTION_KEY` with:
 
 ## 15. Testing and quality
 
-**Backend** (565 tests in 24 files, in an isolated `moneymitra_test` database):
+**Backend** (302 tests in 16 files, in an isolated `moneymitra_test` database):
 
 ```bash
 cd apps/backend && source .venv/bin/activate
@@ -755,7 +656,7 @@ ruff check app tests
 The suite covers authentication and sessions, onboarding and PAN handling,
 tax calculation and rules, AI explanation and chat fallbacks, document upload,
 extraction and auto-fill, ITR computation, form selection, validation and export,
-recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources, the dashboard summary, and the Goals Planner (the month-based maths, planner, take-home estimate, affordability and alternatives, database rules, the goals API with per-user access checks, and the monthly budget).
+recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources and the dashboard summary.
 
 **Frontend:**
 
@@ -803,13 +704,6 @@ type-checking, linting and the production build.
   tax proofs, bills and home-loan certificates are not analysed. The
   idle-savings estimate infers a balance from AIS interest at an assumed rate, so
   it is approximate.
-- **Goals Planner figures are illustrations.** Inflation (6%) and returns (6.5%,
-  8%, 10%) are fixed assumptions shown before tax, not forecasts, and the same
-  for every goal type. Money already saved is counted with no growth, and
-  contributions are deposits only (gains and losses aren't tracked). Estimated
-  take-home pay leaves out PF, NPS and other payroll deductions, so only a
-  figure you enter gives a firm budget check. Loans are illustrated at a single
-  assumed rate. MoneyMitra does not invest money on your behalf.
 - **Resources and Alerts** are curated by hand, not live-fetched.
 - **Data at rest:** the profile PAN and the most sensitive ITR draft fields
   (Aadhaar, mobile number, bank account numbers, NPS PRAN) are encrypted. The

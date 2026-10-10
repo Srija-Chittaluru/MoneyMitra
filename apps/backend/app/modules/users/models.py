@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, Integer, String, Uuid, func
+from sqlalchemy import BigInteger, Date, DateTime, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -10,20 +10,9 @@ from app.modules.users.pii import decrypt_pan, mask_pan
 TAX_ONBOARDING_COMPLETED = "completed"
 TAX_ONBOARDING_SKIPPED = "skipped"
 
-# Rs 10 crore a month: far above any salary or spending, so it only stops typos.
-MAX_MONTHLY_AMOUNT = 100_000_000
-
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (
-        CheckConstraint(
-            f"monthly_take_home BETWEEN 1 AND {MAX_MONTHLY_AMOUNT}", name="ck_users_monthly_take_home"
-        ),
-        CheckConstraint(
-            f"monthly_expenses BETWEEN 0 AND {MAX_MONTHLY_AMOUNT}", name="ck_users_monthly_expenses"
-        ),
-    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
@@ -37,12 +26,6 @@ class User(Base):
     # Recommendation profile (see app/modules/recommendations/profile.py).
     employee_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
     expected_annual_income: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-
-    # Financial profile for goal affordability, in whole rupees; NULL when not given.
-    # Only ever what the user entered: a take-home here is user-confirmed, never an
-    # estimate. Expenses exclude MoneyMitra goal contributions, which are counted separately.
-    monthly_take_home: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    monthly_expenses: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     # PAN is stored Fernet-encrypted (see users/pii.py) and never returned by the API;
     # only `pan_masked` is exposed.

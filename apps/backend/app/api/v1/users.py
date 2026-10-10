@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.users import service
 from app.modules.users.models import User
-from app.modules.users.schemas import FinancialProfile, TaxProfileRequest, UserPublic
+from app.modules.users.schemas import TaxProfileRequest, UserPublic
 
 router = APIRouter(prefix="/users/me", tags=["users"])
 
@@ -27,17 +27,3 @@ def skip_tax_onboarding(
 ) -> UserPublic:
     user = service.skip_tax_onboarding(db, current_user)
     return UserPublic.model_validate(user)
-
-
-@router.get("/financial-profile", response_model=FinancialProfile)
-def get_financial_profile(current_user: User = Depends(get_current_user)) -> FinancialProfile:
-    return FinancialProfile.model_validate(current_user)
-
-
-@router.put("/financial-profile", response_model=FinancialProfile)
-def save_financial_profile(
-    payload: FinancialProfile,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> FinancialProfile:
-    return FinancialProfile.model_validate(service.save_financial_profile(db, current_user, payload))

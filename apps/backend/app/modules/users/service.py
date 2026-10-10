@@ -3,7 +3,6 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.modules.users.models import TAX_ONBOARDING_COMPLETED, TAX_ONBOARDING_SKIPPED, User
-from app.modules.users.schemas import FinancialProfile
 from app.modules.users.pii import encrypt_pan
 
 
@@ -24,14 +23,4 @@ def skip_tax_onboarding(db: Session, user: User) -> User:
         db.add(user)
         db.commit()
         db.refresh(user)
-    return user
-
-
-def save_financial_profile(db: Session, user: User, profile: FinancialProfile) -> User:
-    # Only what the user typed is stored, so a take-home here is always user-confirmed.
-    user.monthly_take_home = profile.monthly_take_home
-    user.monthly_expenses = profile.monthly_expenses
-    db.add(user)
-    db.commit()
-    db.refresh(user)
     return user
