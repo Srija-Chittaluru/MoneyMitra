@@ -126,8 +126,7 @@ def _itr_selected_tax(filing: ItrFiling, draft: ItrDraftData, today: date) -> Se
     return SelectedRegimeTax(regime=selected.regime, tax=selected.gross_tax_liability)
 
 
-def load_latest_itr_draft(db: Session, user: User) -> tuple[ItrFiling, ItrDraftData] | None:
-    """The user's latest ITR filing and its draft, or None if there's no valid one."""
+def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
     filing = db.scalar(
         select(ItrFiling).where(ItrFiling.user_id == user.id).order_by(ItrFiling.assessment_year.desc()).limit(1)
     )
@@ -135,16 +134,9 @@ def load_latest_itr_draft(db: Session, user: User) -> tuple[ItrFiling, ItrDraftD
         return None
 
     try:
-        return filing, ItrDraftData.model_validate(filing.data)
+        draft = ItrDraftData.model_validate(filing.data)
     except ValidationError:
         return None
-
-
-def _from_itr_filing(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:
-    loaded = load_latest_itr_draft(db, user)
-    if loaded is None:
-        return None
-    filing, draft = loaded
 
     salary = draft.salary
     annual_income = salary.salary_17_1 + salary.perquisites_17_2 + salary.profits_17_3
@@ -219,12 +211,6 @@ def _from_tax_comparison(db: Session, user: User) -> tuple[datetime, FinancialCo
         section_80d_self=snapshot.section_80d,
         hra_exemption=snapshot.hra_exemption,
     )
-
-
-def load_tax_comparison_context(db: Session, user: User) -> FinancialContext | None:
-    """The context from the user's saved tax comparison alone, however old."""
-    found = _from_tax_comparison(db, user)
-    return found[1] if found else None
 
 
 def load_latest_financial_context(db: Session, user: User, today: date) -> tuple[datetime, FinancialContext] | None:

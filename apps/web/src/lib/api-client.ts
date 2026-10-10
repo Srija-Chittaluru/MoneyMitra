@@ -3,14 +3,11 @@ import { getAccessToken } from "./auth/token-store";
 
 export class ApiError extends Error {
   status: number;
-  /** For validation errors: a message per request field, e.g. { cost_today: "..." }. */
-  fieldErrors: Record<string, string>;
 
-  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(status: number, message: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -32,16 +29,11 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   });
 
   if (!response.ok) {
-    const detail = await response
+    const message = await response
       .json()
-      .then((body: { detail?: unknown }) => body.detail)
+      .then((body: { detail?: unknown }) => errorDetail(body.detail))
       .catch(() => undefined);
-    const message = errorDetail(detail);
-    throw new ApiError(
-      response.status,
-      message ?? FALLBACK_MESSAGES[response.status] ?? `Request to ${path} failed with ${response.status}`,
-      fieldErrors(detail),
-    );
+    throw new ApiError(response.status, message ?? FALLBACK_MESSAGES[response.status] ?? `Request to ${path} failed with ${response.status}`);
   }
 
   return response;
@@ -64,19 +56,6 @@ function errorDetail(detail: unknown): string | undefined {
     return field && typeof field === "string" && first.type !== "value_error" ? `${field.replace(/_/g, " ")}: ${msg}` : msg;
   }
   return undefined;
-}
-
-/** The first message for each body field in a FastAPI validation error. */
-function fieldErrors(detail: unknown): Record<string, string> {
-  const fields: Record<string, string> = {};
-  if (!Array.isArray(detail)) return fields;
-  for (const item of detail as { msg?: string; loc?: unknown[] }[]) {
-    const field = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : undefined;
-    if (typeof field === "string" && item.msg && !(field in fields)) {
-      fields[field] = item.msg.replace(/^Value error, /, "");
-    }
-  }
-  return fields;
 }
 
 export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
