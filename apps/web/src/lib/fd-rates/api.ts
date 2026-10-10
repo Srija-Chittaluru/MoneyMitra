@@ -1,11 +1,11 @@
-import { MOCK_FD_RATES } from "@/lib/mock/fdRates";
+import { FD_RATES } from "./rates";
 import type { FdRatesResponse } from "./types";
 
 /**
- * FD rates for the comparison page. For now this returns sample data, flagged
- * `is_sample`; when the backend exists it becomes
+ * FD rates for the comparison page: real published rates for 10 banks, kept in
+ * rates.ts. When a backend rates API exists this becomes
  * `apiFetch<FdRatesResponse>("/api/v1/fd-rates")` with no change to the page.
  */
 export async function getFdRates(): Promise<FdRatesResponse> {
-  return { rates: MOCK_FD_RATES, is_sample: true };
+  return { rates: FD_RATES, is_sample: false };
 }

@@ -75,6 +75,11 @@
   --seg-bg: #f2f4f7;
   --seg-on: #ffffff;
   --line: rgba(11, 15, 20, 0.1);
+
+  /* Categorical chart series, validated for colour-blind separation on the light card. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
   --glass-bg: rgba(255, 255, 255, 0.66);
 }
 
@@ -121,5 +126,10 @@
   --seg-bg: rgba(255, 255, 255, 0.06);
   --seg-on: #2c2c2c;
   --line: rgba(255, 255, 255, 0.09);
+
+  /* The same three hues, stepped for the dark card. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
   --glass-bg: rgba(28, 28, 28, 0.85);
 }
