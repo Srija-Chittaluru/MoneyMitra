@@ -174,14 +174,14 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
         />
         <PlanCard
           title="Assisted"
-          price="₹1,500"
+          price="₹499"
           description="A CA reviews your return and gets on one call with you."
           bullets={["Everything in Free", "1 CA call"]}
           action={
             activePlan === "assisted" ? (
               <RequestForm
                 plan="assisted"
-                price={1500}
+                price={499}
                 isPending={createMutation.isPending}
                 error={createMutation.isError ? createMutation.error.message : undefined}
                 onCancel={() => setActivePlan(null)}
@@ -203,21 +203,21 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
         />
         <PlanCard
           title="Premium"
-          price="₹2,500"
+          price="₹1,999"
           highlighted
-          description="Full hand-holding — your return and your wider tax picture, with two calls to get it right and filed."
+          description="Full hand-holding — your return and your wider tax picture, in one call to get it right and filed."
           bullets={[
             "Everything in Assisted",
             "Tax regime comparison review",
             "Personalized recommendations review",
             "Tax planning walkthrough",
-            "2 CA calls",
+            "1 CA call",
           ]}
           action={
             activePlan === "premium" ? (
               <RequestForm
                 plan="premium"
-                price={2500}
+                price={1999}
                 isPending={createMutation.isPending}
                 error={createMutation.isError ? createMutation.error.message : undefined}
                 onCancel={() => setActivePlan(null)}

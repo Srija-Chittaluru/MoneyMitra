@@ -4,8 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { LogIn, Mail, Lock } from "lucide-react";
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop";
 import { AuthBrandPanel } from "@/components/auth/AuthBrandPanel";
+import { AuthHero } from "@/components/auth/AuthHero";
 import { AuthShowcase } from "@/components/auth/AuthShowcase";
 import { Logo } from "@/components/Logo";
 import { PublicHeader } from "@/components/shell/PublicHeader";
@@ -94,6 +96,46 @@ function LoginForm() {
     </>
   );
 
+  // Light mode only: icon-prefixed fields and a pill-shaped lime CTA, matching
+  // the brand panel's carousel. Kept separate from `fields()` so dark mode's
+  // existing form is never touched.
+  const lightFields = (idPrefix: string) => (
+    <>
+      <Input
+        id={`${idPrefix}-email`}
+        type="email"
+        label="Email address"
+        placeholder="you@example.com"
+        icon={<Mail className="h-4 w-4" strokeWidth={1.75} />}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      <PasswordInput
+        id={`${idPrefix}-password`}
+        label="Password"
+        placeholder="Your password"
+        icon={<Lock className="h-4 w-4" strokeWidth={1.75} />}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="current-password"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      {(fieldError || apiError) && <p className="text-sm text-error">{fieldError ?? apiError}</p>}
+      <Button
+        type="submit"
+        variant="primary"
+        className="mt-2 h-[52px] rounded-full bg-accent text-accent-foreground hover:opacity-90"
+        disabled={submitting}
+      >
+        {submitting ? "Logging in…" : "Log in"}
+      </Button>
+    </>
+  );
+
   return (
     <>
       {/* ---------- Dark mode: split-screen with photo showcase ---------- */}
@@ -122,30 +164,44 @@ function LoginForm() {
         <AuthShowcase className="hidden flex-1 lg:block" />
       </div>
 
-      {/* ---------- Light mode: split-screen brand panel + form ---------- */}
+      {/* ---------- Light mode: split-screen form + rotating brand panel ---------- */}
       <div className="relative hidden w-full gap-3.5 lg:flex dark:hidden">
-        <AuthBrandPanel variant="login" className="flex-1" />
-        <div className="flex shrink-0 flex-col justify-center p-8 lg:basis-[420px] xl:p-10">
-          <p className="text-sm font-medium text-muted">Welcome back</p>
-          <h1 className="mb-7 mt-1 text-h1">Log in to your account</h1>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            {fields("light-lg")}
-          </form>
-          <p className="mt-6 text-center text-sm text-muted">
-            New to MoneyMitra?{" "}
-            <Link href="/signup" className="text-link">
-              Create an account
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto rounded-3xl border border-line bg-card px-6 py-8 sm:px-10 lg:basis-[480px] lg:flex-none lg:px-12">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/" aria-label="Back to MoneyMitra home" className="inline-flex">
+              <Logo height={32} />
             </Link>
-          </p>
+            <ThemeToggle />
+          </div>
+          <div className="mx-auto my-auto flex w-full max-w-[380px] flex-col py-10">
+            <AuthHero
+              icon={<LogIn className="h-6 w-6" strokeWidth={1.8} />}
+              title="Welcome back"
+              subtitle="Log in to your MoneyMitra workspace."
+            />
+            <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+              {lightFields("light-lg")}
+            </form>
+            <p className="mt-6 text-center text-sm text-muted">
+              New to MoneyMitra?{" "}
+              <Link href="/signup" className="text-link">
+                Create an account
+              </Link>
+            </p>
+          </div>
         </div>
+        <AuthBrandPanel className="flex-1" />
       </div>
 
       {/* ---------- Light mode, small screens: plain centered card ---------- */}
       <Card className="w-full max-w-sm bg-card border-line lg:hidden dark:hidden">
-        <h1 className="text-h1 mb-1">Welcome back</h1>
-        <p className="mb-6 text-sm text-muted">Log in to your MoneyMitra workspace.</p>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {fields("light-sm")}
+        <AuthHero
+          icon={<LogIn className="h-6 w-6" strokeWidth={1.8} />}
+          title="Welcome back"
+          subtitle="Log in to your MoneyMitra workspace."
+        />
+        <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+          {lightFields("light-sm")}
         </form>
         <p className="mt-6 text-center text-sm text-muted">
           New to MoneyMitra?{" "}
@@ -162,10 +218,10 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-background">
       <AuthBackdrop />
-      <div className="dark:hidden">
+      <div className="lg:hidden dark:hidden">
         <PublicHeader />
       </div>
-      <main className="relative flex flex-1 items-center justify-center p-4 dark:items-stretch dark:p-3.5">
+      <main className="relative flex flex-1 items-center justify-center p-4 lg:items-stretch lg:p-3.5 dark:items-stretch dark:p-3.5">
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>

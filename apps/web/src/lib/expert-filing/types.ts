@@ -27,8 +27,8 @@ export const PLAN_OPTIONS: {
   price: number;
   callsIncluded: number;
 }[] = [
-  { plan: "assisted", label: "Assisted", price: 1500, callsIncluded: 1 },
-  { plan: "premium", label: "Premium", price: 2500, callsIncluded: 2 },
+  { plan: "assisted", label: "Assisted", price: 499, callsIncluded: 1 },
+  { plan: "premium", label: "Premium", price: 1999, callsIncluded: 1 },
 ];
 
 export const STATUS_LABELS: Record<ExpertFilingStatus, string> = {

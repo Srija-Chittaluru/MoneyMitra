@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { monogram } from "@/lib/monogram";
 import type { FdRate } from "@/lib/fd-rates/types";
 
 interface FdBankSelectorProps {
@@ -13,11 +14,11 @@ interface FdBankSelectorProps {
 
 export function FdBankSelector({ rates, selected, onToggle, onSelectAll, onClear }: FdBankSelectorProps) {
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset className="min-w-0 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <legend className="font-semibold text-foreground">Banks</legend>
-        <span className="text-xs text-muted">
-          {selected.size} of {rates.length} selected
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted">
+          {selected.size}/{rates.length} selected
         </span>
       </div>
       <div className="flex gap-2">
@@ -35,7 +36,7 @@ export function FdBankSelector({ rates, selected, onToggle, onSelectAll, onClear
             <li key={rate.bank_id}>
               <label
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-hover",
+                  "flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-hover",
                   checked && "bg-field",
                 )}
               >
@@ -45,6 +46,15 @@ export function FdBankSelector({ rates, selected, onToggle, onSelectAll, onClear
                   onChange={() => onToggle(rate.bank_id)}
                   className="h-4 w-4 shrink-0 accent-[var(--palette-signal-blue)] dark:accent-[var(--palette-lime-700)]"
                 />
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                    checked ? "bg-primary text-primary-foreground" : "bg-surface-muted text-muted",
+                  )}
+                  aria-hidden="true"
+                >
+                  {monogram(rate.bank_name)}
+                </span>
                 <span className="min-w-0 flex-1 truncate text-foreground">{rate.bank_name}</span>
                 <span className="shrink-0 font-mono text-xs text-muted">{rate.annual_rate.toFixed(2)}%</span>
               </label>

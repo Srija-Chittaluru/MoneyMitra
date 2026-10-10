@@ -1,21 +1,20 @@
+import { ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { monogram } from "@/lib/monogram";
 import { tenureLabel } from "@/lib/fd-rates/types";
 import type { FdRate } from "@/lib/fd-rates/types";
 
 interface FdRateChartProps {
-  /** One rate per selected bank, for the chosen tenure and customer category. */
+  /** One rate per selected bank, for the chosen tenure and customer category. Keep this short (≈5 or fewer) — more than that and standing bars stop being readable at a glance. */
   rates: FdRate[];
   isSample: boolean;
 }
 
-// One series, so one hue: signal blue on light, the darker lime step on dark
-// (lime-500 is too light for a mark on the dark card). Validated for contrast
-// against each theme's card; bank names inside the bars use ink-navy text,
-// which reads at 4.5:1 or better on both.
-const BAR = "bg-[var(--palette-signal-blue)] dark:bg-[var(--palette-lime-700)]";
-const BAR_TEXT = "text-[var(--palette-ink-navy)]";
+const dateFormat = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-// Below this share of the axis, a bank name won't fit inside its bar and sits under it instead.
-const NAME_INSIDE_MIN_SHARE = 0.45;
+// One series, one hue — same convention as the RD chart: signal blue on light,
+// the darker lime step on dark (lime-500 is too light to read against a dark card).
+const BAR = "bg-[var(--palette-signal-blue)] dark:bg-[var(--palette-lime-700)]";
 
 function formatRate(rate: number): string {
   return `${rate.toFixed(2).replace(/0$/, "")}%`;
@@ -32,8 +31,9 @@ function tickTop(tick: number, max: number): string {
 }
 
 /**
- * A column chart of annual FD rates, highest first. Every bar carries its bank
- * and rate directly; hover or keyboard focus shows the details.
+ * A small, standing-bar comparison — deliberately capped to the banks the
+ * caller passes in (keep that to a handful) so every bar, color and bank
+ * name stays easy to read at a glance, instead of a dense wall of columns.
  */
 export function FdRateChart({ rates, isSample }: FdRateChartProps) {
   const sorted = [...rates].sort((a, b) => b.annual_rate - a.annual_rate || a.bank_name.localeCompare(b.bank_name));
@@ -52,7 +52,7 @@ export function FdRateChart({ rates, isSample }: FdRateChartProps) {
       </div>
 
       <div className="min-w-0 flex-1 overflow-x-auto pb-2">
-        <div className="relative" style={{ minWidth: `${sorted.length * 3}rem` }}>
+        <div className="relative" style={{ minWidth: `${Math.max(sorted.length * 6, 20)}rem` }}>
           {/* Gridlines */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-72" aria-hidden="true">
             {ticks.map((tick) => (
@@ -64,63 +64,70 @@ export function FdRateChart({ rates, isSample }: FdRateChartProps) {
             ))}
           </div>
 
-          <ul className="relative flex h-72 items-end gap-0.5" aria-label="FD interest rate by bank">
+          <ul className="relative flex h-72 items-end justify-around gap-4" aria-label="FD interest rate by bank">
             {sorted.map((rate, index) => {
-              // Edge columns anchor their tooltip to that edge so it never spills out of the chart.
-              const tooltipPosition =
-                index === 0 ? "left-0" : index === sorted.length - 1 ? "right-0" : "left-1/2 -translate-x-1/2";
               const share = rate.annual_rate / max;
-              const nameInside = share >= NAME_INSIDE_MIN_SHARE;
               const label = `${rate.bank_name}: ${formatRate(rate.annual_rate)} a year, ${tenureLabel(rate.tenure).toLowerCase()}`;
               return (
-                <li key={rate.bank_id} className="group relative flex h-full min-w-[3rem] flex-1 flex-col items-center justify-end">
+                <li key={rate.bank_id} className="group relative flex h-full w-24 flex-col items-center justify-end">
+                  {index === 0 && sorted.length > 1 && (
+                    <Badge variant="accent" className="absolute -top-1 px-1.5 py-0 text-[10px] leading-4">
+                      Best
+                    </Badge>
+                  )}
                   {/* Value on the cap */}
-                  <span className="mb-1 text-xs font-semibold text-foreground">{formatRate(rate.annual_rate)}</span>
+                  <span className="mb-1.5 text-sm font-semibold text-foreground">{formatRate(rate.annual_rate)}</span>
                   <button
                     type="button"
                     aria-label={label}
-                    className={`${BAR} relative flex w-6 items-end justify-center rounded-t-[4px] transition-[filter] group-hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring`}
+                    className={`${BAR} relative w-9 rounded-full transition-[filter] group-hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring`}
                     style={{ height: `${share * 100}%` }}
-                  >
-                    {nameInside && (
-                      <span
-                        className={`${BAR_TEXT} rotate-180 whitespace-nowrap pt-2 text-xs font-medium [writing-mode:vertical-rl]`}
-                        aria-hidden="true"
-                      >
-                        {rate.bank_name}
-                      </span>
-                    )}
-                  </button>
+                  />
 
-                  {/* Tooltip: same details on hover and keyboard focus, inside the plot so it isn't clipped */}
+                  {/* Tooltip: same details on hover and keyboard focus */}
                   <div
                     role="tooltip"
-                    className={`pointer-events-none absolute top-0 z-10 hidden w-max max-w-[14rem] rounded-md border border-line bg-card-strong px-3 py-2 text-left text-xs text-foreground shadow-lg group-focus-within:block group-hover:block ${tooltipPosition}`}
+                    className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max max-w-[14rem] -translate-x-1/2 rounded-md border border-line bg-card-strong px-3 py-2 text-left text-xs text-foreground shadow-lg group-focus-within:block group-hover:block"
                   >
                     <p className="font-semibold">{rate.bank_name}</p>
                     <p>{formatRate(rate.annual_rate)} a year</p>
                     <p className="text-muted">
                       {tenureLabel(rate.tenure)} · {rate.customer_category === "general" ? "General customers" : "Senior citizens"}
                     </p>
-                    <p className="text-muted">
-                      {isSample || !rate.effective_date ? "Sample rate, not a real offer" : `Effective ${rate.effective_date}`}
-                    </p>
+                    {isSample || !rate.effective_date ? (
+                      <p className="text-muted">Sample rate, not a real offer</p>
+                    ) : (
+                      <p className="text-muted">Effective {dateFormat.format(new Date(rate.effective_date))}</p>
+                    )}
+                    {rate.source_url && !isSample && (
+                      <a
+                        href={rate.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-link hover:underline"
+                      >
+                        Source <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      </a>
+                    )}
                   </div>
                 </li>
               );
             })}
           </ul>
 
-          {/* Names that didn't fit inside their bars */}
-          {sorted.some((r) => r.annual_rate / max < NAME_INSIDE_MIN_SHARE) && (
-            <div className="mt-1 flex gap-0.5" aria-hidden="true">
-              {sorted.map((rate) => (
-                <span key={rate.bank_id} className="min-w-[3rem] flex-1 truncate text-center text-xs text-muted">
-                  {rate.annual_rate / max < NAME_INSIDE_MIN_SHARE ? rate.bank_name : ""}
+          {/* Bank identity below the baseline: avatar + name, never rotated or truncated-into-the-bar */}
+          <div className="mt-2 flex justify-around gap-4" aria-hidden="true">
+            {sorted.map((rate) => (
+              <div key={rate.bank_id} className="flex w-24 flex-col items-center gap-1.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground shadow-sm">
+                  {monogram(rate.bank_name)}
                 </span>
-              ))}
-            </div>
-          )}
+                <span className="line-clamp-2 max-w-full text-center text-xs leading-tight text-muted">
+                  {rate.bank_name}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

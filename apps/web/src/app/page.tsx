@@ -7,6 +7,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 import { LandingMotion } from "@/components/landing/LandingMotion";
 import { LandingNav } from "@/components/landing/LandingNav";
 import { NextMove } from "@/components/landing/NextMove";
+import { Pricing } from "@/components/landing/Pricing";
 import { Problem } from "@/components/landing/Problem";
 import { Showcase } from "@/components/landing/Showcase";
 import { YearRound } from "@/components/landing/YearRound";
@@ -30,6 +31,7 @@ export default function LandingPage() {
         <Showcase />
         <NextMove />
         <YearRound />
+        <Pricing />
         <FinalCta />
       </main>
       <LandingFooter />
