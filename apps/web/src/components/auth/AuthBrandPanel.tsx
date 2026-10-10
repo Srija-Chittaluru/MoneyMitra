@@ -1,98 +1,99 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { CheckCircle2 } from "lucide-react";
-import { DashboardIllustration, TrendIllustration } from "@/components/illustrations/ProductIllustration";
-import { Logo } from "@/components/Logo";
+import { DashboardMockSlide } from "@/components/auth/showcase/DashboardMockSlide";
+import { JourneySlide } from "@/components/auth/showcase/JourneySlide";
+import { OrbitSlide } from "@/components/auth/showcase/OrbitSlide";
 import { cn } from "@/lib/cn";
 
-const VARIANTS = {
-  login: {
-    illustration: <DashboardIllustration />,
-    heading: (
+const SLIDE_MS = 6000;
+
+interface Slide {
+  title: ReactNode;
+  caption: string;
+  visual: ReactNode;
+}
+
+const SLIDES: Slide[] = [
+  {
+    title: (
       <>
-        Every rupee,
-        <br />
-        <span className="text-accent-text">one clear plan.</span>
+        Your money, <span className="text-[#3155E0] dark:text-[#7B9AFF]">in one place</span>
       </>
     ),
-    subcopy: "Taxes, investments and goals — tracked together, not scattered across five apps.",
-    checklist: [
-      "Form 16, AIS and 26AS matched automatically",
-      "Old vs new regime compared for you, every year",
-      "Investments and goals tracked in one place",
-    ],
+    caption: "Connect your bank accounts and add Form 16, AIS and 26AS — MoneyMitra brings it together so you can see where you stand.",
+    visual: <OrbitSlide />,
   },
-  signup: {
-    illustration: <TrendIllustration />,
-    heading: (
+  {
+    title: (
       <>
-        Your money deserves
-        <br />
-        <span className="text-accent-text">a clearer picture.</span>
+        Know your <span className="text-[#3155E0] dark:text-[#7B9AFF]">next move</span>
       </>
     ),
-    subcopy: "Bring your income, taxes, investments and documents together — understand where you stand.",
-    checklist: [
-      "Connect payslips, Form 16 and bank data safely",
-      "See where your money stands in minutes",
-      "Read-only access, encrypted end to end",
-    ],
+    caption: "MoneyMitra reads your income, taxes and investments and points out what could save you money this year.",
+    visual: <DashboardMockSlide />,
   },
-} satisfies Record<string, { illustration: ReactNode; heading: ReactNode; subcopy: string; checklist: string[] }>;
+  {
+    title: (
+      <>
+        See where you&apos;re <span className="text-[#3155E0] dark:text-[#7B9AFF]">headed</span>
+      </>
+    ),
+    caption: "My Journey turns your goals into a timeline, so you can see how today's decisions change where you end up.",
+    visual: <JourneySlide />,
+  },
+];
 
 /**
- * Light-mode-only brand panel for the auth screens: a flat illustration,
- * headline and value-prop checklist on a plain card surface — dark mode
- * keeps its own separate photo-showcase layout untouched.
- * Palette/typography intentionally mirror the landing page's light mode
- * (navy + lime, `text-link` reserved for real links, shared `text-h1` scale)
- * rather than introducing a one-off auth-screen palette.
+ * Light-mode-only brand panel for the auth screens: a slowly auto-rotating
+ * carousel of real product previews (connected accounts, the dashboard,
+ * My Journey) on a tinted panel — dark mode keeps its own separate
+ * photo-showcase layout untouched. Every visual mirrors a real in-app
+ * screen; only the exact figures/goal titles shown are illustrative,
+ * same convention as the landing page's own product mockups.
  */
-export function AuthBrandPanel({
-  variant,
-  className,
-}: {
-  variant: keyof typeof VARIANTS;
-  className?: string;
-}) {
-  const content = VARIANTS[variant];
+export function AuthBrandPanel({ className }: { className?: string }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), SLIDE_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const slide = SLIDES[index];
 
   return (
     <div
       className={cn(
-        "relative isolate hidden flex-col overflow-hidden rounded-3xl border border-line bg-card lg:flex",
+        "relative isolate hidden flex-col overflow-hidden rounded-3xl border border-line lg:flex",
         className,
       )}
+      style={{ background: "linear-gradient(180deg, #EAF1FF, #F3F7FF)" }}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-70"
-        style={{
-          backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
-          backgroundSize: "26px 26px",
-          maskImage: "radial-gradient(ellipse 70% 55% at 30% 20%, black, transparent 72%)",
-          WebkitMaskImage: "radial-gradient(ellipse 70% 55% at 30% 20%, black, transparent 72%)",
-        }}
-      />
+      <div className="relative flex flex-1 flex-col justify-center gap-6 px-10 py-16 xl:px-12">
+        <h2 className="text-center text-3xl font-semibold leading-tight tracking-tight text-foreground xl:text-[34px]">
+          {slide.title}
+        </h2>
 
-      <div className="relative flex flex-1 flex-col p-10 xl:p-12">
-        {content.illustration}
+        <div className="min-h-0 flex-1">{slide.visual}</div>
 
-        <h2 className="mt-7 max-w-xs text-h1 text-foreground">{content.heading}</h2>
-        <p className="mt-2 max-w-xs text-sm text-muted">{content.subcopy}</p>
+        <p className="mx-auto max-w-md text-center text-sm leading-relaxed text-muted">{slide.caption}</p>
+      </div>
 
-        <ul className="mt-6 flex flex-col gap-3">
-          {content.checklist.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" strokeWidth={2} />
-              {item}
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line/70 pt-6">
-          <Logo height={22} />
-          <p className="text-[11px] text-muted">Read-only access · Encrypted end to end · Your data is never sold</p>
-        </div>
+      <div className="absolute inset-x-0 bottom-7 flex items-center justify-center gap-2">
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`Show slide ${i + 1}`}
+            onClick={() => setIndex(i)}
+            className={cn(
+              "h-1.5 rounded-full transition-all",
+              i === index ? "w-7 bg-[#3155E0] dark:bg-[#7B9AFF]" : "w-3.5 bg-line hover:bg-border",
+            )}
+          />
+        ))}
       </div>
     </div>
   );

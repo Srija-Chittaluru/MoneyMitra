@@ -10,8 +10,8 @@ Status = Literal["pending", "contacted", "scheduled", "completed", "cancelled"]
 # Single source of truth for pricing — the service reads this, so the client
 # can't set its own price or call count.
 PLAN_DETAILS: dict[Plan, dict[str, int]] = {
-    "assisted": {"price": 1500, "calls_included": 1},
-    "premium": {"price": 2500, "calls_included": 2},
+    "assisted": {"price": 499, "calls_included": 1},
+    "premium": {"price": 1999, "calls_included": 1},
 }
 
 

@@ -34,8 +34,8 @@ def test_create_request_snapshots_plan_price_and_calls(client):
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["plan"] == "premium"
-    assert body["price"] == 2500
-    assert body["calls_included"] == 2
+    assert body["price"] == 1999
+    assert body["calls_included"] == 1
     assert body["status"] == "pending"
     assert body["contact_phone"] == "9876543210"
 
@@ -46,7 +46,7 @@ def test_create_request_assisted_plan_pricing(client):
     response = _create(client, headers, plan="assisted")
 
     body = response.json()
-    assert body["price"] == 1500
+    assert body["price"] == 499
     assert body["calls_included"] == 1
 
 

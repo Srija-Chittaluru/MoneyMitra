@@ -22,11 +22,13 @@ import { RdRateChart } from "./RdRateChart";
 const DEFAULT_MONTHLY = 5000;
 const MAX_MONTHLY = 10_00_000;
 const dateFormat = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+// Standing bars stay readable up to about this many at once; past that, see all in the list below.
+const DEFAULT_VISIBLE = 5;
 
-function RdCalculator({ data }: { data: RdRatesResponse }) {
+function RdCalculator({ data, tenure }: { data: RdRatesResponse; tenure: RdTenure }) {
   const [monthlyText, setMonthlyText] = useState(String(data.suggested_monthly ?? DEFAULT_MONTHLY));
-  const [tenure, setTenure] = useState<RdTenure>("3y");
   const [senior, setSenior] = useState(data.is_senior);
+  const [showAll, setShowAll] = useState(false);
 
   const monthly = Math.min(MAX_MONTHLY, Math.max(0, Math.floor(Number(monthlyText) || 0)));
   const tenureInfo = data.tenures.find((t) => t.id === tenure)!;
@@ -41,10 +43,11 @@ function RdCalculator({ data }: { data: RdRatesResponse }) {
     })
     .sort((a, b) => b.rate.annual_rate - a.rate.annual_rate || a.rate.provider_name.localeCompare(b.rate.provider_name));
   const best = rows[0];
+  const chartRows = showAll ? rows : rows.slice(0, DEFAULT_VISIBLE);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
-      <Card className="flex flex-col gap-5 border-line bg-card p-4 sm:p-6">
+    <div className="flex flex-col gap-4">
+      <Card className="grid gap-5 border-line bg-card p-4 sm:grid-cols-2 sm:p-6">
         <Input
           id="rd-monthly"
           type="number"
@@ -57,16 +60,7 @@ function RdCalculator({ data }: { data: RdRatesResponse }) {
           value={monthlyText}
           onChange={(e) => setMonthlyText(e.target.value)}
         />
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">For how long</span>
-          <SegmentedControl
-            options={data.tenures.map((t) => t.label)}
-            value={tenureInfo.label}
-            onChange={(label) => setTenure(data.tenures.find((t) => t.label === label)!.id)}
-            className="max-w-full overflow-x-auto"
-          />
-        </div>
-        <label className="flex items-center justify-between gap-3 text-sm text-foreground">
+        <label className="flex items-center justify-between gap-3 text-sm text-foreground sm:self-center">
           <span>
             Senior citizen rates
             <span className="block text-xs text-muted">{data.is_senior ? "Applied: you're 60 or older" : "For depositors aged 60+"}</span>
@@ -102,12 +96,21 @@ function RdCalculator({ data }: { data: RdRatesResponse }) {
               </div>
             </div>
 
-            <h3 className="mb-1 text-h2">Interest rate, % a year</h3>
-            <p className="mb-4 text-sm text-muted">
-              {tenureInfo.label} · {senior ? "senior citizens" : "general customers"} · {rows.length} providers, highest
-              first · {best.rate.provider_name} pays the most
-            </p>
-            <RdRateChart rows={rows} months={tenureInfo.months} />
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h3 className="text-h2">Interest rate, % a year</h3>
+                <p className="text-sm text-muted">
+                  {tenureInfo.label} · {senior ? "senior citizens" : "general customers"} · highest first ·{" "}
+                  {best.rate.provider_name} pays the most
+                </p>
+              </div>
+              {!showAll && rows.length > DEFAULT_VISIBLE && (
+                <button type="button" onClick={() => setShowAll(true)} className="text-xs font-medium text-link hover:underline">
+                  Showing top {DEFAULT_VISIBLE} of {rows.length} · see all
+                </button>
+              )}
+            </div>
+            <RdRateChart rows={chartRows} months={tenureInfo.months} />
 
             <details className="mt-5 rounded-md border border-line px-3 py-2 text-sm">
               <summary className="cursor-pointer font-medium text-foreground">Rates, maturity and sources</summary>
@@ -153,6 +156,7 @@ function RdCalculator({ data }: { data: RdRatesResponse }) {
 export function RdComparison() {
   const { status } = useAuth();
   const query = useQuery({ queryKey: ["rd-rates"], queryFn: getRdRates, enabled: status === "authenticated" });
+  const [tenure, setTenure] = useState<RdTenure>("3y");
 
   return (
     <div>
@@ -162,9 +166,9 @@ export function RdComparison() {
       </p>
 
       {query.isPending ? (
-        <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <Skeleton className="h-80" />
-          <Skeleton className="h-80" />
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-96" />
         </div>
       ) : query.isError ? (
         <ErrorState
@@ -178,7 +182,15 @@ export function RdComparison() {
         />
       ) : (
         <>
-          <RdCalculator key={`${query.data.suggested_monthly}-${query.data.is_senior}`} data={query.data} />
+          <div className="mb-6">
+            <SegmentedControl
+              options={query.data.tenures.map((t) => t.label)}
+              value={query.data.tenures.find((t) => t.id === tenure)!.label}
+              onChange={(label) => setTenure(query.data!.tenures.find((t) => t.label === label)!.id)}
+              className="max-w-full overflow-x-auto"
+            />
+          </div>
+          <RdCalculator key={`${query.data.suggested_monthly}-${query.data.is_senior}`} data={query.data} tenure={tenure} />
           <p className="mt-6 text-xs text-muted">
             Rates checked on {dateFormat.format(new Date(query.data.checked_on))}. {query.data.disclaimer} This is general
             information, not investment advice.

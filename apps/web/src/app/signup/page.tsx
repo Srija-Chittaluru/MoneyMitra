@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Mail, Lock, UserPlus, User } from "lucide-react";
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop";
 import { AuthBrandPanel } from "@/components/auth/AuthBrandPanel";
+import { AuthHero } from "@/components/auth/AuthHero";
 import { AuthShowcase } from "@/components/auth/AuthShowcase";
 import { Logo } from "@/components/Logo";
 import { PublicHeader } from "@/components/shell/PublicHeader";
@@ -141,6 +143,78 @@ function SignupForm() {
     </>
   );
 
+  // Light mode only: icon-prefixed fields and a pill-shaped lime CTA, matching
+  // the brand panel's carousel. Kept separate from `fields()` so dark mode's
+  // existing form is never touched.
+  const lightFields = (idPrefix: string) => (
+    <>
+      <Input
+        id={`${idPrefix}-name`}
+        label="Full name"
+        placeholder="Aditi Sharma"
+        icon={<User className="h-4 w-4" strokeWidth={1.75} />}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoComplete="name"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      <Input
+        id={`${idPrefix}-email`}
+        type="email"
+        label="Email address"
+        placeholder="you@example.com"
+        icon={<Mail className="h-4 w-4" strokeWidth={1.75} />}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      <PasswordInput
+        id={`${idPrefix}-password`}
+        label="Password"
+        placeholder="At least 8 characters"
+        hint="Mix letters with numbers or symbols. Avoid common passwords and your email name."
+        icon={<Lock className="h-4 w-4" strokeWidth={1.75} />}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      <PasswordInput
+        id={`${idPrefix}-confirm-password`}
+        label="Confirm password"
+        placeholder="Re-enter your password"
+        icon={<Lock className="h-4 w-4" strokeWidth={1.75} />}
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        autoComplete="new-password"
+        required
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      <Input
+        id={`${idPrefix}-dob`}
+        type="date"
+        label="Date of birth (optional)"
+        hint="Used once to power life-stage guidance later"
+        value={dob}
+        onChange={(e) => setDob(e.target.value)}
+        className="h-12 rounded-xl bg-field border-line"
+      />
+      {(fieldError || apiError) && <p className="text-sm text-error">{fieldError ?? apiError}</p>}
+      <Button
+        type="submit"
+        variant="primary"
+        className="mt-2 h-[52px] rounded-full bg-accent text-accent-foreground hover:opacity-90"
+        disabled={submitting}
+      >
+        {submitting ? "Creating your account…" : "Create account"}
+      </Button>
+    </>
+  );
+
   return (
     <>
       {/* ---------- Dark mode: split-screen with photo showcase ---------- */}
@@ -172,39 +246,44 @@ function SignupForm() {
         <AuthShowcase className="hidden flex-1 lg:block" />
       </div>
 
-      {/* ---------- Light mode: split-screen brand panel + form ---------- */}
+      {/* ---------- Light mode: split-screen form + rotating brand panel ---------- */}
       <div className="relative hidden w-full gap-3.5 lg:flex dark:hidden">
-        <AuthBrandPanel variant="signup" className="flex-1" />
-        <div className="flex shrink-0 flex-col justify-center p-8 lg:basis-[420px] xl:p-10">
-          <p className="text-sm font-medium text-muted">Get started</p>
-          <h1 className="mb-2 mt-1 text-h1">Create your account</h1>
-          <p className="mb-6 text-sm text-muted">
-            Bring your income, taxes, investments and documents together — understand where you stand.
-          </p>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            {fields("light-lg")}
-          </form>
-          <p className="mt-6 text-center text-sm text-muted">
-            Already have an account?{" "}
-            <Link href="/login" className="text-link">
-              Log in
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto rounded-3xl border border-line bg-card px-6 py-8 sm:px-10 lg:basis-[480px] lg:flex-none lg:px-12">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/" aria-label="Back to MoneyMitra home" className="inline-flex">
+              <Logo height={32} />
             </Link>
-          </p>
+            <ThemeToggle />
+          </div>
+          <div className="mx-auto my-auto flex w-full max-w-[380px] flex-col py-10">
+            <AuthHero
+              icon={<UserPlus className="h-6 w-6" strokeWidth={1.8} />}
+              title="Your money deserves a clearer picture."
+              subtitle="Bring your income, taxes, investments and financial documents together."
+            />
+            <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+              {lightFields("light-lg")}
+            </form>
+            <p className="mt-6 text-center text-sm text-muted">
+              Already have an account?{" "}
+              <Link href="/login" className="text-link">
+                Log in
+              </Link>
+            </p>
+          </div>
         </div>
+        <AuthBrandPanel className="flex-1" />
       </div>
 
       {/* ---------- Light mode, small screens: plain centered card, no floating flourishes ---------- */}
       <Card className="relative w-full max-w-sm bg-card border-line lg:hidden dark:hidden">
-        <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent-text">
-          Free to get started
-        </span>
-        <h1 className="text-h1 mb-1">Your money deserves a clearer picture.</h1>
-        <p className="mb-6 text-sm text-muted">
-          Bring your income, taxes, investments and financial documents together. Understand where you stand and
-          discover what to do next.
-        </p>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {fields("light-sm")}
+        <AuthHero
+          icon={<UserPlus className="h-6 w-6" strokeWidth={1.8} />}
+          title="Your money deserves a clearer picture."
+          subtitle="Bring your income, taxes, investments and financial documents together."
+        />
+        <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+          {lightFields("light-sm")}
         </form>
         <p className="mt-6 text-center text-sm text-muted">
           Already have an account?{" "}
@@ -221,10 +300,10 @@ export default function SignupPage() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-background">
       <AuthBackdrop />
-      <div className="dark:hidden">
+      <div className="lg:hidden dark:hidden">
         <PublicHeader />
       </div>
-      <main className="relative flex flex-1 items-center justify-center p-4 dark:items-stretch dark:p-3.5">
+      <main className="relative flex flex-1 items-center justify-center p-4 lg:items-stretch lg:p-3.5 dark:items-stretch dark:p-3.5">
         <SignupForm />
       </main>
     </div>
