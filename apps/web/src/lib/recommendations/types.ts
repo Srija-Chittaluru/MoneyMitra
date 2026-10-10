@@ -49,6 +49,7 @@ export interface Recommendation {
   options: InvestmentOption[];
   action_label: string | null;
   action_href: string | null;
+  status: "open" | "done" | "dismissed";
 }
 
 export interface NextStep {

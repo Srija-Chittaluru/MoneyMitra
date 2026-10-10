@@ -51,34 +51,47 @@ export const TAX_ACTIONS: TaxAction[] = [
   { title: "80C limit", detail: "ELSS, EPF and insurance", saved: null },
 ];
 
-export const MONEY = {
-  income: 75000,
-  spending: 42600,
-  available: 32400,
-  invested: 482000,
-  investedChangeThisMonth: 8420,
+/**
+ * Shaped like the real /finance overview (lib/finance/types.ts) and the real
+ * dashboard's 3 stat cards — this is what the Hero and "Your financial
+ * picture" mockups render, so the landing page shows the product MoneyMitra
+ * actually is (tax, documents, regime comparison), not an invented
+ * budgeting/goals app.
+ */
+export const FINANCE_PREVIEW = {
+  incomeLines: [
+    { label: "Salary (Form 16)", value: 1750000 },
+    { label: "Interest income", value: 90000 },
+  ],
+  monthlyTakeHome: 112000,
+  effectiveRate: 7.8,
+  refundDue: 4200,
+  taxSaving: [
+    { label: "Section 80C", cap: 150000, declared: 150000 },
+    { label: "Section 80D (health insurance)", cap: 25000, declared: 15000 },
+    { label: "Section 24(b) (home loan interest)", cap: 200000, declared: 150000 },
+    { label: "Section 80CCD(1B) (NPS)", cap: 50000, declared: 0 },
+  ],
+  filing: {
+    form: "ITR-1",
+    assessmentYear: "2026-27",
+    readyToFile: true,
+  },
 } as const;
 
-/** Illustrative bar heights (0-100), not rupee figures. */
-export const CASH_FLOW = [
-  { label: "MAY", income: 94, spending: 58 },
-  { label: "JUN", income: 94, spending: 56 },
-  { label: "JUL", income: 94, spending: 60 },
-  { label: "AUG", income: 94, spending: 54 },
-  { label: "SEP", income: 94, spending: 57 },
-  { label: "OCT", income: 94, spending: 53 },
-] as const;
-
-export const ALLOCATION = {
-  current: { equity: 82, debt: 12, gold: 6 },
-  plan: { equity: 65, debt: 25, gold: 10 },
-} as const;
-
-export const GOALS = [
-  { label: "Emergency fund", saved: 128000, target: 255600 },
-  { label: "Home down payment", saved: 360000, target: 2000000 },
-  { label: "Europe trip", saved: 192000, target: 300000 },
-] as const;
+/** Mirrors Recommendation's real shape (category drives the icon on both the dashboard and this page). */
+export const DASHBOARD_RECOMMENDATIONS = [
+  {
+    category: "tax_saving" as const,
+    title: "Invest ₹50,000 in NPS",
+    description: "Section 80CCD(1B), over and above your 80C limit — saves ₹15,600 this year.",
+  },
+  {
+    category: "life_stage" as const,
+    title: "Don't leave idle money in a savings account",
+    description: "Above your emergency fund, a savings account earns less than prices rise. Move it to work harder.",
+  },
+];
 
 export interface ScatteredSource {
   label: string;
@@ -86,16 +99,20 @@ export interface ScatteredSource {
   tagTone?: "neutral" | "warning";
   detail: string;
   value: string;
+  /** Scattered offset from center (px) and rotation (deg), matching the mockup's converging layout. */
+  x: number;
+  y: number;
+  r: number;
 }
 
 export const SCATTERED_SOURCES: ScatteredSource[] = [
-  { label: "Payslip", tag: "SEP 2026", detail: "Net pay", value: "₹75,000" },
-  { label: "Form 16", tag: "FY 25–26", detail: "Part B · Gross salary", value: "₹18,40,000" },
-  { label: "Bank statement", tag: "••4821", detail: "214 transactions", value: "−₹42,600" },
-  { label: "Investment account", detail: "6 mutual funds", value: "₹4,82,000" },
-  { label: "Insurance", tag: "HEALTH", detail: "Self · ₹5L cover", value: "₹14,200/yr" },
-  { label: "Bills", tag: "DUE 12 OCT", tagTone: "warning", detail: "Electricity", value: "₹2,340" },
-  { label: "Tax portal", tag: "AIS · 26AS", detail: "TDS credited", value: "₹1,38,400" },
+  { label: "Payslip", tag: "SEP 2026", detail: "Net pay", value: "₹75,000", x: -560, y: -150, r: -5 },
+  { label: "Form 16", tag: "FY 25–26", detail: "Part B · Gross salary", value: "₹18,40,000", x: -350, y: 150, r: 4 },
+  { label: "Bank statement", tag: "••4821", detail: "214 transactions", value: "−₹42,600", x: 340, y: -170, r: 3 },
+  { label: "Investment account", detail: "6 mutual funds", value: "₹4,82,000", x: 590, y: -10, r: -4 },
+  { label: "Insurance", tag: "HEALTH", detail: "Self · ₹5L cover", value: "₹14,200/yr", x: -40, y: 240, r: -2 },
+  { label: "Bills", tag: "DUE 12 OCT", tagTone: "warning", detail: "Electricity", value: "₹2,340", x: -620, y: 200, r: 6 },
+  { label: "Tax portal", tag: "AIS · 26AS", detail: "TDS credited", value: "₹1,38,400", x: 420, y: 210, r: -3 },
 ];
 
 export interface Persona {
@@ -111,6 +128,13 @@ export interface Persona {
   action: string;
 }
 
+/**
+ * Each persona mirrors a real life-stage recommendation the engine actually
+ * produces (app/modules/recommendations/life_stage.py) — start_investing,
+ * idle_money/emergency_fund, and goal_investing — as the one-time worked
+ * illustration the engine gives, not an ongoing progress tracker (MoneyMitra
+ * doesn't track spending or goal balances over time).
+ */
 export const PERSONAS: Persona[] = [
   {
     initial: "R",
@@ -119,14 +143,14 @@ export const PERSONAS: Persona[] = [
     age: "22",
     facts: [
       { k: "In-hand salary", v: "₹38,000/mo" },
-      { k: "Monthly spending", v: "₹27,500" },
-      { k: "Bike goal", v: "₹1,40,000" },
+      { k: "Investing so far", v: "Not started" },
+      { k: "Years to retirement", v: "~38" },
     ],
-    line1: "You're planning to buy a bike in 18 months.",
-    line2: "Here's what you can set aside each month.",
-    big: "₹6,000/month",
-    sub: "Still leaves ₹4,500 free every month.",
-    action: "Start saving",
+    line1: "You haven't started investing yet.",
+    line2: "At your age, time does most of the work — starting small beats starting late.",
+    big: "₹1,05,00,000",
+    sub: "from ₹3,000/month for 30 years (you'd put in ₹10,80,000 of that)",
+    action: "Start a SIP",
   },
   {
     initial: "M",
@@ -134,15 +158,15 @@ export const PERSONAS: Persona[] = [
     role: "Product manager · Bengaluru",
     age: "32",
     facts: [
-      { k: "Spent this month", v: "₹61,000" },
-      { k: "Usual by now", v: "₹68,000" },
-      { k: "Marriage fund", v: "₹2,52,000 of ₹6L" },
+      { k: "Monthly income", v: "₹95,000" },
+      { k: "Savings-account balance", v: "~₹4,20,000" },
+      { k: "Emergency fund target", v: "₹3,80,000" },
     ],
-    line1: "You're spending less than expected this month.",
-    line2: "₹7,000 could be redirected toward your marriage fund.",
-    big: "₹7,000",
-    sub: "Moves the fund from 42% to 43%.",
-    action: "Redirect ₹7,000",
+    line1: "You have money sitting idle above your emergency fund.",
+    line2: "A savings account pays less than prices rise — a fixed deposit or fund earns more.",
+    big: "+₹14,000/year",
+    sub: "by moving ₹40,000 from a savings account (3.5%) to a safer fund (7%)",
+    action: "See where it can go",
   },
   {
     initial: "V",
@@ -150,15 +174,15 @@ export const PERSONAS: Persona[] = [
     role: "Two children · Gurugram",
     age: "40",
     facts: [
-      { k: "Education SIP", v: "₹12,000/mo" },
-      { k: "Goal by 2034", v: "₹25,00,000" },
-      { k: "Projected", v: "₹22,90,000" },
+      { k: "Children", v: "2" },
+      { k: "Education goal", v: "₹25,00,000" },
+      { k: "Years away", v: "10" },
     ],
-    line1: "Your child's education goal is 8 years away.",
-    line2: "You're currently ₹2,10,000 behind your projected target.",
-    big: "+₹1,500/month",
-    sub: "Raising your SIP closes the gap by 2034.",
-    action: "Adjust SIP",
+    line1: "Your child's education goal is 10 years away.",
+    line2: "Giving it its own monthly number, in its own timeline, keeps it on track.",
+    big: "₹14,500/month",
+    sub: "in growth investments reaches ₹25,00,000 in 10 years",
+    action: "See the full plan",
   },
 ];
 
@@ -191,12 +215,12 @@ export const MILESTONES: Milestone[] = [
   {
     monthIndex: 2,
     month: "MARCH",
-    title: "Investment review",
-    desc: "Before the financial year closes, Mitra reviews how far your portfolio has drifted from your plan.",
-    label: "Allocation drift",
-    value: "82% equity",
-    insight: "Your plan says 65%. Moving ₹82,000 to debt brings you back in line.",
-    action: "See rebalance plan",
+    title: "Last call for this year's deductions",
+    desc: "In the final weeks of the financial year, Mitra shows exactly how much deduction headroom is still unused.",
+    label: "80C headroom left",
+    value: "₹45,000",
+    insight: "About ₹22,500/month for the next 2 months closes it before 31 March.",
+    action: "See your tax plan",
   },
   {
     monthIndex: 3,
@@ -211,31 +235,31 @@ export const MILESTONES: Milestone[] = [
   {
     monthIndex: 5,
     month: "JUNE",
-    title: "Spending analysis",
-    desc: "Mitra compares this quarter with your usual pattern and points out what changed.",
-    label: "Above your usual",
-    value: "₹3,100/mo",
-    insight: "Food delivery is up 18% over the last three months.",
-    action: "See breakdown",
+    title: "Recommendations refresh",
+    desc: "As new payslips and documents arrive, Mitra re-checks what advice they unlock.",
+    label: "Recommendation level",
+    value: "2 of 3",
+    insight: "Add your Form 16 or AIS to unlock advice built on your own documents.",
+    action: "View recommendations",
   },
   {
     monthIndex: 8,
     month: "SEPTEMBER",
-    title: "Goal progress",
-    desc: "Every goal is measured against what you actually save each month, not a calculator assumption.",
-    label: "Emergency fund",
-    value: "3 of 6 months",
-    insight: "On track to reach 6 months of expenses by March 2027.",
-    action: "View goals",
+    title: "Mid-year tax check-in",
+    desc: "Halfway through the year, Mitra flags which deduction sections need attention before they're forgotten.",
+    label: "80CCD(1B) headroom",
+    value: "₹50,000",
+    insight: "Still fully unused, with 6 months left to invest in NPS.",
+    action: "See your tax plan",
   },
   {
     monthIndex: 11,
     month: "DECEMBER",
-    title: "Year-end financial review",
-    desc: "A plain summary of your year, and the moves that matter most for the next one.",
-    label: "Tax saved this year",
-    value: "₹18,400",
-    insight: "Plus ₹1,80,000 invested through SIPs across 6 funds.",
-    action: "Open review",
+    title: "Year-end tax planning",
+    desc: "A plain summary of what's left to use before the financial year closes.",
+    label: "Deduction headroom used",
+    value: "₹3,20,000 of ₹4,25,000",
+    insight: "3 months left before 31 March — the rest can still be used.",
+    action: "Review your sections",
   },
 ];

@@ -41,6 +41,7 @@ class GoalInputs:
     target_date: date
     cost_today: int  # whole rupees, in today's prices
     existing_savings: int = 0  # whole rupees already put aside for this goal
+    loan_pct: int = 0  # 0-100; share of the future cost expected via a loan, not savings
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ class GoalPlan:
     inflation_rate: float
     future_cost: int
     existing_savings: int  # at face value
+    financed_by_loan: int
     remaining: int
     approach: wealth.InvestmentApproach
     monthly_needed: int  # rounded up to MONTHLY_ROUNDING; 0 when savings already cover the goal
@@ -78,8 +80,8 @@ def _months_to(target_date: date, today: date) -> int:
     return months
 
 
-def _assumptions(plan_months: int, inflation_rate: float, existing: int, approach: wealth.InvestmentApproach,
-                 monthly_needed: int) -> list[str]:
+def _assumptions(plan_months: int, inflation_rate: float, existing: int, financed: int,
+                 approach: wealth.InvestmentApproach, monthly_needed: int) -> list[str]:
     assumptions = [
         f"Prices rise {inflation_rate:.0%} a year until your target date.",
         f"With {plan_months} month{'s' if plan_months != 1 else ''} to go, the money suits a "
@@ -87,6 +89,8 @@ def _assumptions(plan_months: int, inflation_rate: float, existing: int, approac
     ]
     if existing:
         assumptions.append(f"The {inr(existing)} you've already saved is counted as it is, with no growth.")
+    if financed:
+        assumptions.append(f"{inr(financed)} of the cost is assumed to come from a loan, not your savings.")
     if monthly_needed:
         assumptions += [
             f"Monthly savings are assumed to earn {approach.annual_rate:.1%} a year before tax, compounded monthly.",
@@ -108,10 +112,13 @@ def plan_goal(
     if inputs.cost_today < MIN_GOAL_COST:
         raise GoalInputError("cost_today", f"Enter a cost of at least {inr(MIN_GOAL_COST)}.")
     _check_amount("existing_savings", inputs.existing_savings, allow_zero=True)
+    if not 0 <= inputs.loan_pct <= 100:
+        raise GoalInputError("loan_pct", "Loan percentage must be between 0 and 100.")
     months = _months_to(inputs.target_date, today)
 
     future_cost = wealth.round_up_to(wealth.inflated_cost_months(inputs.cost_today, inflation_rate, months), 1)
-    remaining = max(0, future_cost - inputs.existing_savings)
+    financed = round(future_cost * inputs.loan_pct / 100)
+    remaining = max(0, future_cost - inputs.existing_savings - financed)
     approach = wealth.investment_approach(months, approaches)
     monthly_needed = (
         wealth.round_up_to(wealth.monthly_needed_months(remaining, approach.annual_rate, months), MONTHLY_ROUNDING)
@@ -126,9 +133,10 @@ def plan_goal(
         inflation_rate=inflation_rate,
         future_cost=future_cost,
         existing_savings=inputs.existing_savings,
+        financed_by_loan=financed,
         remaining=remaining,
         approach=approach,
         monthly_needed=monthly_needed,
-        assumptions=_assumptions(months, inflation_rate, inputs.existing_savings, approach, monthly_needed),
+        assumptions=_assumptions(months, inflation_rate, inputs.existing_savings, financed, approach, monthly_needed),
         disclosure=GOAL_DISCLOSURE,
     )

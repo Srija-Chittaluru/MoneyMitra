@@ -99,9 +99,14 @@ def get_goal(db: Session, user: User, goal_id: uuid.UUID) -> Goal:
 
 
 def _validate(payload: GoalIn, today: date) -> None:
-    """The planner owns the rules for dates and amounts; reuse them as-is."""
+    """The planner owns the rules for dates and amounts; reuse them as-is.
+    Nothing to validate yet if either is still unset (the wizard allows that)."""
+    if payload.target_date is None or payload.cost_today is None:
+        return
     try:
-        plan_goal(GoalInputs(payload.target_date, payload.cost_today, payload.existing_savings), today)
+        plan_goal(
+            GoalInputs(payload.target_date, payload.cost_today, payload.existing_savings, payload.loan_pct), today
+        )
     except GoalInputError as error:
         raise _input_error(error.field, str(error)) from error
 
@@ -112,6 +117,7 @@ def _apply(goal: Goal, payload: GoalIn) -> None:
     goal.target_date = payload.target_date
     goal.cost_today = payload.cost_today
     goal.existing_savings = payload.existing_savings
+    goal.loan_pct = payload.loan_pct
 
 
 def create_goal(db: Session, user: User, payload: GoalIn, today: date | None = None) -> Goal:
@@ -157,6 +163,19 @@ def delete_goal(db: Session, goal: Goal) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, HAS_CONTRIBUTIONS)
     db.delete(goal)
     _commit(db, HAS_CONTRIBUTIONS)  # a contribution recorded in the meantime
+
+
+def reorder_goals(db: Session, user: User, goal_ids: list[uuid.UUID]) -> list[Goal]:
+    """Sets priority = position in `goal_ids` for every goal named. Every id must
+    belong to the caller — same 404-not-403 ownership style as `get_goal`."""
+    goals = {goal.id: goal for goal in db.scalars(select(Goal).where(Goal.user_id == user.id))}
+    missing = [str(goal_id) for goal_id in goal_ids if goal_id not in goals]
+    if missing:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, GOAL_NOT_FOUND)
+    for index, goal_id in enumerate(goal_ids):
+        goals[goal_id].priority = index
+    _commit(db, "The new order couldn't be saved.")
+    return [goals[goal_id] for goal_id in goal_ids]
 
 
 # ---------------------------------------------------------------------------
@@ -258,15 +277,20 @@ def _contribution_totals(db: Session, user: User) -> dict[uuid.UUID, int]:
     return {goal_id: int(total) for goal_id, total in rows}
 
 
+NEEDS_INPUT = "Set a target date and amount to see a plan."
+
+
 def _plan(goal: Goal, contributions_total: int, today: date) -> _Planned:
     goal_status = GoalStatus(goal.status)
     if goal_status != GoalStatus.ACTIVE:
         return _Planned(goal, contributions_total, None, _NO_PLAN[goal_status])
+    if goal.target_date is None or goal.cost_today is None:
+        return _Planned(goal, contributions_total, None, NEEDS_INPUT)
     # Funding above the planner's limit is far beyond any goal; capping it only
     # understates funding, so the plan errs towards saving more.
     funding = min(goal.existing_savings + contributions_total, MAX_GOAL_AMOUNT)
     try:
-        plan = plan_goal(GoalInputs(goal.target_date, goal.cost_today, funding), today)
+        plan = plan_goal(GoalInputs(goal.target_date, goal.cost_today, funding, goal.loan_pct), today)
     except GoalInputError as error:
         issue = TARGET_PASSED if error.field == "target_date" else str(error)
         return _Planned(goal, contributions_total, None, issue)
@@ -315,6 +339,7 @@ def _plan_out(plan: GoalPlan) -> PlanOut:
         inflation_rate=plan.inflation_rate,
         future_cost=plan.future_cost,
         funding_counted=plan.existing_savings,
+        financed_by_loan=plan.financed_by_loan,
         remaining=plan.remaining,
         approach=ApproachOut.model_validate(plan.approach),
         monthly_needed=plan.monthly_needed,
@@ -347,7 +372,7 @@ def goals_out(
     """All the user's goals with their plans, or just goal `only`. Other goals are
     always loaded, since their monthly amounts count against this one's."""
     today = today or date.today()
-    goals = db.scalars(select(Goal).where(Goal.user_id == user.id).order_by(Goal.target_date, Goal.created_at))
+    goals = db.scalars(select(Goal).where(Goal.user_id == user.id).order_by(Goal.priority, Goal.created_at))
     totals = _contribution_totals(db, user)
     planned = [_plan(goal, totals.get(goal.id, 0), today) for goal in goals]
 
@@ -376,6 +401,8 @@ def goals_out(
                 target_date=goal.target_date,
                 cost_today=goal.cost_today,
                 existing_savings=goal.existing_savings,
+                loan_pct=goal.loan_pct,
+                priority=goal.priority,
                 status=goal.status,
                 completed_at=goal.completed_at,
                 created_at=goal.created_at,

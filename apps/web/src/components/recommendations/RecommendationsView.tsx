@@ -16,6 +16,7 @@ import { ProfileCard } from "./ProfileCard";
 export function RecommendationsView() {
   const router = useRouter();
   const [justSaved, setJustSaved] = useState(false);
+  const [showDismissed, setShowDismissed] = useState(false);
 
   const query = useQuery({ queryKey: ["recommendations"], queryFn: getRecommendations });
 
@@ -54,6 +55,10 @@ export function RecommendationsView() {
   }
 
   const data = query.data;
+  const visible = data.recommendations.filter((rec) => rec.status !== "dismissed");
+  const dismissed = data.recommendations.filter((rec) => rec.status === "dismissed");
+  const openCount = visible.filter((rec) => rec.status === "open").length;
+  const doneCount = visible.filter((rec) => rec.status === "done").length;
 
   return (
     <>
@@ -79,16 +84,46 @@ export function RecommendationsView() {
           <div className="mb-1 flex flex-wrap items-center gap-3">
             <h2 className="text-h1">Life-stage recommendations</h2>
             {data.stage_label && <Badge variant="accent">{data.stage_label}</Badge>}
+            {visible.length > 0 && (
+              <span className="text-sm text-muted">
+                {openCount} open · {doneCount} done
+              </span>
+            )}
           </div>
           <p className="mb-4 text-sm text-muted">
             Ways to make your existing money work harder at this stage of life, with worked numbers so you can see
             what each one is worth.
           </p>
-          <div className="flex flex-col gap-4">
-            {data.recommendations.map((rec) => (
-              <LifeStageCard key={rec.id} rec={rec} />
-            ))}
-          </div>
+
+          {visible.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {visible.map((rec) => (
+                <LifeStageCard key={rec.id} rec={rec} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">All recommendations are dismissed.</p>
+          )}
+
+          {dismissed.length > 0 && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowDismissed((value) => !value)}
+                className="text-sm font-medium text-link"
+              >
+                {showDismissed ? "Hide dismissed" : `${dismissed.length} dismissed — show`}
+              </button>
+              {showDismissed && (
+                <div className="mt-4 flex flex-col gap-4">
+                  {dismissed.map((rec) => (
+                    <LifeStageCard key={rec.id} rec={rec} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <p className="mt-4 text-xs text-muted">{data.disclaimer}</p>
         </section>
       )}

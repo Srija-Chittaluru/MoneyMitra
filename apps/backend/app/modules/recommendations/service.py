@@ -2,7 +2,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from app.modules.recommendations import engine
+from app.modules.recommendations import engine, status
 from app.modules.recommendations.facts import build_facts
 from app.modules.recommendations.levels import LEVEL_LABELS
 from app.modules.recommendations.profile import profile_of
@@ -19,6 +19,10 @@ DISCLAIMER = (
 
 def get_recommendations(db: Session, user: User, today: date | None = None) -> RecommendationsOut:
     facts = build_facts(db, user, today or date.today())
+    statuses = status.statuses_by_id(db, user)
+    recommendations = [
+        rec.model_copy(update={"status": statuses.get(rec.id, "open")}) for rec in engine.run(facts)
+    ]
     return RecommendationsOut(
         level=int(facts.level),
         level_label=LEVEL_LABELS[facts.level],
@@ -33,5 +37,5 @@ def get_recommendations(db: Session, user: User, today: date | None = None) -> R
             skipped=[SkippedDocumentOut(**vars(doc)) for doc in facts.documents.skipped],
         ),
         disclaimer=DISCLAIMER,
-        recommendations=engine.run(facts),
+        recommendations=recommendations,
     )

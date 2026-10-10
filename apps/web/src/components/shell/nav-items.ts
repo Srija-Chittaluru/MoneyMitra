@@ -2,6 +2,7 @@ import {
   CalendarRange,
   FileCheck2,
   FileStack,
+  Footprints,
   LayoutDashboard,
   Megaphone,
   Scale,
@@ -12,6 +13,7 @@ import {
 
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/journey", label: "My Journey", icon: Footprints },
   { href: "/documents", label: "Documents", icon: FileStack },
   { href: "/tax-comparison", label: "Tax Comparison", icon: Scale },
   { href: "/tax-planning", label: "Tax Planning", icon: CalendarRange },

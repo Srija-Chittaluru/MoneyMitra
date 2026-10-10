@@ -17,17 +17,9 @@ export const metadata: Metadata = {
     "MoneyMitra helps Indian salaried users understand taxes, organize financial documents, compare tax regimes, and get personalized financial guidance.",
 };
 
-/**
- * Runs before first paint so below-the-fold reveals start hidden with no
- * flash. Skipped under reduced motion; a failsafe un-hides everything if the
- * page script never loads.
- */
-const MOTION_BOOT = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var d=document.documentElement;d.classList.add("mm-motion");window.__mmFailsafe=setTimeout(function(){d.classList.remove("mm-motion")},8000)}catch(e){}})()`;
-
 export default function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT }} />
       <LandingMotion />
       <LandingNav />
       <main className="flex-1">

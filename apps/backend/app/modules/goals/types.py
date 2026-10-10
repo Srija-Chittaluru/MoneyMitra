@@ -4,14 +4,18 @@ from enum import StrEnum
 
 
 class GoalType(StrEnum):
+    EFUND = "efund"
     CAR = "car"
     HOUSE = "house"
-    VACATION = "vacation"
-    EDUCATION = "education"
-    EMERGENCY_FUND = "emergency_fund"
-    WEDDING = "wedding"
-    RETIREMENT = "retirement"
-    OTHER = "other"
+    TRAVEL = "travel"
+    STUDY = "study"
+    MARRIAGE = "marriage"
+    FAMILY = "family"
+    BUSINESS = "business"
+    RETIRE = "retire"
+    WEALTH = "wealth"
+    DEBT = "debt"
+    CUSTOM = "custom"
 
 
 class GoalStatus(StrEnum):

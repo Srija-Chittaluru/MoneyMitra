@@ -2,7 +2,20 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderOpen, Upload } from "lucide-react";
+import {
+  Banknote,
+  FileCheck2,
+  FileSpreadsheet,
+  FileText,
+  FolderOpen,
+  Home,
+  IdCard,
+  Receipt,
+  ShieldCheck,
+  TrendingUp,
+  Upload,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -18,6 +31,19 @@ import { deleteDocument, listDocuments } from "@/lib/documents/api";
 import { DOCUMENT_DEPENDENT_QUERIES } from "@/lib/documents/queries";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/types";
 import type { DocumentCategory, UploadedDocument } from "@/lib/documents/types";
+
+const CATEGORY_ICON: Record<DocumentCategory, LucideIcon> = {
+  pan: IdCard,
+  form16: FileCheck2,
+  ais: FileSpreadsheet,
+  form26as: Receipt,
+  payslips: Banknote,
+  capital_gains: TrendingUp,
+  home_loan: Home,
+  tax_proofs: ShieldCheck,
+  bills: FileText,
+  other: FolderOpen,
+};
 
 export default function DocumentsPage() {
   const queryClient = useQueryClient();
@@ -89,15 +115,21 @@ export default function DocumentsPage() {
         <div className="grid gap-4 md:gap-6 xl:grid-cols-2">
           {DOCUMENT_CATEGORIES.map((category) => {
             const items = documents.filter((d) => d.category === category.id);
+            const Icon = CATEGORY_ICON[category.id];
             return (
               <Card key={category.id} className="min-w-0 bg-card border-line p-4 sm:p-6">
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-h2">{category.name}</h3>
-                      {items.length > 0 && <Badge variant="neutral">{items.length}</Badge>}
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                      <Icon className="h-4 w-4 text-accent-text" strokeWidth={1.75} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-h2">{category.name}</h3>
+                        {items.length > 0 && <Badge variant="neutral">{items.length}</Badge>}
+                      </div>
+                      <p className="text-sm text-muted">{category.description}</p>
                     </div>
-                    <p className="text-sm text-muted">{category.description}</p>
                   </div>
                   <Button
                     variant="secondary"

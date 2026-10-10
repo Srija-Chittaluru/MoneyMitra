@@ -126,7 +126,7 @@ def test_title_is_trimmed(client, alice):
 
 def test_list_shows_only_my_goals_and_hides_archived(client, alice, bob):
     kept = _create(client, alice, title="Car")
-    archived = _create(client, alice, title="Old plan", goal_type="vacation")
+    archived = _create(client, alice, title="Old plan", goal_type="travel")
     _create(client, bob, title="Bob's house", goal_type="house")
     assert client.post(f"{GOALS}/{archived['id']}/archive", headers=alice).status_code == 200
 
@@ -462,7 +462,7 @@ def test_other_goals_count_as_commitments_but_not_the_goal_itself(client, alice)
 
 def test_archived_goals_are_not_commitments(client, alice):
     _profile(client, alice, take_home=500_000, expenses=100_000)
-    other = _create(client, alice, title="Trip", goal_type="vacation")
+    other = _create(client, alice, title="Trip", goal_type="travel")
     client.post(f"{GOALS}/{other['id']}/archive", headers=alice)
     car = _create(client, alice)
     assert car["affordability"]["breakdown"]["commitments"] == 0
@@ -470,7 +470,7 @@ def test_archived_goals_are_not_commitments(client, alice):
 
 def test_a_goal_without_a_plan_leaves_other_goals_unknown(client, alice):
     _profile(client, alice, take_home=500_000, expenses=100_000)
-    stuck = _create(client, alice, title="Trip", goal_type="vacation")
+    stuck = _create(client, alice, title="Trip", goal_type="travel")
     with TestSessionLocal() as db:  # its target month arrives
         db.execute(update(Goal).where(Goal.id == stuck["id"]).values(target_date=date.today()))
         db.commit()
@@ -482,7 +482,7 @@ def test_a_goal_without_a_plan_leaves_other_goals_unknown(client, alice):
     assert "target month has arrived" in stuck_view["plan_issue"]
 
 
-@pytest.mark.parametrize(("goal_type", "has_loan"), [("car", True), ("house", True), ("vacation", False)])
+@pytest.mark.parametrize(("goal_type", "has_loan"), [("car", True), ("house", True), ("travel", False)])
 def test_loan_illustrations_only_for_car_and_house(client, alice, goal_type, has_loan):
     _profile(client, alice, take_home=60_000, expenses=40_000)
     affordability = _create(client, alice, goal_type=goal_type)["affordability"]
@@ -492,6 +492,41 @@ def test_loan_illustrations_only_for_car_and_house(client, alice, goal_type, has
     if loan:
         assert "not a recommendation" in loan["note"]
         assert loan["annual_rate"] == 0.09
+
+
+# ---------------------------------------------------------------------------
+# Reorder (priority)
+# ---------------------------------------------------------------------------
+
+
+def test_reorder_sets_priority_and_returned_order(client, alice):
+    first = _create(client, alice, title="First")
+    second = _create(client, alice, title="Second")
+    third = _create(client, alice, title="Third")
+
+    response = client.post(f"{GOALS}/reorder", headers=alice, json={"goal_ids": [third["id"], first["id"], second["id"]]})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [g["title"] for g in body] == ["Third", "First", "Second"]
+    assert [g["priority"] for g in body] == [0, 1, 2]
+
+    listed = client.get(GOALS, headers=alice).json()
+    assert [g["title"] for g in listed] == ["Third", "First", "Second"]
+
+
+def test_reorder_missing_goal_id_is_rejected(client, alice):
+    goal = _create(client, alice)
+    response = client.post(f"{GOALS}/reorder", headers=alice, json={"goal_ids": [goal["id"], str(uuid.uuid4())]})
+    assert response.status_code == 404
+
+
+def test_reorder_cannot_touch_another_users_goal(client, alice, bob):
+    mine = _create(client, alice)
+    theirs = _create(client, bob)
+    response = client.post(f"{GOALS}/reorder", headers=alice, json={"goal_ids": [mine["id"], theirs["id"]]})
+    assert response.status_code == 404
+    # Bob's goal is untouched.
+    assert client.get(GOALS, headers=bob).json()[0]["priority"] == 0
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,18 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, HeartPulse, Home, Landmark, PiggyBank, Target } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { formatRupees } from "@/lib/format";
 import type { PlanningSection } from "@/lib/planning/types";
+
+/** The deduction-section codes the backend actually sends (DeductionSection, minus HRA). */
+const SECTION_ICON: Record<string, LucideIcon> = {
+  "80C": PiggyBank,
+  "80D": HeartPulse,
+  "24B": Home,
+  "80CCD(1B)": Landmark,
+};
 
 export function PlanningSectionCard({
   section,
@@ -18,6 +27,8 @@ export function PlanningSectionCard({
   onSelect: () => void;
 }) {
   const isFullyUsed = section.headroom === 0;
+  const Icon = SECTION_ICON[section.section] ?? Landmark;
+  const usedPct = section.cap > 0 ? Math.min(100, Math.round((section.declared_amount / section.cap) * 100)) : 0;
 
   return (
     <Card
@@ -36,16 +47,29 @@ export function PlanningSectionCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-h2">{section.label}</h3>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+            <Icon className="h-4 w-4 text-accent-text" strokeWidth={1.75} />
+          </span>
+          <h3 className="text-h2">{section.label}</h3>
+        </div>
         <Badge variant={isFullyUsed ? "success" : "warning"}>
           {isFullyUsed ? "Fully used" : `${formatRupees(section.headroom)} left`}
         </Badge>
       </div>
 
-      <p className="text-sm text-muted">
-        Declared <span className="font-medium text-foreground">{formatRupees(section.declared_amount)}</span>{" "}
-        of the <span className="font-medium text-foreground">{formatRupees(section.cap)}</span> limit.
-      </p>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-sm text-muted">
+          Declared <span className="font-medium text-foreground">{formatRupees(section.declared_amount)}</span>{" "}
+          of the <span className="font-medium text-foreground">{formatRupees(section.cap)}</span> limit.
+        </p>
+        <div className="h-2 overflow-hidden rounded-full bg-field">
+          <div
+            className={cn("h-full rounded-full", isFullyUsed ? "bg-accent" : "bg-primary")}
+            style={{ width: `${usedPct}%` }}
+          />
+        </div>
+      </div>
 
       {section.last_year_amount !== null && (
         <p className="text-xs text-muted">
@@ -61,7 +85,8 @@ export function PlanningSectionCard({
       {section.note && <p className="text-xs text-muted">{section.note}</p>}
 
       {section.monthly_target > 0 && (
-        <div className="rounded-md bg-field px-3 py-3">
+        <div className="flex items-center gap-2.5 rounded-md bg-field px-3 py-3">
+          <Target className="h-4 w-4 shrink-0 text-muted" strokeWidth={1.75} />
           <p className="text-sm text-foreground">
             Invest about <span className="font-semibold">{formatRupees(section.monthly_target)}</span> a
             month to use this fully before the year ends.

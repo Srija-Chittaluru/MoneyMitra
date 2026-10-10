@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
@@ -39,8 +40,10 @@ class Goal(Base):
         CheckConstraint("length(trim(title)) > 0", name="ck_goals_title_not_blank"),
         CheckConstraint(_one_of("goal_type", GoalType), name="ck_goals_goal_type"),
         CheckConstraint(_one_of("status", GoalStatus), name="ck_goals_status"),
+        # NULL passes a CHECK by default, so these still allow "not set yet".
         CheckConstraint(f"cost_today BETWEEN {MIN_GOAL_COST} AND {MAX_GOAL_AMOUNT}", name="ck_goals_cost_today"),
         CheckConstraint(f"existing_savings BETWEEN 0 AND {MAX_GOAL_AMOUNT}", name="ck_goals_existing_savings"),
+        CheckConstraint("loan_pct BETWEEN 0 AND 100", name="ck_goals_loan_pct"),
         # completed_at is set exactly when the goal is completed.
         CheckConstraint(
             f"(status = '{GoalStatus.COMPLETED.value}') = (completed_at IS NOT NULL)", name="ck_goals_completed_at"
@@ -53,10 +56,18 @@ class Goal(Base):
     )
     title: Mapped[str] = mapped_column(String(100))
     goal_type: Mapped[str] = mapped_column(String(16))
-    target_date: Mapped[date] = mapped_column(Date)
-    cost_today: Mapped[int] = mapped_column(BigInteger)
+    # Both nullable: a goal can exist before the user has settled on a cost or
+    # a date (the wizard lets either be "not set yet" / "not sure yet"). No
+    # plan can be computed until both are known — see service._plan.
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    cost_today: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     # Already put aside for this goal when it was set up, counted at face value.
     existing_savings: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    # Portion of the future cost expected to be financed by a loan rather than
+    # saved for; reduces the planner's `remaining`/`monthly_needed`.
+    loan_pct: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Drag-to-rank order from the journey wizard/"Rank goals"; lower sorts first.
+    priority: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status: Mapped[str] = mapped_column(
         String(16), default=GoalStatus.ACTIVE.value, server_default=GoalStatus.ACTIVE.value
     )

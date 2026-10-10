@@ -17,7 +17,7 @@ export function Switch({ checked, onCheckedChange, label, className }: SwitchPro
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-        checked ? "bg-primary" : "border border-border bg-surface-muted",
+        checked ? "bg-primary" : "border border-line bg-field",
         className,
       )}
     >

@@ -1,26 +1,35 @@
-import { LayoutDashboard, FileText, Scale, Sparkles, Wallet } from "lucide-react";
+import { CheckCircle2, FileStack, LayoutDashboard, Scale, Sparkles, Wallet } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { MONEY, TAX, inr } from "./demo-data";
-import { Amount, WindowFrame } from "./parts";
+import { Avatar } from "@/components/ui/Avatar";
+import { DASHBOARD_RECOMMENDATIONS, TAX, inr } from "./demo-data";
+import { Amount, PhotoBackground, RegimeBars, WindowFrame } from "./parts";
 
-const RAIL_ICONS = [LayoutDashboard, Scale, FileText, Sparkles, Wallet];
+const RAIL_ICONS = [LayoutDashboard, FileStack, Scale, Sparkles, Wallet];
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+const CATEGORY_ICON: Record<(typeof DASHBOARD_RECOMMENDATIONS)[number]["category"], LucideIcon> = {
+  tax_saving: Scale,
+  life_stage: Sparkles,
+};
+
+function MiniStat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div data-reveal className="min-w-0 rounded-md border border-line bg-field p-2.5 sm:p-3">
+      <span className="mb-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent/10">
+        <Icon className="h-2.5 w-2.5 text-accent-text" strokeWidth={2} />
+      </span>
       <p className="truncate text-[10px] text-muted sm:text-[11px]">{label}</p>
-      <Amount className="mt-1 block truncate text-[13px] text-foreground sm:text-base">{value}</Amount>
+      <Amount className="mt-0.5 block truncate text-[13px] text-foreground sm:text-base">{value}</Amount>
     </div>
   );
 }
 
-const NEXT_MOVE_STEPS = [
-  { label: "Invest ₹50,000 in NPS", detail: "Section 80CCD(1B)", saved: "−₹15,600", done: true },
-  { label: "Add parents' health cover", detail: "Section 80D · ₹9,000 premium", saved: "−₹2,800", done: false },
-  { label: "Put ₹10,000/month toward your emergency fund", detail: "Reaches 6 months by March 2027", saved: "", done: false },
-];
-
-/** Hero visual: an at-a-glance dashboard, matching the real app's Dashboard page. Static demo data only. */
+/**
+ * Hero visual: an at-a-glance dashboard matching the real app's Dashboard
+ * page — same 3 stats (annual income, estimated tax, potential savings,
+ * same icons), a regime-comparison snippet and real recommendation
+ * categories. Static demo data only, not an invented budgeting app.
+ */
 export function ProductMockup() {
   return (
     <div data-reveal className="relative pb-10 lg:pb-16 lg:pt-6">
@@ -29,10 +38,10 @@ export function ProductMockup() {
         className="pointer-events-none absolute inset-x-8 top-8 -z-10 h-3/4 rounded-full bg-accent/10 blur-3xl"
       />
 
-      <WindowFrame title="MoneyMitra · Overview">
+      <WindowFrame title="MoneyMitra · Dashboard">
         <div
           role="img"
-          aria-label="Demo dashboard: a morning greeting, this month's available balance, a ranked next-move recommendation worth ₹18,400 in tax savings, and a tax snapshot"
+          aria-label="Demo dashboard: a welcome heading, annual income, estimated tax and potential savings, an old vs new regime comparison, and a recommendation"
           className="flex"
         >
           <div
@@ -50,76 +59,54 @@ export function ProductMockup() {
                 <Icon className="h-4 w-4" strokeWidth={1.75} />
               </span>
             ))}
+            <span className="flex-1" />
+            <Avatar initial="A" size="sm" className="rounded-full bg-accent text-accent-foreground" />
           </div>
 
-          <div aria-hidden className="min-w-0 flex-1 space-y-4 p-3.5 sm:p-5">
-            <div>
-              <p className="font-mono text-[10px] tracking-wide text-muted">TUESDAY, 6 OCTOBER</p>
-              <p className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Good morning, Aditya
-              </p>
-              <p className="mt-0.5 text-xs text-muted sm:text-sm">Here&apos;s what needs your attention.</p>
-            </div>
-
-            <div>
-              <p className="text-[11px] text-muted">Available this month</p>
-              <Amount className="mt-1 block text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {inr(MONEY.available)}
-              </Amount>
-              <p className="mt-0.5 text-[11px] text-muted">After rent, EMI and your regular spending</p>
-            </div>
+          <div aria-hidden className="relative isolate min-w-0 flex-1 space-y-4 overflow-hidden p-3.5 sm:p-5">
+            <PhotoBackground
+              src="/landing/pixel-sky.png"
+              objectPosition="50% 100%"
+              sizes="800px"
+              className="hidden -z-10 dark:block"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-background/85 via-background/55 to-background/85"
+            />
+            <p className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Welcome back, Aditya</p>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <MiniStat label="Income" value={inr(MONEY.income)} />
-              <MiniStat label="Spending" value={inr(MONEY.spending)} />
-              <MiniStat label="Invested" value={inr(MONEY.invested)} />
+              <MiniStat icon={Wallet} label="Annual income" value={inr(TAX.gross)} />
+              <MiniStat icon={Scale} label="Estimated tax" value={inr(TAX.oldRegime.total)} />
+              <MiniStat icon={Sparkles} label="Potential savings" value={inr(TAX.potentialSavings)} />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div
-                data-reveal
-                data-float="a"
-                className="rounded-md border border-accent/40 bg-field p-3.5"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold text-foreground">You could save {inr(TAX.potentialSavings)}</p>
-                  <span className="rounded-full bg-field px-2 py-0.5 font-mono text-[10px] text-muted">3 STEPS</span>
-                </div>
-                <ul className="flex flex-col gap-1.5">
-                  {NEXT_MOVE_STEPS.map((step, i) => (
-                    <li key={step.label} className="flex items-center gap-2 text-[11px]">
-                      <span
-                        className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px]",
-                          step.done ? "bg-accent text-accent-foreground" : "border border-line text-muted",
-                        )}
-                      >
-                        {step.done ? "✓" : i + 1}
-                      </span>
-                      <span className={cn("truncate", step.done ? "text-muted line-through" : "text-foreground")}>
-                        {step.label}
-                      </span>
-                      {step.saved && <span className="ml-auto shrink-0 font-mono text-accent-text">{step.saved}</span>}
-                    </li>
-                  ))}
-                </ul>
+              <div data-reveal className="rounded-md border border-line bg-field p-3.5">
+                <p className="mb-2 text-xs font-semibold text-foreground">Old vs. new regime</p>
+                <RegimeBars />
               </div>
 
-              <div data-reveal className="rounded-md border border-line bg-field p-3.5">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold text-foreground">Tax · {TAX.year}</p>
-                  <Scale className="h-3.5 w-3.5 text-muted" strokeWidth={1.75} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div>
-                    <p className="text-muted">Estimated tax</p>
-                    <Amount className="mt-0.5 block text-foreground">{inr(TAX.oldRegime.total)}</Amount>
-                  </div>
-                  <div>
-                    <p className="text-muted">Potential savings</p>
-                    <Amount className="mt-0.5 block text-accent-text">{inr(TAX.potentialSavings)}</Amount>
-                  </div>
-                </div>
+              <div data-reveal data-float="a" className="rounded-md border border-accent/40 bg-field p-3.5">
+                <p className="mb-2 text-xs font-semibold text-foreground">Recommendations for you</p>
+                <ul className="flex flex-col gap-2.5">
+                  {DASHBOARD_RECOMMENDATIONS.map((rec) => {
+                    const Icon = CATEGORY_ICON[rec.category];
+                    return (
+                      <li key={rec.title} className="flex items-start gap-2">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15">
+                          <Icon className="h-2.5 w-2.5 text-accent-text" strokeWidth={2} />
+                        </span>
+                        <span className="min-w-0 truncate text-[11px] text-foreground">{rec.title}</span>
+                      </li>
+                    );
+                  })}
+                  <li className="flex items-center gap-2 text-[11px] text-link">
+                    <CheckCircle2 className="h-3 w-3 shrink-0" strokeWidth={2} />
+                    View all recommendations
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

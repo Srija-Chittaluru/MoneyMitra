@@ -72,7 +72,7 @@ def test_every_goal_type_and_status_is_accepted(db):
         for goal_status in GoalStatus:
             completed_at = NOW if goal_status == GoalStatus.COMPLETED else None
             _goal(db, user, goal_type=goal_type.value, status=goal_status.value, completed_at=completed_at)
-    assert db.scalar(select(Goal).where(Goal.goal_type == "emergency_fund")) is not None
+    assert db.scalar(select(Goal).where(Goal.goal_type == "efund")) is not None
 
 
 @pytest.mark.parametrize(
