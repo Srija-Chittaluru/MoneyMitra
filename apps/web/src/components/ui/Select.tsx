@@ -18,7 +18,7 @@ export function Select({ label, hint, error, id, className, children, ...props }
       <select
         id={id}
         className={cn(
-          "h-11 rounded-md border border-border bg-surface px-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
+          "h-11 rounded-md border border-line bg-field px-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
           error && "border-error",
           className,
         )}

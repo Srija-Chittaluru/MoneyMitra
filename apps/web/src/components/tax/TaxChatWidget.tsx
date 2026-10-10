@@ -21,7 +21,7 @@ function Bubble({ message }: { message: ChatMessage }) {
       <p
         className={cn(
           "max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm",
-          isUser ? "bg-accent text-accent-foreground" : "bg-surface-muted text-foreground",
+          isUser ? "bg-accent text-accent-foreground" : "bg-field text-foreground",
         )}
       >
         {message.content}
@@ -82,13 +82,13 @@ export function TaxChatWidget({ comparison }: { comparison?: TaxComparisonResult
       </button>
 
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 z-50 flex w-96 max-w-[calc(100vw-3rem)] flex-col gap-0 p-0">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <Card className="fixed bottom-24 right-6 z-50 flex w-96 max-w-[calc(100vw-3rem)] flex-col gap-0 bg-card border-line p-0">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h3 className="text-body font-semibold text-foreground">Tax Assistant</h3>
             <button
               type="button"
               onClick={handleClear}
-              className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-muted hover:text-foreground"
+              className="rounded-md px-2 py-1 text-xs text-muted hover:bg-field hover:text-foreground"
             >
               Clear
             </button>
@@ -100,20 +100,20 @@ export function TaxChatWidget({ comparison }: { comparison?: TaxComparisonResult
             ))}
             {mutation.isPending && (
               <div className="flex justify-start">
-                <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
+                <p className="rounded-lg bg-field px-3 py-2 text-sm text-muted">
                   Thinking…
                 </p>
               </div>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border p-3">
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-line p-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question…"
-              className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
+              className="flex-1 rounded-md border border-line bg-field px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
               disabled={mutation.isPending}
             />
             <button
@@ -125,7 +125,7 @@ export function TaxChatWidget({ comparison }: { comparison?: TaxComparisonResult
             </button>
           </form>
 
-          <p className="border-t border-border px-4 py-2 text-xs text-muted">
+          <p className="border-t border-line px-4 py-2 text-xs text-muted">
             General tax information, not professional advice. Rules may have changed — verify
             before filing.
           </p>

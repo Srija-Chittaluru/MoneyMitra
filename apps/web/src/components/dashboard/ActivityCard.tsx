@@ -14,10 +14,16 @@ interface ActivityCardProps {
 
 /** Same row layout as the design system's transaction row, for things the user actually did. */
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const Icon = item.kind === "tax" ? Scale : FileText;
+  const isTax = item.kind === "tax";
+  const Icon = isTax ? Scale : FileText;
   return (
     <div className="flex items-center gap-3 py-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-field text-foreground">
+      <div
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+          isTax ? "bg-accent/10 text-accent-text" : "bg-field text-foreground",
+        )}
+      >
         <Icon className="h-5 w-5" strokeWidth={1.75} />
       </div>
       <div className="min-w-0 flex-1">

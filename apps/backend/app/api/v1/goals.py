@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.goals import service
-from app.modules.goals.schemas import ContributionIn, ContributionOut, GoalIn, GoalOut
+from app.modules.goals.schemas import ContributionIn, ContributionOut, GoalIn, GoalOut, ReorderIn
 from app.modules.goals.types import GoalStatus
 from app.modules.users.models import User
 
@@ -29,6 +29,16 @@ def create_goal(
     db: Session = Depends(get_db),
 ) -> GoalOut:
     return service.goal_out(db, current_user, service.create_goal(db, current_user, payload))
+
+
+@router.post("/reorder", response_model=list[GoalOut])
+def reorder_goals(
+    payload: ReorderIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[GoalOut]:
+    service.reorder_goals(db, current_user, payload.goal_ids)
+    return service.goals_out(db, current_user)
 
 
 @router.get("/{goal_id}", response_model=GoalOut)

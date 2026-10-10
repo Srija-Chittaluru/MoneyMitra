@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, Scale, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -29,20 +29,20 @@ function contextNote(source: TaxPlan["context_source"]): string {
 }
 
 function RegimePositionBanner({ position, caveat }: { position: RegimePosition; caveat: string }) {
-  const sentence =
-    position.recommended_regime === "either"
-      ? "Your old and new regime estimates currently come out equal."
-      : `You're currently better off under the ${position.recommended_regime === "old" ? "Old" : "New"} Regime by ${formatRupees(position.difference)}.`;
+  const isTied = position.recommended_regime === "either";
+  const sentence = isTied
+    ? "Your old and new regime estimates currently come out equal."
+    : `You're currently better off under the ${position.recommended_regime === "old" ? "Old" : "New"} Regime by ${formatRupees(position.difference)}.`;
+  const Icon = isTied ? Scale : TrendingUp;
 
   return (
-    <div className="mb-6 flex flex-col gap-2 rounded-lg border border-success-bg bg-success-bg px-4 py-3">
-      <div className="flex items-center gap-2">
-        <Badge variant="success">
-          {position.recommended_regime === "either" ? "Tied" : `${position.recommended_regime === "old" ? "Old" : "New"} Regime ahead`}
-        </Badge>
+    <div className="mb-6 flex gap-3 rounded-lg border border-success-bg bg-success-bg px-4 py-3">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-success" strokeWidth={1.75} />
+      <div className="flex flex-col gap-2">
+        <Badge variant="success">{isTied ? "Tied" : `${position.recommended_regime === "old" ? "Old" : "New"} Regime ahead`}</Badge>
+        <p className="text-sm text-foreground">{sentence}</p>
+        <p className="text-xs text-muted">{caveat}</p>
       </div>
-      <p className="text-sm text-foreground">{sentence}</p>
-      <p className="text-xs text-muted">{caveat}</p>
     </div>
   );
 }
@@ -75,7 +75,9 @@ export default function TaxPlanningPage() {
         <>
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <Card className="flex items-center gap-3 bg-card border-line px-4 py-3">
-              <CalendarRange className="h-5 w-5 text-muted" strokeWidth={1.5} />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                <CalendarRange className="h-4 w-4 text-accent-text" strokeWidth={1.75} />
+              </span>
               <span className="text-sm text-foreground">
                 FY {plan.fy_label} &middot; {plan.months_remaining}{" "}
                 {plan.months_remaining === 1 ? "month" : "months"} left (through{" "}

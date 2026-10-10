@@ -17,7 +17,7 @@ function DataStep() {
     { label: "Health cover", value: "Self only" },
   ];
   return (
-    <div className="flex h-full flex-col gap-2 rounded-lg border border-line bg-card p-5">
+    <div className="flex h-full flex-col gap-2 rounded-lg border border-line bg-surface p-5">
       {rows.map((row) => (
         <div key={row.label} className="flex items-center justify-between rounded-md bg-field px-3 py-2.5 text-xs">
           <span className="text-muted">{row.label}</span>
@@ -35,7 +35,7 @@ function UnderstandingStep() {
     "Parents' health premium can be claimed under 80D",
   ];
   return (
-    <div className="flex h-full flex-col gap-3 rounded-lg border border-line bg-card p-5">
+    <div className="flex h-full flex-col gap-3 rounded-lg border border-line bg-surface p-5">
       {insights.map((line) => (
         <p key={line} className="flex gap-2 text-sm text-foreground">
           <span className="text-accent-text">→</span>
@@ -54,7 +54,7 @@ function UnderstandingStep() {
 
 function RecommendationStep() {
   return (
-    <div className="flex h-full flex-col gap-3 rounded-lg border border-line bg-card p-5">
+    <div className="flex h-full flex-col gap-3 rounded-lg border border-line bg-surface p-5">
       <p className="flex items-center gap-2 text-xs text-accent-text">Recommended next move</p>
       <p className="text-lg leading-tight tracking-tight text-foreground">
         Put the {inr(TAX.potentialSavings)} you save to work where it matters most right now.
@@ -79,7 +79,7 @@ function RecommendationStep() {
 
 function ActionStep() {
   return (
-    <div className="flex h-full flex-col gap-4 rounded-lg border border-accent/40 bg-card p-5 shadow-[0_0_40px_-20px_var(--color-accent)]">
+    <div className="flex h-full flex-col gap-4 rounded-lg border border-accent/40 bg-surface p-5 shadow-[0_0_40px_-20px_var(--color-accent)]">
       <p className="text-lg font-semibold leading-tight tracking-tight text-foreground">
         Allocate ₹10,000/month toward your emergency fund.
       </p>

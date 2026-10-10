@@ -1,4 +1,4 @@
-"""add goal completed_at and user financial profile
+"""add user financial profile
 
 Revision ID: 08a49b5da325
 Revises: 4c763833cf15
@@ -18,13 +18,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('goals', sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True))
-    # Goals already completed get their last update as a completion time, so the check below holds.
-    op.execute("UPDATE goals SET completed_at = updated_at WHERE status = 'completed'")
-    op.create_check_constraint(
-        'ck_goals_completed_at', 'goals', "(status = 'completed') = (completed_at IS NOT NULL)"
-    )
-
     op.add_column('users', sa.Column('monthly_take_home', sa.BigInteger(), nullable=True))
     op.add_column('users', sa.Column('monthly_expenses', sa.BigInteger(), nullable=True))
     op.create_check_constraint(
@@ -40,5 +33,3 @@ def downgrade() -> None:
     op.drop_constraint('ck_users_monthly_take_home', 'users', type_='check')
     op.drop_column('users', 'monthly_expenses')
     op.drop_column('users', 'monthly_take_home')
-    op.drop_constraint('ck_goals_completed_at', 'goals', type_='check')
-    op.drop_column('goals', 'completed_at')

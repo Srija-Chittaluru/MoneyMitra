@@ -26,9 +26,12 @@ class GoalIn(BaseModel):
 
     title: str = Field(max_length=100)
     goal_type: GoalType
-    target_date: date
-    cost_today: StrictInt
+    # Both optional: the wizard can create a goal before its cost or date is
+    # settled ("Not set yet" / "Not sure yet"). No plan exists until both are.
+    target_date: date | None = None
+    cost_today: StrictInt | None = None
     existing_savings: StrictInt = 0
+    loan_pct: StrictInt = Field(default=0, ge=0, le=100)
 
     @field_validator("title")
     @classmethod
@@ -80,6 +83,7 @@ class PlanOut(BaseModel):
     inflation_rate: float
     future_cost: int
     funding_counted: int  # current funding, at face value
+    financed_by_loan: int  # portion of future_cost expected via a loan, not savings
     remaining: int
     approach: ApproachOut
     monthly_needed: int
@@ -166,9 +170,11 @@ class GoalOut(BaseModel):
     id: uuid.UUID
     title: str
     goal_type: GoalType
-    target_date: date
-    cost_today: int
+    target_date: date | None
+    cost_today: int | None
     existing_savings: int  # allocated at setup
+    loan_pct: int
+    priority: int
     status: GoalStatus
     completed_at: datetime | None
     created_at: datetime
@@ -176,7 +182,15 @@ class GoalOut(BaseModel):
     contributions_total: int
     current_funding: int  # existing_savings + contributions_total
     # Worked out on every request from the current inputs, never stored. Only for
-    # active goals; `plan_issue` says why there's no plan.
+    # active goals with both a cost and a date; `plan_issue` says why there's none.
     plan: PlanOut | None
     plan_issue: str | None
     affordability: AffordabilityOut | None
+
+
+class ReorderIn(BaseModel):
+    """New priority order for the caller's goals — every goal id must be included."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    goal_ids: list[uuid.UUID]

@@ -1,13 +1,13 @@
-import { Check } from "lucide-react";
+import { Check, FileStack, User, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import type { NextStep } from "@/lib/recommendations/types";
 
 const STEPS = [
-  { level: 1, label: "Profile", detail: "Age, job type, expected income" },
-  { level: 2, label: "Your income", detail: "ITR filing or tax comparison" },
-  { level: 3, label: "Your documents", detail: "Form 16, AIS, payslips" },
+  { level: 1, label: "Profile", detail: "Age, job type, expected income", icon: User },
+  { level: 2, label: "Your income", detail: "ITR filing or tax comparison", icon: Wallet },
+  { level: 3, label: "Your documents", detail: "Form 16, AIS, payslips", icon: FileStack },
 ];
 
 interface LevelProgressProps {
@@ -33,7 +33,7 @@ export function LevelProgress({ level, nextStep, onNextStep }: LevelProgressProp
                     : "border-line text-muted",
                 )}
               >
-                {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : step.level}
+                {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : <step.icon className="h-3.5 w-3.5" strokeWidth={2} />}
               </span>
               <div>
                 <p className={cn("text-sm font-semibold", done ? "text-foreground" : "text-muted")}>
