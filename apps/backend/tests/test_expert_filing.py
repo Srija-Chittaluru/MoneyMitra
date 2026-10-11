@@ -47,7 +47,7 @@ def test_create_request_assisted_plan_pricing(client):
 
     body = response.json()
     assert body["price"] == 499
-    assert body["calls_included"] == 1
+    assert body["calls_included"] == 0
 
 
 def test_get_latest_request_returns_none_when_no_request_exists(client):

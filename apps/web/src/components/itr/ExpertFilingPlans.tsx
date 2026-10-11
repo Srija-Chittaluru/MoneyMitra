@@ -90,7 +90,7 @@ function RequestForm({
       {error && <p className="text-sm text-error">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={isPending || phone.trim().length < 10}>
-          {isPending ? "Sending…" : `Request ${plan === "assisted" ? "Assisted" : "Premium"} — ₹${price}`}
+          {isPending ? "Sending…" : `Request ${plan === "assisted" ? "Assisted" : "Premium"} — ₹${price}/yr`}
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={isPending}>
           Cancel
@@ -134,8 +134,11 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
             <Badge variant="success">{STATUS_LABELS[request.status]}</Badge>
           </p>
           <p className="text-sm text-muted">
-            {request.calls_included} CA call{request.calls_included === 1 ? "" : "s"} included. We&apos;ll call{" "}
-            {request.contact_phone} to get started{request.preferred_time ? ` (${request.preferred_time})` : ""}.
+            {request.calls_included > 0
+              ? `${request.calls_included} CA call${request.calls_included === 1 ? "" : "s"} included. `
+              : ""}
+            We&apos;ll call {request.contact_phone} to get you set up
+            {request.preferred_time ? ` (${request.preferred_time})` : ""}.
           </p>
         </div>
       </Card>
@@ -148,11 +151,11 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
         <UserRoundSearch className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         <div className="flex flex-1 flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-semibold text-foreground">Want a CA to take it from here?</p>
-            <p className="text-sm text-muted">See the paid plans and get a CA to call you.</p>
+            <p className="font-semibold text-foreground">Want MoneyMitra to take it from here?</p>
+            <p className="text-sm text-muted">See the paid plans — automation, or a CA on the phone.</p>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setExpanded(true)}>
-            Escalate to a CA
+            See paid plans
           </Button>
         </div>
       </Card>
@@ -163,7 +166,7 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
     <Card className="bg-card border-line">
       <h3 className="text-h2 mb-2">Choose how you want to file</h3>
       <p className="mb-4 text-sm text-muted">
-        File it yourself with the download above, or have a CA take it from here.
+        File it yourself with the download above, let MoneyMitra automate it, or bring in a CA.
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
         <PlanCard
@@ -174,9 +177,15 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
         />
         <PlanCard
           title="Assisted"
-          price="₹499"
-          description="A CA reviews your return and gets on one call with you."
-          bullets={["Everything in Free", "1 CA call"]}
+          price="₹499/yr"
+          description="MoneyMitra does it for you."
+          bullets={[
+            "Everything in Free",
+            "Auto-fill from your documents",
+            "e-filing from MoneyMitra — no download or re-upload",
+            "Personalised FD, RD, fund and ETF options for you",
+            "Tax planning: deduction room and deadline alerts",
+          ]}
           action={
             activePlan === "assisted" ? (
               <RequestForm
@@ -196,22 +205,22 @@ export function ExpertFilingPlans({ ay }: { ay: string }) {
               />
             ) : (
               <Button size="sm" variant="secondary" onClick={() => setActivePlan("assisted")}>
-                Request a CA call
+                Get Assisted
               </Button>
             )
           }
         />
         <PlanCard
           title="Premium"
-          price="₹1,999"
+          price="₹1,999/yr"
           highlighted
-          description="Full hand-holding — your return and your wider tax picture, in one call to get it right and filed."
+          description="A CA in your corner, all year."
           bullets={[
             "Everything in Assisted",
-            "Tax regime comparison review",
-            "Personalized recommendations review",
-            "Tax planning walkthrough",
-            "1 CA call",
+            "CA reviews your return before it's filed — 1 call",
+            "Our best pick — the one FD, RD, fund or ETF (and the amount) for you",
+            "Year-round: a mid-year tax check plus priority chat with the CA",
+            "Notices covered — if the tax department follows up, the CA helps you reply",
           ]}
           action={
             activePlan === "premium" ? (
