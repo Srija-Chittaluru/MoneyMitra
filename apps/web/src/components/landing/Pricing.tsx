@@ -17,41 +17,39 @@ const TIERS: PricingTier[] = [
     name: "Free",
     price: "₹0",
     cadence: "forever",
-    description: "Understand where you stand — see it before you pay for help with it.",
+    description: "Understand your taxes yourself.",
     bullets: [
-      "Dashboard and document uploads",
-      "Old vs new regime comparison",
-      "Manual ITR prep — download your JSON and PDF",
-      "General recommendations",
+      "ITR filing with JSON + PDF download — you upload it on incometax.gov.in",
+      "Tax comparison (old vs new regime)",
+      "Market overview — Nifty 50, gold, silver, and how FDs, RDs, mutual funds and ETFs have performed",
     ],
     cta: "Get started free",
   },
   {
     name: "Assisted",
     price: "₹499",
-    cadence: "per return",
-    description: "Everything in Free, plus the app does the filing work for you.",
+    cadence: "a year",
+    description: "MoneyMitra does it for you.",
     bullets: [
       "Everything in Free",
-      "ITR e-filing with AIS autofetch (ITR-1, 2, 3)",
-      "Personalized recommendations — FDs, RDs, mutual funds, ETFs",
-      "Goal planning with the Future Value Calculator",
-      "Tax planning and Resources & Alerts",
-      "1 CA call reviewing your return",
+      "Auto-fill from your documents — Form 16, AIS, payslips, broker statements",
+      "e-filing from MoneyMitra — no download or re-upload",
+      "Personalised options — FDs, RDs, mutual funds and ETFs matched to your age and income, compared side by side",
+      "Tax planning — deduction room and deadline alerts",
     ],
     cta: "Get started",
   },
   {
     name: "Premium",
     price: "₹1,999",
-    cadence: "per return",
-    description: "Full hand-holding — your return and your wider tax picture, in one call.",
+    cadence: "a year",
+    description: "A CA in your corner, all year.",
     bullets: [
       "Everything in Assisted",
-      "Tax regime comparison review",
-      "Personalized recommendations review",
-      "Tax planning walkthrough",
-      "1 CA call covering all of it",
+      "CA reviews your return before it's filed — 1 call",
+      "Our best pick — the one FD, RD, fund or ETF, and the amount, matched to your finances",
+      "Year-round: a mid-year tax check (around December, before the March investment deadline) plus priority chat with the CA",
+      "Notices covered — if the tax department sends a notice about a return we filed, the CA helps you reply",
     ],
     cta: "Get started",
     highlighted: true,
@@ -79,8 +77,8 @@ export function Pricing() {
             </h2>
           </div>
           <p data-reveal className="max-w-sm text-body text-muted md:text-lg">
-            Every plan includes the full app — recommendations, tax planning, goal planning and e-filing. The
-            paid tiers add a CA on the phone when you want one.
+            Free gets you started on your own. Assisted adds the automation — auto-fill, e-filing, personalised
+            picks. Premium adds a CA on the phone, all year.
           </p>
         </div>
 
@@ -122,6 +120,7 @@ export function Pricing() {
           Paid plans are requested from inside the app, on the ITR filing page — our team calls to confirm and
           take payment, nothing is charged automatically.
         </p>
+        <p data-reveal className="mt-2 text-sm text-muted">Coming soon: invest directly from MoneyMitra.</p>
       </Container>
     </section>
   );

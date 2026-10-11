@@ -84,7 +84,7 @@ MoneyMitra keeps those pieces together and keeps them current:
 | **My Journey** | A visual timeline over your real activity and goals, with an onboarding wizard (character pick, life-event chips, goal ranking) built on the same Goals Planner backend | Live |
 | **Fixed and Recurring Deposits** | Compare real, sourced bank FD/RD rates by tenure; RD maturity calculator | Live |
 | **Mutual Funds and ETFs** | Index-fund and ETF comparison from AMFI's public NAV data | Live |
-| **CA expert-filing escalation** | From the ITR review step, request a CA call — Free self-file / Assisted ₹499 / Premium ₹1,999 — records a lead for the team to call and bill separately | Live |
+| **Paid plan upgrade** | From the ITR review step, request Assisted (₹499/yr, automation) or Premium (₹1,999/yr, +1 CA call) — records a lead for the team to call and bill separately | Live |
 | **Resources and Alerts** | Government deadlines, deduction limits, slab explorer | Live |
 | **Landing page** | Product-led marketing page with pricing, light and dark themes | Live |
 
@@ -449,24 +449,29 @@ groups (Nifty 50, bank, IT, gold, silver). See
 `apps/backend/app/modules/funds/amfi.py`, `catalogue.py` and
 `etf_catalogue.py`. `GET /api/v1/funds/mutual-funds`, `GET /api/v1/funds/etfs`.
 
-### CA expert-filing escalation
+### Paid plan upgrade (expert filing escalation)
 
-From the ITR review step, a user can ask a CA to take it from here: **Free**
-(self-file with the JSON/PDF download), **Assisted** (₹499, one CA call
-reviewing the return) or **Premium** (₹1,999, one CA call covering the return,
-the regime comparison and the recommendations). This only **records a
-request** — price and call count are snapshotted server-side from
-`PLAN_DETAILS` so the client can't set its own price — there is no CA
-login/portal and no payment capture; the team calls to confirm and bills
-separately. See `apps/backend/app/modules/expert_filing/`.
+From the ITR review step, a user can request a paid plan: **Free** (self-file
+with the JSON/PDF download, tax comparison and the general market overview),
+**Assisted** (₹499/yr — auto-fill from documents, e-filing from MoneyMitra,
+personalised FD/RD/fund/ETF options and tax planning, no CA) or **Premium**
+(₹1,999/yr — everything in Assisted plus one CA call reviewing the return, a
+single best-pick recommendation, a year-round mid-year tax check and priority
+chat with the CA, and help replying to any notice on a return MoneyMitra
+filed). This only **records a request** — price and call count are
+snapshotted server-side from `PLAN_DETAILS` (`calls_included` is 0 for
+Assisted, 1 for Premium) so the client can't set its own price — there is no
+payment capture or technical feature-gating; every plan's software features
+are already usable by any signed-in user today, and the team calls to confirm
+and bill separately. See `apps/backend/app/modules/expert_filing/`.
 
 ### Landing page
 
 A product-led page: hero with a live-looking product mockup, value strip,
 feature cards, how-it-works, product showcase, a pricing comparison (Free /
-₹499 / ₹1,999, mirroring the ITR escalation plans above) and a call to action.
-Includes subtle scroll animations that replay on re-entry and respect
-`prefers-reduced-motion`, and supports light and dark themes.
+₹499 / ₹1,999 a year, mirroring the ITR plan-upgrade cards above) and a call
+to action. Includes subtle scroll animations that replay on re-entry and
+respect `prefers-reduced-motion`, and supports light and dark themes.
 
 ---
 
@@ -538,7 +543,7 @@ Design decisions:
 | `tax_comparison_snapshots` | The user's latest comparison inputs, reused by other modules |
 | `goals` | A user's savings goals: name, type, target date, cost today, savings allocated at setup, status (active, completed, archived) and completion time. Calculated figures are never stored. |
 | `goal_contributions` | Money actually put towards a goal (amount, date, optional note). A goal with contributions can't be deleted; deleting a user removes both. |
-| `expert_filing_requests` | A CA-escalation request: assessment year, plan, price and calls included (snapshotted at request time from `PLAN_DETAILS`), contact phone, preferred time, status. |
+| `expert_filing_requests` | A paid-plan request: assessment year, plan, price and calls included (0 for Assisted, 1 for Premium, snapshotted at request time from `PLAN_DETAILS`), contact phone, preferred time, status. |
 
 FD/RD rates and the mutual fund/ETF catalogue have no tables of their own —
 they're computed from a hand-maintained rates file and fetched live from AMFI
@@ -654,7 +659,7 @@ apps/
     src/app/                   # routes: landing, login, signup, onboarding, dashboard,
                                #   documents, tax-comparison, tax-planning, itr-filing,
                                #   recommendations, goals, journey, resources, profile
-    src/components/            # ui/ design system, shell/ (sidebar, header), landing/,
+    src/components/            # ui/ design system, shell/ (sidebar, header), landing/, auth/,
                                #   dashboard/, itr/, tax/, documents/, recommendations/,
                                #   goals/, journey/, fd/, rd/, mutual-funds/, etf/, onboarding/
     src/lib/                   # API clients per module, auth, dashboard state, validation
@@ -677,7 +682,7 @@ apps/
         goals/                 # goal planner, take-home estimate, affordability and alternatives, goals API
         deposits/              # FD/RD rates (hand-entered, sourced), RD maturity calculator
         funds/                 # mutual fund + ETF data from AMFI's public NAV feeds
-        expert_filing/         # CA-escalation request flow (lead capture, no payment)
+        expert_filing/         # paid-plan request flow (lead capture, no payment)
         resources/             # deadlines and deduction-limit reference data
         dashboard/             # data-driven summary
     alembic/                   # database migrations
@@ -803,7 +808,7 @@ ruff check app tests
 The suite covers authentication and sessions, onboarding and PAN handling,
 tax calculation and rules, AI explanation and chat fallbacks, document upload,
 extraction and auto-fill, ITR computation, form selection, validation and export,
-recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources, the dashboard summary, the Goals Planner (the month-based maths, planner, take-home estimate, affordability and alternatives, database rules, the goals API with per-user access checks, and the monthly budget), FD/RD rates, the AMFI-backed mutual fund and ETF data, and the CA expert-filing escalation request flow.
+recommendations (all three levels, including the document analysis against the sample documents in `tests/fixtures/`), planning, resources, the dashboard summary, the Goals Planner (the month-based maths, planner, take-home estimate, affordability and alternatives, database rules, the goals API with per-user access checks, and the monthly budget), FD/RD rates, the AMFI-backed mutual fund and ETF data, and the paid-plan upgrade request flow.
 
 **Frontend:**
 
@@ -866,11 +871,18 @@ type-checking, linting and the production build.
   (Aadhaar, mobile number, bank account numbers, NPS PRAN) are encrypted. The
   rest of the draft, including the PAN inside it, is stored as plain JSON.
 - **AI features** need an OpenAI key and are not used for any calculation.
+- **Paid plans aren't technically gated.** Assisted's and Premium's software
+  features (e-filing, personalised FD/RD/fund/ETF options, tax planning) are
+  already usable by any signed-in user today, free plan or not — requesting a
+  plan only records a lead for the team to call and bill; nothing in the app
+  checks or restricts access by plan.
 
 **Natural next steps**
 
-- Real payment capture for the CA expert-filing escalation plans (today it's a
-  lead-capture request; the team bills separately).
+- Real payment capture for the paid plan upgrade (today it's a lead-capture
+  request; the team bills separately), and technical feature-gating by plan.
+- Invest directly from MoneyMitra (today every FD/RD/fund/ETF comparison is
+  informational only — you invest with your own bank or broker).
 - Analyse more document types (tax proofs, home-loan certificates).
 - Encrypt ITR drafts at rest; direct filing via ERI registration.
 - More assessment years, the remaining ITR forms and schedules; live tax-rule updates.
@@ -900,7 +912,7 @@ A ready-to-adapt kit for the slide deck and the demo.
 | 6 | Product tour (2/3) | Documents with automatic extraction feeding the ITR draft and Level 3 advice |
 | 7 | Product tour (3/3) | Tax comparison with plain-language explanation |
 | 8 | Year-round value | Tax planning: headroom and monthly targets; recommendations with reasons; My Journey's visual timeline over your goals and activity |
-| 9 | Filing | Four-step flow; the right form (ITR-1/2/3) chosen from your documents; official JSON and PDF export; optional CA expert-filing escalation |
+| 9 | Filing | Four-step flow; the right form (ITR-1/2/3) chosen from your documents; official JSON and PDF export; optional paid plan upgrade (Assisted automation, or Premium with a CA call) |
 | 10 | Architecture | Diagram from section 5; API-first modular monolith |
 | 11 | Trust and security | Rotating sessions, sign-in lockout and rate limits, encrypted PAN and sensitive ITR fields, local OCR, user-scoped data |
 | 12 | Responsible AI | Deterministic maths; AI only for explanation, with fallbacks |
@@ -945,8 +957,9 @@ backup, and keep `OPENAI_API_KEY` set so the explanation and chat work on stage.
 - **Why trust the recommendations?** Each one states its reason and what data it
   is based on, and nothing personalised appears without the data to justify it.
 - **What is not finished?** Only ITR-1, ITR-2 and ITR-3 are supported; cases
-  needing other schedules are shown as blockers, never guessed at. The CA
-  expert-filing escalation records a request but doesn't take payment yet.
+  needing other schedules are shown as blockers, never guessed at. The paid
+  plan upgrade records a request but doesn't take payment or technically gate
+  features yet.
 
 ### Key numbers to quote
 
@@ -954,4 +967,4 @@ backup, and keep `OPENAI_API_KEY` set so the explanation and chat work on stage.
 - 2 supported tax years (FY 2025-26, FY 2026-27); 3 ITR forms (ITR-1, ITR-2, ITR-3, AY 2026-27)
 - 10 document categories; 6 document types read automatically (Form 16, AIS, Form 26AS, payslips, broker statements, PAN)
 - 4-step ITR flow; 5 life-stage recommendations per stage across 3 levels; 4 deduction sections planned
-- 302 automated backend tests
+- 613 automated backend tests

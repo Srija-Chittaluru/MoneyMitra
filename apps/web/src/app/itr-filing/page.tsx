@@ -102,10 +102,10 @@ function HelpCards() {
       <Card className="flex items-start gap-3 bg-card border-line p-4">
         <UserRoundSearch className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         <div>
-          <p className="font-semibold text-foreground">Expert filing</p>
+          <p className="font-semibold text-foreground">Want more help?</p>
           <p className="text-sm text-muted">
-            Let a CA review and file your return for you — pick a plan once your return is ready, at the end of the
-            review step.
+            Let MoneyMitra automate it, or bring in a CA — pick a plan once your return is ready, at the end of
+            the review step.
           </p>
         </div>
       </Card>

@@ -27,7 +27,7 @@ export const PLAN_OPTIONS: {
   price: number;
   callsIncluded: number;
 }[] = [
-  { plan: "assisted", label: "Assisted", price: 499, callsIncluded: 1 },
+  { plan: "assisted", label: "Assisted", price: 499, callsIncluded: 0 },
   { plan: "premium", label: "Premium", price: 1999, callsIncluded: 1 },
 ];
 
